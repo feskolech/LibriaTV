@@ -11,10 +11,5 @@
     <string name="exit_question">Выйти из LibriaTV?</string>
     <string name="exit">Выйти</string>
     <string name="cancel">Отмена</string>
-    <string name="menu_marker_home">⌂</string>
-    <string name="menu_marker_search">⌕</string>
-    <string name="menu_marker_favorites">★</string>
-    <string name="menu_marker_schedule">▦</string>
-    <string name="menu_marker_profile">●</string>
-    <string name="menu_marker_settings">⚙</string>
+    <string name="open_menu">Открыть меню</string>
 </resources>

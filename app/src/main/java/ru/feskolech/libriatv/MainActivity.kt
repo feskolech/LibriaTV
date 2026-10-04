@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +23,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -36,6 +46,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
 import androidx.tv.material3.Text
+import androidx.tv.material3.Icon
+import androidx.tv.material3.Surface
 import androidx.tv.material3.rememberDrawerState
 import dagger.hilt.android.AndroidEntryPoint
 import ru.feskolech.libriatv.ui.theme.LibriaTvTheme
@@ -52,13 +64,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Destination(val route: String, val title: Int, val marker: Int) {
-    Home("home", R.string.home, R.string.menu_marker_home),
-    Search("search", R.string.search, R.string.menu_marker_search),
-    Favorites("favorites", R.string.favorites, R.string.menu_marker_favorites),
-    Schedule("schedule", R.string.schedule, R.string.menu_marker_schedule),
-    Profile("profile", R.string.profile, R.string.menu_marker_profile),
-    Settings("settings", R.string.settings, R.string.menu_marker_settings),
+private enum class Destination(val route: String, val title: Int, val icon: ImageVector) {
+    Home("home", R.string.home, Icons.Default.Home),
+    Search("search", R.string.search, Icons.Default.Search),
+    Favorites("favorites", R.string.favorites, Icons.Default.Favorite),
+    Schedule("schedule", R.string.schedule, Icons.Default.DateRange),
+    Profile("profile", R.string.profile, Icons.Default.Person),
+    Settings("settings", R.string.settings, Icons.Default.Settings),
 }
 
 @Composable
@@ -70,7 +82,6 @@ private fun AppNavigation(onExit: () -> Unit) {
     val firstItemFocus = remember { FocusRequester() }
     var confirmExit by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { firstItemFocus.requestFocus() }
     BackHandler(confirmExit || drawerState.currentValue == DrawerValue.Open || currentRoute == Destination.Home.route) {
         when {
             confirmExit -> confirmExit = false
@@ -104,8 +115,9 @@ private fun AppNavigation(onExit: () -> Unit) {
                             }
                             drawerState.setValue(DrawerValue.Closed)
                         },
-                        leadingContent = { Text(stringResource(destination.marker)) },
-                        modifier = if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier,
+                        leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                        modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
+                            .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
                     ) {
                         if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title))
                     }
@@ -116,7 +128,9 @@ private fun AppNavigation(onExit: () -> Unit) {
         NavHost(navController = navController, startDestination = Destination.Home.route) {
             Destination.entries.forEach { destination ->
                 composable(destination.route) {
-                    PlaceholderScreen(destination.title)
+                    PlaceholderScreen(destination.title,
+                        onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                        onOpenMenu = { firstItemFocus.requestFocus() })
                 }
             }
         }
@@ -136,16 +150,21 @@ private fun AppNavigation(onExit: () -> Unit) {
 }
 
 @Composable
-private fun PlaceholderScreen(title: Int) {
-    Box(
+private fun PlaceholderScreen(title: Int, onContentFocus: () -> Unit, onOpenMenu: () -> Unit) {
+    val contentFocus = remember { FocusRequester() }
+    LaunchedEffect(title) { contentFocus.requestFocus() }
+    Surface(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF101010))
-            .padding(horizontal = 48.dp, vertical = 27.dp),
+            .onFocusChanged { if (it.hasFocus) onContentFocus() },
+        colors = androidx.tv.material3.SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(horizontal = 48.dp, vertical = 27.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.headlineLarge)
             Text(stringResource(R.string.coming_soon), style = MaterialTheme.typography.bodyLarge)
+            Button(onClick = onOpenMenu, modifier = Modifier.focusRequester(contentFocus)) {
+                Text(stringResource(R.string.open_menu))
+            }
         }
     }
 }

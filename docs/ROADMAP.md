@@ -24,7 +24,7 @@
 - README.md: что это, как собрать, как поставить на приставку (`adb connect`, `adb install`).
 - Приёмка: debug APK собирается, приложение запускается на эмуляторе TV, меню навигируется D-pad.
 
-## T00.1 — Доработка каркаса `[ ]`
+## T00.1 — Доработка каркаса `[x]`
 - Текст на экранах чёрный на тёмном фоне: экраны должны быть обёрнуты в tv-material `Surface`
   (или задан `LocalContentColor`), цвета — из темы. Тёмная colorScheme с primary `#B32121`.
 - Меню: вместо Unicode-символов — векторные иконки (`material-icons-extended` или свои vector
@@ -37,7 +37,7 @@
 - Hilt перевести с kapt на KSP (kapt устарел).
 - Приёмка: скриншот эмулятора — читаемый текст, меню раскрывается с подписями.
 
-## T01 — API-клиент v1 `[ ]`
+## T01 — API-клиент v1 `[x]`
 - `data/api`: Retrofit-интерфейсы и DTO для: schedule/now, schedule/week, releases/latest,
   releases/{idOrAlias}, releases/episodes/{id}, app/search/releases, torrents/release/{id},
   otp/get, otp/login, auth/login, auth/logout, me/profile, me/favorites (ids, releases GET, add,
