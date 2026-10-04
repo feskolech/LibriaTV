@@ -13,6 +13,8 @@ interface AniLibriaApi {
     @GET("anime/schedule/now") suspend fun scheduleNow(): ScheduleNowDto
     @GET("anime/schedule/week") suspend fun scheduleWeek(): List<ScheduleItemDto>
     @GET("anime/releases/latest") suspend fun latest(@Query("limit") limit: Int = 30): List<ReleaseDto>
+    @GET("anime/releases/recommended") suspend fun recommended(@Query("limit") limit: Int = 14): List<ReleaseDto>
+    @GET("anime/releases/random") suspend fun random(@Query("limit") limit: Int = 1): List<ReleaseDto>
     @GET("anime/releases/{idOrAlias}") suspend fun release(@Path("idOrAlias") idOrAlias: String): ReleaseDto
     @GET("anime/releases/episodes/{releaseEpisodeId}") suspend fun episode(@Path("releaseEpisodeId") id: String): EpisodeDto
     @GET("anime/catalog/releases") suspend fun catalog(

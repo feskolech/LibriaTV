@@ -93,6 +93,7 @@ fun CatalogScreen(
                         Text(listOfNotNull(stringResource(R.string.filter_sorting), sortTitle).joinToString(": "))
                     }
                 }
+                item { Button(onClick = { viewModel.random(onOpenRelease) }) { Text(stringResource(R.string.random_release)) } }
                 if (filter.activeCount > 0) {
                     item { Button(onClick = viewModel::resetFilter) { Text(stringResource(R.string.filter_reset)) } }
                 }

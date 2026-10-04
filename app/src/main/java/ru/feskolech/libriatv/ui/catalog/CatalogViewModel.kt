@@ -61,6 +61,11 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
         loadMore()
     }
 
+    /** "I'm feeling lucky": a random release id, or null when the API fails. */
+    fun random(onResult: (Int) -> Unit) = viewModelScope.launch {
+        (repository.randomRelease() as? ApiResult.Success)?.value?.id?.let(onResult)
+    }
+
     fun loadMore() {
         val current = _state.value
         if (!current.canLoadMore) return

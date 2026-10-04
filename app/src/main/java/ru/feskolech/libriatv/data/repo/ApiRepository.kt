@@ -91,6 +91,15 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
         }
     }
 
+    // The API rejects limit > 14 with 422.
+    suspend fun recommended(limit: Int = 14): ApiResult<List<Release>> = request {
+        api.recommended(limit).mapNotNull { it.toDomain() }
+    }
+
+    suspend fun randomRelease(): ApiResult<Release> = request {
+        api.random(1).firstNotNullOfOrNull { it.toDomain() } ?: error("No random release")
+    }
+
     suspend fun search(query: String): ApiResult<List<Release>> = request {
         api.search(query).mapNotNull { it.toDomain() }
     }

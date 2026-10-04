@@ -152,6 +152,11 @@ private fun HomeContent(
                     badge = { null }, favoriteIds = content.favoriteIds,
                     onFocus = { focusRow(3, it) }, onClick = onOpenRelease)
             }
+            if (content.recommended.isNotEmpty()) item {
+                PosterRow(stringResource(R.string.recommended), content.recommended,
+                    badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
+                    onFocus = { focusRow(if (content.isAuthorized) 4 else 3, it) }, onClick = onOpenRelease)
+            }
             }
         }
     }

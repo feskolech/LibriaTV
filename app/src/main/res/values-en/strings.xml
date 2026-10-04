@@ -106,4 +106,6 @@
     <string name="filter_year_from">From</string>
     <string name="filter_year_to">To</string>
     <string name="filter_any">Any</string>
+    <string name="recommended">Recommended</string>
+    <string name="random_release">Feeling lucky</string>
 </resources>

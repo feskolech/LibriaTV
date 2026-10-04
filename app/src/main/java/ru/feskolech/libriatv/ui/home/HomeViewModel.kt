@@ -24,6 +24,7 @@ sealed interface HomeUiState {
         val favorites: List<Release>,
         val favoriteIds: Set<Int>,
         val isAuthorized: Boolean,
+        val recommended: List<Release> = emptyList(),
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -56,6 +57,8 @@ class HomeViewModel @Inject constructor(
             if (_state.value !is HomeUiState.Content) _state.value = HomeUiState.Loading
             val latest = async { repository.latest() }
             val schedule = async { repository.currentSchedule() }
+            // Optional row: a failure here must not break the whole home screen.
+            val recommended = async { (repository.recommended() as? ApiResult.Success)?.value.orEmpty() }
             val latestResult = latest.await()
             val scheduleResult = schedule.await()
             if (latestResult is ApiResult.Success && scheduleResult is ApiResult.Success) {
@@ -66,6 +69,7 @@ class HomeViewModel @Inject constructor(
                     latestResult.value.sortedByDescending { it.freshAt },
                     scheduleResult.value.today, scheduleResult.value.tomorrow,
                     favoriteList, favoriteList.mapTo(mutableSetOf()) { it.id }, authorized,
+                    recommended = recommended.await(),
                 )
                 lastRefresh = System.currentTimeMillis()
             } else {
