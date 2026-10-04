@@ -4,6 +4,14 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
+    <queries>
+        <package android:name="ru.yourok.torrserve" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="magnet" />
+        </intent>
+    </queries>
+
     <application
         android:name=".LibriaTvApplication"
         android:allowBackup="false"

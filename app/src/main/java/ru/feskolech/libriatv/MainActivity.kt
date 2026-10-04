@@ -56,6 +56,7 @@ import ru.feskolech.libriatv.ui.auth.AuthScreen
 import ru.feskolech.libriatv.ui.home.HomeScreen
 import ru.feskolech.libriatv.ui.home.FeedScreen
 import ru.feskolech.libriatv.ui.release.ReleaseScreen
+import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
 
 @AndroidEntryPoint
@@ -165,8 +166,12 @@ private fun AppNavigation(onExit: () -> Unit) {
                     onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
             }
             composable("release/{id}") { entry ->
-                ReleaseScreen(onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") })
+                ReleaseScreen(
+                    onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
+                    onTorrents = { navController.navigate("torrents/$it") },
+                )
             }
+            composable("torrents/{releaseId}") { TorrentsScreen() }
             composable("player/{id}/{episodeId}") {
                 PlayerScreen(onBack = { navController.popBackStack() })
             }

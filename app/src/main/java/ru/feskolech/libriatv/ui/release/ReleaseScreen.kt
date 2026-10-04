@@ -34,7 +34,7 @@ import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Episode
 
 @Composable
-fun ReleaseScreen(onPlay: (String) -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
+fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val focus = remember { FocusRequester() }
     when (val current = state) {
@@ -71,7 +71,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, viewModel: ReleaseViewModel = hiltVi
                                         else stringResource(R.string.watch))
                                 }
                                 Button(onClick = {}, enabled = false) { Text(stringResource(R.string.add_favorite)) }
-                                Button(onClick = {}, enabled = false) { Text(stringResource(R.string.torrents)) }
+                                Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
                             }
                         }
                     }

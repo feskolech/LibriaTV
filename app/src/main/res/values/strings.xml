@@ -65,4 +65,12 @@
     <string name="skip_ending">Пропустить эндинг</string>
     <string name="auto_skip">Пропускать автоматически</string>
     <string name="next_in">Следующая серия через %1$d сек</string>
+    <string name="torrents_hint">Раздача откроется в TorrServe — смотреть можно сразу, без полной загрузки.</string>
+    <string name="torrents_empty">Для этого релиза раздач пока нет.</string>
+    <string name="torrent_episodes">серии %1$s</string>
+    <string name="torrent_peers">▲ %1$d  ▼ %2$d</string>
+    <string name="torrent_hardsub">хардсаб</string>
+    <string name="torrent_no_app_title">Нет приложения для торрентов</string>
+    <string name="torrent_no_app_text">Установите TorrServe или отсканируйте magnet-ссылку телефоном.</string>
+    <string name="close">Закрыть</string>
 </resources>

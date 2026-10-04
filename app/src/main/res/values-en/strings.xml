@@ -65,4 +65,12 @@
     <string name="skip_ending">Skip ending</string>
     <string name="auto_skip">Skip automatically</string>
     <string name="next_in">Next episode in %1$d sec</string>
+    <string name="torrents_hint">The torrent opens in TorrServe — playback starts without a full download.</string>
+    <string name="torrents_empty">No torrents for this release yet.</string>
+    <string name="torrent_episodes">episodes %1$s</string>
+    <string name="torrent_peers">▲ %1$d  ▼ %2$d</string>
+    <string name="torrent_hardsub">hardsub</string>
+    <string name="torrent_no_app_title">No torrent app found</string>
+    <string name="torrent_no_app_text">Install TorrServe or scan the magnet link with your phone.</string>
+    <string name="close">Close</string>
 </resources>

@@ -25,5 +25,12 @@ fun ReleaseDto.toDomain(): Release? = id?.let {
 fun ScheduleItemDto.toDomain(): ScheduleItem? = release?.toDomain()?.let {
     ScheduleItem(it, publishedReleaseEpisode?.toDomain(), nextReleaseEpisodeNumber)
 }
-fun TorrentDto.toDomain(): Torrent? = id?.let { Torrent(it, label.orEmpty(), magnet, size, seeders) }
+fun TorrentDto.toDomain(): Torrent? = id?.let {
+    Torrent(it, label.orEmpty(), magnet, size, seeders, leechers,
+        episodes = description?.takeIf(String::isNotBlank),
+        quality = quality?.description ?: quality?.value,
+        codec = codec?.label ?: codec?.value,
+        type = type?.description ?: type?.value,
+        isHardsub = isHardsub == true, createdAt = createdAt)
+}
 fun UserDto.toDomain(): User? = id?.let { User(it, nickname ?: login.orEmpty(), absoluteImageUrl(avatar?.preview)) }

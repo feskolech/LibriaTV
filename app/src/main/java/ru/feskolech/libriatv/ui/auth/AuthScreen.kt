@@ -31,11 +31,9 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
 import coil3.compose.AsyncImage
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.makeQr
 import ru.feskolech.libriatv.data.repo.AuthState
 
 private const val LINK_URL = "https://aniliberty.top/app/auth/otp/linkDevice"
@@ -182,14 +180,5 @@ private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> U
         Text(name, style = MaterialTheme.typography.headlineMedium)
         Button(onClick = logout, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.auth_logout)) }
         Button(onClick = onOpenMenu) { Text(stringResource(R.string.open_menu)) }
-    }
-}
-
-private fun makeQr(value: String): Bitmap {
-    val matrix = QRCodeWriter().encode(value, BarcodeFormat.QR_CODE, 280, 280, mapOf(EncodeHintType.MARGIN to 1))
-    return Bitmap.createBitmap(matrix.width, matrix.height, Bitmap.Config.ARGB_8888).apply {
-        for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
-            setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-        }
     }
 }

@@ -76,6 +76,14 @@ class ApiRepositoryTest {
         val result = repo.torrents(10306) as ApiResult.Success
         assertTrue(result.value.first().magnet!!.startsWith("magnet:?"))
         assertTrue(result.value.first().size!! > 0)
+        with(result.value.first()) {
+            assertEquals("1080p", quality)
+            assertEquals("AVC", codec)
+            assertEquals("WEB-DL", type)
+            assertEquals("1-2", episodes)
+            assertEquals(12, leechers)
+            assertTrue(isHardsub)
+        }
     }
 
     @Test fun otpAndLoginParseSchemaFixtures() = runBlocking {

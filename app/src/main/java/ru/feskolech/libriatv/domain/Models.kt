@@ -16,5 +16,10 @@ data class Release(
 )
 data class ScheduleItem(val release: Release, val publishedEpisode: Episode?, val nextEpisodeNumber: Int?)
 data class CurrentSchedule(val today: List<ScheduleItem>, val tomorrow: List<ScheduleItem>)
-data class Torrent(val id: Int, val label: String, val magnet: String?, val size: Long?, val seeders: Int?)
+data class Torrent(
+    val id: Int, val label: String, val magnet: String?, val size: Long?, val seeders: Int?,
+    val leechers: Int? = null, val episodes: String? = null, val quality: String? = null,
+    val codec: String? = null, val type: String? = null, val isHardsub: Boolean = false,
+    val createdAt: String? = null,
+)
 data class User(val id: Int, val nickname: String, val avatarUrl: String?)
