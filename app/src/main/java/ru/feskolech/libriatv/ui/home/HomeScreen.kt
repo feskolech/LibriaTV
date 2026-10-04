@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,12 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -46,6 +49,8 @@ import coil3.compose.AsyncImage
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
@@ -83,12 +88,23 @@ private fun HomeContent(
     var focusedRelease by remember(content) { mutableStateOf(content.latest.firstOrNull()) }
     var backgroundRelease by remember(content) { mutableStateOf(focusedRelease) }
     val firstPoster = remember { FocusRequester() }
-    LaunchedEffect(content) { firstPoster.requestFocus() }
+    val rowsState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    fun focusRow(index: Int, release: Release) {
+        focusedRelease = release
+        scope.launch { delay(80); rowsState.scrollToItem(index) }
+    }
+    LaunchedEffect(content) {
+        // Lazy rows compose their items a frame later; requesting earlier leaves focus in the drawer.
+        withFrameNanos { }
+        runCatching { firstPoster.requestFocus() }
+    }
     LaunchedEffect(focusedRelease?.id) {
         delay(300)
         backgroundRelease = focusedRelease
     }
-    Box(Modifier.fillMaxSize().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }) {
+    // clipToBounds: the blur render effect otherwise bleeds left under the drawer as a light strip.
+    Box(Modifier.fillMaxSize().clipToBounds().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }) {
         Crossfade(backgroundRelease?.posterUrl, label = "poster background") { url ->
             if (url != null) {
                 AsyncImage(
@@ -106,8 +122,9 @@ private fun HomeContent(
         Column(Modifier.fillMaxSize()) {
             SelectedRelease(focusedRelease)
             LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 27.dp),
+                state = rowsState,
+                modifier = Modifier.weight(1f).graphicsLayer { clip = true },
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 440.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
             item {
@@ -119,21 +136,21 @@ private fun HomeContent(
                     favoriteIds = content.favoriteIds,
                     onTitleClick = onOpenFeed,
                     firstPoster = firstPoster,
-                    onFocus = { focusedRelease = it }, onClick = onOpenRelease,
+                    onFocus = { focusRow(0, it) }, onClick = onOpenRelease,
                 )
             }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
-                    { focusedRelease = it }, onOpenRelease)
+                    { focusRow(1, it) }, onOpenRelease)
             }
             item {
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
-                    { focusedRelease = it }, onOpenRelease)
+                    { focusRow(2, it) }, onOpenRelease)
             }
             if (content.isAuthorized) item {
                 PosterRow(stringResource(R.string.favorites), content.favorites,
                     badge = { null }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusedRelease = it }, onClick = onOpenRelease)
+                    onFocus = { focusRow(3, it) }, onClick = onOpenRelease)
             }
             }
         }
@@ -142,7 +159,7 @@ private fun HomeContent(
 
 @Composable
 private fun SelectedRelease(release: Release?) {
-    Column(Modifier.fillMaxWidth().height(135.dp).padding(horizontal = 48.dp), verticalArrangement = Arrangement.Bottom) {
+    Column(Modifier.fillMaxWidth().height(155.dp).padding(start = 48.dp, end = 48.dp, bottom = 16.dp), verticalArrangement = Arrangement.Bottom) {
         Text(release?.title ?: stringResource(R.string.home), fontSize = 26.sp,
             fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (release != null) {

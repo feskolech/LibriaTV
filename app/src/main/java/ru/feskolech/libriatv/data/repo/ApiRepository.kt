@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import ru.feskolech.libriatv.data.api.ApiErrorDto
 import retrofit2.HttpException
 import ru.feskolech.libriatv.data.api.AniLibriaApi
+import ru.feskolech.libriatv.data.api.TimecodeUpdateDto
 import ru.feskolech.libriatv.domain.*
 import javax.inject.Inject
 
@@ -55,5 +56,9 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     }
     suspend fun torrents(releaseId: Int): ApiResult<List<Torrent>> = request {
         api.torrents(releaseId).mapNotNull { it.toDomain() }
+    }
+    suspend fun saveTimecode(episodeId: String, seconds: Double, watched: Boolean): ApiResult<Unit> = request {
+        val response = api.updateTimecodes(listOf(TimecodeUpdateDto(seconds, watched, episodeId)))
+        if (!response.isSuccessful) throw HttpException(response)
     }
 }

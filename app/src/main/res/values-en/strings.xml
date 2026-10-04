@@ -49,4 +49,20 @@
     <string name="hours_ago">%1$d h ago</string>
     <string name="release_details">Release details</string>
     <string name="back">Back</string>
+    <string name="watch">Watch</string>
+    <string name="continue_episode">Resume episode %1$d</string>
+    <string name="add_favorite">Add to favorites</string>
+    <string name="torrents">Torrents</string>
+    <string name="episodes">Episodes</string>
+    <string name="watched">Watched</string>
+    <string name="progress_minutes">Watched %1$d min</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="seek_back">−10 sec</string>
+    <string name="seek_forward">+10 sec</string>
+    <string name="next_episode">Next episode</string>
+    <string name="skip_opening">Skip opening</string>
+    <string name="skip_ending">Skip ending</string>
+    <string name="auto_skip">Skip automatically</string>
+    <string name="next_in">Next episode in %1$d sec</string>
 </resources>

@@ -49,4 +49,20 @@
     <string name="hours_ago">%1$d ч назад</string>
     <string name="release_details">Карточка релиза</string>
     <string name="back">Назад</string>
+    <string name="watch">Смотреть</string>
+    <string name="continue_episode">Продолжить с %1$d серии</string>
+    <string name="add_favorite">В избранное</string>
+    <string name="torrents">Торренты</string>
+    <string name="episodes">Серии</string>
+    <string name="watched">Просмотрено</string>
+    <string name="progress_minutes">Просмотрено %1$d мин</string>
+    <string name="play">Воспроизвести</string>
+    <string name="pause">Пауза</string>
+    <string name="seek_back">−10 сек</string>
+    <string name="seek_forward">+10 сек</string>
+    <string name="next_episode">Следующая серия</string>
+    <string name="skip_opening">Пропустить опенинг</string>
+    <string name="skip_ending">Пропустить эндинг</string>
+    <string name="auto_skip">Пропускать автоматически</string>
+    <string name="next_in">Следующая серия через %1$d сек</string>
 </resources>

@@ -3,6 +3,8 @@ package ru.feskolech.libriatv.data.repo
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -99,5 +101,18 @@ class ApiRepositoryTest {
     @Test fun imageUrlHandlesRelativeAndAbsolutePaths() {
         assertEquals("https://anilibria.top/image.jpg", absoluteImageUrl("/image.jpg"))
         assertEquals("https://example.com/image.jpg", absoluteImageUrl("https://example.com/image.jpg"))
+    }
+
+    @Test fun timecodePostUsesSchemaAndSurfacesServerError() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        assertTrue(repo.saveTimecode("a2e76f6e-f3e7-418b-88a0-4ca7c1de8608", 73.5, false) is ApiResult.Success)
+        val request = server.takeRequest()
+        assertEquals("/api/v1/accounts/users/me/views/timecodes", request.path)
+        val payload = Json.parseToJsonElement(request.body.readUtf8()).jsonArray.first().jsonObject
+        assertEquals("73.5", payload["time"].toString())
+        assertEquals("false", payload["is_watched"].toString())
+        assertEquals("\"a2e76f6e-f3e7-418b-88a0-4ca7c1de8608\"", payload["release_episode_id"].toString())
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        assertEquals(401, (repo.saveTimecode("id", 0.0, false) as ApiResult.Failure).status)
     }
 }

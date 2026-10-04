@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -54,6 +55,8 @@ import ru.feskolech.libriatv.ui.theme.LibriaTvTheme
 import ru.feskolech.libriatv.ui.auth.AuthScreen
 import ru.feskolech.libriatv.ui.home.HomeScreen
 import ru.feskolech.libriatv.ui.home.FeedScreen
+import ru.feskolech.libriatv.ui.release.ReleaseScreen
+import ru.feskolech.libriatv.ui.player.PlayerScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -98,7 +101,14 @@ private fun AppNavigation(onExit: () -> Unit) {
         drawerContent = { drawerValue ->
             Column(
                 modifier = Modifier
-                    .width(if (drawerValue == DrawerValue.Open) 230.dp else 72.dp)
+                    .then(
+                        when {
+                            currentRoute.startsWith("player/") -> Modifier.width(0.dp)
+                            drawerValue == DrawerValue.Open -> Modifier.width(230.dp)
+                            // Collapsed: wrap the icon items so the background covers the whole drawer slot.
+                            else -> Modifier.width(IntrinsicSize.Max)
+                        }
+                    )
                     .fillMaxHeight()
                     .background(Color(0xFF181818))
                     .padding(horizontal = 8.dp, vertical = 27.dp)
@@ -120,6 +130,7 @@ private fun AppNavigation(onExit: () -> Unit) {
                         },
                         leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
+                            .then(if (drawerValue == DrawerValue.Open) Modifier else Modifier.width(72.dp))
                             .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
                     ) {
                         if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title))
@@ -154,8 +165,10 @@ private fun AppNavigation(onExit: () -> Unit) {
                     onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
             }
             composable("release/{id}") { entry ->
-                PlaceholderScreen(R.string.release_details, onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                    onOpenMenu = { navController.popBackStack() }, actionTitle = R.string.back)
+                ReleaseScreen(onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") })
+            }
+            composable("player/{id}/{episodeId}") {
+                PlayerScreen(onBack = { navController.popBackStack() })
             }
         }
     }
