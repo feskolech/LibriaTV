@@ -9,7 +9,21 @@
 - `GRADLE_USER_HOME=F:\gradle-home` — НИКОГДА не складывай кэши/артефакты на диск C:.
 - Сборка: `.\gradlew.bat :app:assembleDebug`, тесты: `.\gradlew.bat :app:testDebugUnitTest`,
   линт: `.\gradlew.bat :app:lintDebug`.
-- Целевое устройство: Ugoos SK4 (arm64, Android 14, пульт D-pad). Эмулятор: Android TV API 34 x86.
+- Целевое устройство: Ugoos SK4, Android 14 (API 34), **ABI только armeabi-v7a (32-bit userspace)**,
+  1920x1080 @ density 240 (= 1280x720 dp), 3.7 ГБ RAM, пульт D-pad. Нативные .so не добавлять без
+  крайней нужды (и тогда — с armeabi-v7a). Вёрстку проверять под 1280x720 dp.
+  Эмулятор: AVD `AnilibriaTV_API34` (Android TV API 34 x86, density 240).
+  На устройстве установлены TorrServe (`ru.yourok.torrserve`), VLC, MX Player.
+
+## Границы (агент работает без песочницы — соблюдать строго)
+- Изменять файлы можно ТОЛЬКО внутри `F:\projectsnilibria-androidtv`. Запись вне репо разрешена
+  лишь в кэши: `F:\gradle-home`, `F:ndroisdk` (через sdkmanager, если не хватает пакета).
+- Не удалять ничего за пределами репо, не менять системные настройки, переменные окружения,
+  реестр, глобальный git config, не устанавливать программы.
+- Никаких `git commit/push/reset --hard/clean`, никаких операций с GitHub.
+- Сеть — только для зависимостей (Maven/Google/Gradle) и чтения публичного API AniLibria.
+- adb — можно ставить/запускать приложение на эмуляторе `emulator-5554`. На реальное устройство
+  (`192.168.227.6:5555`) ничего не ставить без явного указания в задаче.
 
 ## Стек (не менять без явного указания в задаче)
 - Kotlin, один Gradle-модуль `app`, version catalog `gradle/libs.versions.toml`.
