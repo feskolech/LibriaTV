@@ -66,7 +66,7 @@ class ApiRepositoryTest {
         enqueue("otp-get")
         val otp = api.otpGet(OtpGetRequestDto("device"))
         assertEquals("058701", otp.otp?.code)
-        assertEquals(120, otp.remainingTime)
+        assertEquals(299.476915, otp.remainingTime!!, 0.001)
         assertTrue(server.takeRequest().body.readUtf8().contains("device_id"))
         enqueue("auth-login")
         assertEquals("example-test-token", api.login(LoginRequestDto("test", "password")).token)

@@ -51,6 +51,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.rememberDrawerState
 import dagger.hilt.android.AndroidEntryPoint
 import ru.feskolech.libriatv.ui.theme.LibriaTvTheme
+import ru.feskolech.libriatv.ui.auth.AuthScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -128,9 +129,16 @@ private fun AppNavigation(onExit: () -> Unit) {
         NavHost(navController = navController, startDestination = Destination.Home.route) {
             Destination.entries.forEach { destination ->
                 composable(destination.route) {
-                    PlaceholderScreen(destination.title,
-                        onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                        onOpenMenu = { firstItemFocus.requestFocus() })
+                    if (destination == Destination.Profile) {
+                        AuthScreen(
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            onOpenMenu = { firstItemFocus.requestFocus() },
+                        )
+                    } else {
+                        PlaceholderScreen(destination.title,
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            onOpenMenu = { firstItemFocus.requestFocus() })
+                    }
                 }
             }
         }

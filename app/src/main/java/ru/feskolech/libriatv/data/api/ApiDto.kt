@@ -86,7 +86,7 @@ import kotlinx.serialization.Serializable
 )
 @Serializable data class OtpGetRequestDto(@SerialName("device_id") val deviceId: String)
 @Serializable data class OtpDto(val code: String? = null, @SerialName("user_id") val userId: Int? = null, @SerialName("device_id") val deviceId: String? = null, @SerialName("expired_at") val expiredAt: String? = null)
-@Serializable data class OtpGetDto(val otp: OtpDto? = null, @SerialName("remaining_time") val remainingTime: Int? = null)
+@Serializable data class OtpGetDto(val otp: OtpDto? = null, @SerialName("remaining_time") val remainingTime: Double? = null)
 @Serializable data class OtpLoginRequestDto(val code: Int, @SerialName("device_id") val deviceId: String)
 @Serializable data class LoginRequestDto(val login: String, val password: String)
 @Serializable data class TokenDto(val token: String? = null)
