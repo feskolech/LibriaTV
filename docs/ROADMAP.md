@@ -1,0 +1,95 @@
+# ROADMAP — задачи для агента
+
+Статусы: `[ ]` не начато, `[~]` в работе, `[x]` принято ревьюером. Выполняй строго одну задачу
+за запуск. Критерии приёмки — обязательны; без зелёных `assembleDebug` и `testDebugUnitTest`
+задача не считается выполненной.
+
+---
+
+## T00 — Каркас проекта `[ ]`
+- Gradle wrapper (последний стабильный Gradle, совместимый с выбранным AGP), Kotlin DSL,
+  `settings.gradle.kts`, `gradle/libs.versions.toml` со всеми библиотеками из AGENTS.md
+  (последние стабильные версии, совместимые между собой и с compileSdk 36 / JDK 21).
+- Модуль `app`: applicationId `ru.feskolech.anilibriatv`, versionName `0.1.0`, versionCode 1.
+- Manifest для TV: `<uses-feature android:name="android.software.leanback" android:required="true"/>`,
+  `android.hardware.touchscreen required=false`, `LEANBACK_LAUNCHER` intent-filter,
+  `android:banner` (320x180, красный фон + надпись «AniLibria TV» — vector drawable), иконка,
+  разрешение INTERNET.
+- Hilt Application, `MainActivity` (ComponentActivity + Compose), тема tv-material тёмная.
+- Скелет навигации: боковое меню (NavigationDrawer из tv-material) с пунктами из SPEC
+  (Главная, Поиск, Избранное, Расписание, Профиль, Настройки) и экраны-заглушки.
+- `.gitignore` (Android стандарт + `local.properties`, `*.jks`, `*.keystore`, `/build`, `.idea`).
+- GitHub Actions `.github/workflows/build.yml`: на push/PR — JDK 21, assembleDebug +
+  testDebugUnitTest, артефакт debug APK. (Release-подпись — в T11.)
+- README.md: что это, как собрать, как поставить на приставку (`adb connect`, `adb install`).
+- Приёмка: debug APK собирается, приложение запускается на эмуляторе TV, меню навигируется D-pad.
+
+## T01 — API-клиент v1 `[ ]`
+- `data/api`: Retrofit-интерфейсы и DTO для: schedule/now, schedule/week, releases/latest,
+  releases/{idOrAlias}, releases/episodes/{id}, app/search/releases, torrents/release/{id},
+  otp/get, otp/login, auth/login, auth/logout, me/profile, me/favorites (ids, releases GET, add,
+  delete), me/views/timecodes (GET, POST). Сверять поля с `docs/api/openapi-v1.json`.
+- OkHttp: Bearer-interceptor (токен из TokenStore), User-Agent `AniLibriaTV/<version>`,
+  логирование только в debug, таймауты 15 с, fallback на зеркало aniliberty.top при IOException.
+- `TokenStore` и `DeviceIdStore` на DataStore.
+- Domain-модели и мапперы; утилита абсолютного URL для картинок.
+- Unit-тесты с MockWebServer на парсинг: schedule/now, release с эпизодами (opening/ending, hls_*),
+  torrents, otp/get, auth/login, ошибка 401/422. Фикстуры — реальные ответы API
+  (можно скачать curl'ом публичные эндпоинты; приватные — составить по схеме).
+- Приёмка: тесты зелёные; никакого UI.
+
+## T02 — Авторизация `[ ]`
+- `AuthRepository`: состояние `StateFlow<AuthState>` (Guest / Authorized(user)), login, otp-флоу,
+  logout, обработка 401 глобально (сброс в Guest).
+- Экран входа: слева — код OTP крупно + QR (zxing-core, генерация Bitmap локально) + таймер,
+  опрос `otp/login` каждые 4 с; справа — кнопка «Войти по логину и паролю» (форма с TV-клавиатурой).
+  Тексты ошибок из ответа 422.
+- Экран профиля: аватар, ник, кнопка «Выйти».
+- Пункт меню Профиль ведёт на вход, если гость.
+- Приёмка: вход по коду и по паролю проверяется вручную ревьюером; unit-тест на OTP-поллинг
+  (успех, истечение, ошибка сети) с фейковым репозиторием/MockWebServer.
+
+## T03 — Главная `[ ]`
+- Ряды по SPEC F2 (без «Продолжить» и уведомлений — заглушки-слоты): Выходит сегодня,
+  Выходит завтра, Последние обновления, Избранное (если авторизован).
+- `PosterCard` (2:3, скругление, scale 1.1 + рамка на фокусе), под рядом/над рядами блок
+  с названием, жанрами, описанием в 2 строки для фокусированного элемента.
+- Фон — размытый постер фокусированного релиза с затемнением (crossfade, debounce 300 мс).
+- Pull-обновление при возврате на экран не чаще раза в 5 мин; состояния загрузки/ошибки.
+- Приёмка: на эмуляторе видны ряды с постерами, фокус ходит по рядам, OK открывает карточку (заглушку).
+
+## T04 — Карточка релиза и плеер `[ ]`
+- Экран релиза по SPEC F3 (кнопка Избранное пока не активна, Торренты — заглушка).
+- Плеер по SPEC F4: ExoPlayer, свой Compose-оверлей (play/pause, прогресс, качество, серии),
+  кнопка «Пропустить опенинг/эндинг», автопереход, запоминание качества.
+- Сохранение прогресса локально (Room или DataStore — на выбор, обосновать) и на сервер.
+- Приёмка: серия воспроизводится в эмуляторе, перемотка D-pad, пропуск опенинга работает
+  на релизе с заполненным `opening`.
+
+## T05 — Избранное `[ ]`
+- `FavoritesRepository` с кэшем ids, кнопка на карточке релиза (оптимистичное обновление,
+  откат при ошибке), экран Избранное (сетка, сортировка из references/sorting).
+- Гостю: кнопка ведёт на экран входа.
+
+## T06 — Поиск `[ ]`
+- По SPEC F7. Сетка результатов, пустое состояние, история последних 10 запросов.
+
+## T07 — Торренты `[ ]`
+- По SPEC F9. Экран/диалог списка раздач, «Открыть в TorrServe», fallback chooser / QR magnet.
+
+## T08 — Уведомление «Вышло в избранном» `[ ]`
+- По SPEC F6. Логика сравнения — чистый класс с unit-тестами (первый запуск, новые серии,
+  удалённые из избранного, несколько новых серий у одного релиза → «серии 5–7»).
+
+## T09 — Продолжить просмотр `[ ]`
+- По SPEC F8: объединение серверных таймкодов и локальных, ряд на главной, кнопка
+  «Продолжить с N серии» на карточке.
+
+## T10 — Расписание недели + Watch Next `[ ]`
+- По SPEC F10, F11.
+
+## T11 — Релизы и автообновление `[ ]`
+- Release signing через переменные окружения/GitHub Secrets (`KEYSTORE_BASE64`,
+  `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`); workflow `release.yml` по тегу `v*`
+  собирает подписанный APK и создаёт GitHub Release.
+- Автообновление по SPEC F12. Экран Настроек по SPEC.
