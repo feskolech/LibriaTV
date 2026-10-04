@@ -30,11 +30,19 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     suspend fun scheduleNow(): ApiResult<List<ScheduleItem>> = request {
         api.scheduleNow().today.mapNotNull { it.toDomain() }
     }
+    suspend fun currentSchedule(): ApiResult<CurrentSchedule> = request {
+        api.scheduleNow().let { response ->
+            CurrentSchedule(response.today.mapNotNull { it.toDomain() }, response.tomorrow.mapNotNull { it.toDomain() })
+        }
+    }
     suspend fun scheduleWeek(): ApiResult<List<ScheduleItem>> = request {
         api.scheduleWeek().data.mapNotNull { it.toDomain() }
     }
     suspend fun latest(limit: Int = 30): ApiResult<List<Release>> = request {
         api.latest(limit).mapNotNull { it.toDomain() }
+    }
+    suspend fun favoriteReleases(): ApiResult<List<Release>> = request {
+        api.favoriteReleases(limit = 30).data.mapNotNull { it.toDomain() }
     }
     suspend fun release(idOrAlias: String): ApiResult<Release> = request {
         api.release(idOrAlias).toDomain() ?: error("Release has no id")

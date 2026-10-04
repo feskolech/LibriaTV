@@ -39,4 +39,14 @@
     <string name="auth_logout">Sign out</string>
     <string name="auth_loading_profile">Loading profile…</string>
     <string name="retry">Retry</string>
+    <string name="home_loading">Loading releases…</string>
+    <string name="home_error">Could not load home</string>
+    <string name="home_no_releases">No releases yet</string>
+    <string name="new_episodes">New episodes</string>
+    <string name="today">Airing today</string>
+    <string name="tomorrow">Airing tomorrow</string>
+    <string name="episode_number">Episode %1$d</string>
+    <string name="hours_ago">%1$d h ago</string>
+    <string name="release_details">Release details</string>
+    <string name="back">Back</string>
 </resources>

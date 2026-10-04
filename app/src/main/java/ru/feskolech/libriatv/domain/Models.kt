@@ -10,7 +10,11 @@ data class Release(
     val id: Int, val title: String, val alias: String?, val description: String?,
     val posterUrl: String?, val freshAt: String?, val genres: List<String>,
     val episodes: List<Episode>, val latestEpisode: Episode?,
+    val year: Int? = null, val type: String? = null, val season: String? = null,
+    val publishDay: String? = null, val isOngoing: Boolean? = null,
+    val episodesTotal: Double? = null,
 )
 data class ScheduleItem(val release: Release, val publishedEpisode: Episode?, val nextEpisodeNumber: Int?)
+data class CurrentSchedule(val today: List<ScheduleItem>, val tomorrow: List<ScheduleItem>)
 data class Torrent(val id: Int, val label: String, val magnet: String?, val size: Long?, val seeders: Int?)
 data class User(val id: Int, val nickname: String, val avatarUrl: String?)

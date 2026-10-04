@@ -39,4 +39,14 @@
     <string name="auth_logout">Выйти из аккаунта</string>
     <string name="auth_loading_profile">Загружаем профиль…</string>
     <string name="retry">Повторить</string>
+    <string name="home_loading">Загружаем релизы…</string>
+    <string name="home_error">Не удалось загрузить главную</string>
+    <string name="home_no_releases">Пока нет релизов</string>
+    <string name="new_episodes">Новые эпизоды</string>
+    <string name="today">Выходит сегодня</string>
+    <string name="tomorrow">Выходит завтра</string>
+    <string name="episode_number">Серия %1$d</string>
+    <string name="hours_ago">%1$d ч назад</string>
+    <string name="release_details">Карточка релиза</string>
+    <string name="back">Назад</string>
 </resources>

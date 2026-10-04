@@ -52,6 +52,8 @@ import androidx.tv.material3.rememberDrawerState
 import dagger.hilt.android.AndroidEntryPoint
 import ru.feskolech.libriatv.ui.theme.LibriaTvTheme
 import ru.feskolech.libriatv.ui.auth.AuthScreen
+import ru.feskolech.libriatv.ui.home.HomeScreen
+import ru.feskolech.libriatv.ui.home.FeedScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -134,12 +136,26 @@ private fun AppNavigation(onExit: () -> Unit) {
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenMenu = { firstItemFocus.requestFocus() },
                         )
+                    } else if (destination == Destination.Home) {
+                        HomeScreen(
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            onOpenFeed = { navController.navigate("feed") },
+                            onOpenRelease = { navController.navigate("release/$it") },
+                        )
                     } else {
                         PlaceholderScreen(destination.title,
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenMenu = { firstItemFocus.requestFocus() })
                     }
                 }
+            }
+            composable("feed") {
+                FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
+                    onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
+            }
+            composable("release/{id}") { entry ->
+                PlaceholderScreen(R.string.release_details, onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                    onOpenMenu = { navController.popBackStack() }, actionTitle = R.string.back)
             }
         }
     }
@@ -158,7 +174,8 @@ private fun AppNavigation(onExit: () -> Unit) {
 }
 
 @Composable
-private fun PlaceholderScreen(title: Int, onContentFocus: () -> Unit, onOpenMenu: () -> Unit) {
+private fun PlaceholderScreen(title: Int, onContentFocus: () -> Unit, onOpenMenu: () -> Unit,
+    actionTitle: Int = R.string.open_menu) {
     val contentFocus = remember { FocusRequester() }
     LaunchedEffect(title) { contentFocus.requestFocus() }
     Surface(
@@ -171,7 +188,7 @@ private fun PlaceholderScreen(title: Int, onContentFocus: () -> Unit, onOpenMenu
             Text(stringResource(title), style = MaterialTheme.typography.headlineLarge)
             Text(stringResource(R.string.coming_soon), style = MaterialTheme.typography.bodyLarge)
             Button(onClick = onOpenMenu, modifier = Modifier.focusRequester(contentFocus)) {
-                Text(stringResource(R.string.open_menu))
+                Text(stringResource(actionTitle))
             }
         }
     }

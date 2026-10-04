@@ -43,6 +43,20 @@ class ApiRepositoryTest {
         assertEquals("/api/v1/anime/schedule/now", server.takeRequest().path)
     }
 
+    @Test fun currentScheduleIncludesTomorrowAndReleaseMetadata() = runBlocking {
+        enqueue("schedule-now")
+        val result = repo.currentSchedule() as ApiResult.Success
+        assertEquals(3, result.value.today.size)
+        assertEquals(15, result.value.tomorrow.size)
+        val release = result.value.tomorrow.first().release
+        assertNotNull(release.year)
+        assertNotNull(release.type)
+        assertNotNull(release.season)
+        assertNotNull(release.publishDay)
+        assertNotNull(release.isOngoing)
+        assertNotNull(release.episodesTotal)
+    }
+
     @Test fun releaseMapsEpisodesAndStreams() = runBlocking {
         enqueue("release")
         val result = repo.release("10306") as ApiResult.Success
