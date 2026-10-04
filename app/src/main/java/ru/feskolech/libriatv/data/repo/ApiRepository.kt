@@ -37,7 +37,7 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
         }
     }
     suspend fun scheduleWeek(): ApiResult<List<ScheduleItem>> = request {
-        api.scheduleWeek().data.mapNotNull { it.toDomain() }
+        api.scheduleWeek().mapNotNull { it.toDomain() }
     }
     suspend fun latest(limit: Int = 30): ApiResult<List<Release>> = request {
         api.latest(limit).mapNotNull { it.toDomain() }

@@ -81,4 +81,15 @@
     <string name="search_recent">Recent searches</string>
     <string name="search_clear_history">Clear history</string>
     <string name="search_empty_hint">Type a title in Russian, English or Japanese.</string>
+    <string name="schedule_today">%1$s · today</string>
+    <string name="schedule_empty_day">Nothing airs on this day.</string>
+    <string-array name="week_days">
+        <item>Mon</item>
+        <item>Tue</item>
+        <item>Wed</item>
+        <item>Thu</item>
+        <item>Fri</item>
+        <item>Sat</item>
+        <item>Sun</item>
+    </string-array>
 </resources>

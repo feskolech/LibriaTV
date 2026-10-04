@@ -69,7 +69,6 @@ import kotlinx.serialization.Serializable
     @SerialName("next_release_episode_number") val nextReleaseEpisodeNumber: Int? = null,
 )
 @Serializable data class ScheduleNowDto(val today: List<ScheduleItemDto> = emptyList(), val tomorrow: List<ScheduleItemDto> = emptyList(), val yesterday: List<ScheduleItemDto> = emptyList())
-@Serializable data class ScheduleWeekDto(val data: List<ScheduleItemDto> = emptyList())
 @Serializable data class TorrentDto(
     val id: Int? = null, val hash: String? = null, val size: Long? = null,
     val type: ReferenceDto? = null, val codec: ReferenceDto? = null,

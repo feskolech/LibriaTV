@@ -60,6 +60,7 @@ import ru.feskolech.libriatv.ui.home.FeedScreen
 import ru.feskolech.libriatv.ui.release.ReleaseScreen
 import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 import ru.feskolech.libriatv.ui.search.SearchScreen
+import ru.feskolech.libriatv.ui.schedule.ScheduleScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
 
 @AndroidEntryPoint
@@ -156,6 +157,11 @@ private fun AppNavigation(onExit: () -> Unit) {
                         AuthScreen(
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenMenu = { firstItemFocus.requestFocus() },
+                        )
+                    } else if (destination == Destination.Schedule) {
+                        ScheduleScreen(
+                            onOpenRelease = { navController.navigate("release/$it") },
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                         )
                     } else if (destination == Destination.Search) {
                         SearchScreen(

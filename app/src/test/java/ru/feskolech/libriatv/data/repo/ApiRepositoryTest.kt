@@ -71,6 +71,13 @@ class ApiRepositoryTest {
         assertTrue(episode.hls1080!!.startsWith("https://"))
     }
 
+    @Test fun scheduleWeekIsAPlainArray() = runBlocking {
+        enqueue("schedule-week")
+        val result = repo.scheduleWeek() as ApiResult.Success
+        assertTrue(result.value.isNotEmpty())
+        assertTrue(result.value.all { it.release.publishDayNumber in 1..7 })
+    }
+
     @Test fun torrentsMapRealResponse() = runBlocking {
         enqueue("torrents")
         val result = repo.torrents(10306) as ApiResult.Success

@@ -20,7 +20,7 @@ fun ReleaseDto.toDomain(): Release? = id?.let {
         absoluteImageUrl(poster?.optimized?.preview ?: poster?.preview), freshAt,
         genres.mapNotNull(GenreDto::name), episodes.mapNotNull(EpisodeDto::toDomain), latestEpisode?.toDomain(),
         year, type?.description ?: type?.value, season?.description ?: season?.value,
-        publishDay?.description, isOngoing, episodesTotal)
+        publishDay?.description, isOngoing, episodesTotal, publishDay?.value)
 }
 fun ScheduleItemDto.toDomain(): ScheduleItem? = release?.toDomain()?.let {
     ScheduleItem(it, publishedReleaseEpisode?.toDomain(), nextReleaseEpisodeNumber)

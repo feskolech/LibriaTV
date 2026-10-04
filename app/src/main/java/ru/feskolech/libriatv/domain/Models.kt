@@ -13,6 +13,8 @@ data class Release(
     val year: Int? = null, val type: String? = null, val season: String? = null,
     val publishDay: String? = null, val isOngoing: Boolean? = null,
     val episodesTotal: Double? = null,
+    /** 1 = Monday … 7 = Sunday, as the API numbers release days. */
+    val publishDayNumber: Int? = null,
 )
 data class ScheduleItem(val release: Release, val publishedEpisode: Episode?, val nextEpisodeNumber: Int?)
 data class CurrentSchedule(val today: List<ScheduleItem>, val tomorrow: List<ScheduleItem>)
