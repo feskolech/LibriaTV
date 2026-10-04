@@ -6,7 +6,7 @@
 
 ---
 
-## T00 — Каркас проекта `[ ]`
+## T00 — Каркас проекта `[x]`
 - Gradle wrapper (последний стабильный Gradle, совместимый с выбранным AGP), Kotlin DSL,
   `settings.gradle.kts`, `gradle/libs.versions.toml` со всеми библиотеками из AGENTS.md
   (последние стабильные версии, совместимые между собой и с compileSdk 36 / JDK 21).
@@ -23,6 +23,19 @@
   testDebugUnitTest, артефакт debug APK. (Release-подпись — в T11.)
 - README.md: что это, как собрать, как поставить на приставку (`adb connect`, `adb install`).
 - Приёмка: debug APK собирается, приложение запускается на эмуляторе TV, меню навигируется D-pad.
+
+## T00.1 — Доработка каркаса `[ ]`
+- Текст на экранах чёрный на тёмном фоне: экраны должны быть обёрнуты в tv-material `Surface`
+  (или задан `LocalContentColor`), цвета — из темы. Тёмная colorScheme с primary `#B32121`.
+- Меню: вместо Unicode-символов — векторные иконки (`material-icons-extended` или свои vector
+  drawable): home, search, favorite, calendar, person, settings. Меню должно раскрываться с
+  подписями, когда фокус в нём (штатное поведение `NavigationDrawer` — проверь, почему не работает),
+  и сворачиваться при уходе фокуса в контент. При старте фокус — в контенте, не в меню.
+- Баннер `tv_banner.xml` перерисовать: надпись «LibriaTV» (название приложения сменили).
+  Иконку `ic_launcher` — в том же стиле. Тексты в strings уже «LibriaTV».
+- Добавить `res/values-en/strings.xml` (английский перевод всех строк).
+- Hilt перевести с kapt на KSP (kapt устарел).
+- Приёмка: скриншот эмулятора — читаемый текст, меню раскрывается с подписями.
 
 ## T01 — API-клиент v1 `[ ]`
 - `data/api`: Retrofit-интерфейсы и DTO для: schedule/now, schedule/week, releases/latest,
