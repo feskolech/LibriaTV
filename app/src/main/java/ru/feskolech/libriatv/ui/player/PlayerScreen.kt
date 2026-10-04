@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
@@ -41,27 +42,61 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
     val state by viewModel.state.collectAsState()
     val rootFocus = remember { FocusRequester() }
     val skipFocus = remember { FocusRequester() }
+    val panelFocus = remember { FocusRequester() }
     val context = LocalContext.current
     val current = (state as? PlayerUiState.Content)?.value
-    LaunchedEffect(current?.episode?.id, current?.panel, current?.skip) {
-        if (current != null && current.panel == PlayerPanel.Hidden && current.skip == null) rootFocus.requestFocus()
+    // With no panel open, focus must always sit on the skip button (if shown) or the player itself;
+    // losing it leaves the remote dead, since key handlers only see events from a focused subtree.
+    LaunchedEffect(current?.episode?.id, current?.panel, current?.skip != null) {
+        if (current != null && current.panel == PlayerPanel.Hidden) {
+            withFrameNanos { }
+            runCatching { if (current.skip != null) skipFocus.requestFocus() else rootFocus.requestFocus() }
+        }
     }
-    LaunchedEffect(current?.skip) { if (current?.skip != null) skipFocus.requestFocus() }
+    // An opened panel must own the focus, otherwise the remote has nothing to move from.
+    LaunchedEffect(current?.panel) {
+        if (current != null && current.panel != PlayerPanel.Hidden) {
+            withFrameNanos { }
+            runCatching { panelFocus.requestFocus() }
+        }
+    }
     BackHandler {
         if (!viewModel.hidePanel()) viewModel.close(onBack)
     }
+    FrameRateMatchEffect(current?.frameRate.takeIf { current?.frameRateMatch == true })
+    // OK is resolved on key-up so that a long press can open the quick menu instead of pausing.
+    val okLongPressed = remember { booleanArrayOf(false) }
     Box(Modifier.fillMaxSize().background(Color.Black)
         .onPreviewKeyEvent { event ->
-            if (event.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+            val native = event.nativeKeyEvent
             val hidden = current?.panel == PlayerPanel.Hidden
-            when (event.nativeKeyEvent.keyCode) {
-                KeyEvent.KEYCODE_DPAD_LEFT -> if (hidden) { viewModel.seek(-1, event.nativeKeyEvent.repeatCount); true } else false
-                KeyEvent.KEYCODE_DPAD_RIGHT -> if (hidden) { viewModel.seek(1, event.nativeKeyEvent.repeatCount); true } else false
-                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (hidden && current?.skip == null) { viewModel.togglePause(); true } else false
+            val code = native.keyCode
+            if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
+                if (!hidden || current?.skip != null) return@onPreviewKeyEvent false
+                when {
+                    native.action == KeyEvent.ACTION_DOWN && native.repeatCount == 0 -> okLongPressed[0] = false
+                    native.action == KeyEvent.ACTION_DOWN && !okLongPressed[0] -> {
+                        okLongPressed[0] = true
+                        viewModel.showPanel(PlayerPanel.Controls)
+                    }
+                    native.action == KeyEvent.ACTION_UP && !okLongPressed[0] -> viewModel.togglePause()
+                }
+                return@onPreviewKeyEvent true
+            }
+            if (native.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+            when (code) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> if (hidden) { viewModel.seek(-1, native.repeatCount); true } else false
+                KeyEvent.KEYCODE_DPAD_RIGHT -> if (hidden) { viewModel.seek(1, native.repeatCount); true } else false
                 KeyEvent.KEYCODE_DPAD_UP -> if (hidden) { viewModel.showPanel(PlayerPanel.Controls); true } else false
                 KeyEvent.KEYCODE_DPAD_DOWN -> if (hidden) { viewModel.showPanel(PlayerPanel.Episodes); true } else false
-                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { viewModel.togglePause(); true }
-                KeyEvent.KEYCODE_MEDIA_NEXT -> { viewModel.nextEpisode(); true }
+                // Bonus keys: only some remotes have them, nothing depends on them.
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { viewModel.togglePause(); true }
+                KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_CHANNEL_UP -> { viewModel.nextEpisode(); true }
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_CHANNEL_DOWN -> { viewModel.previousEpisode(); true }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { viewModel.seek(1, native.repeatCount); true }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> { viewModel.seek(-1, native.repeatCount); true }
+                KeyEvent.KEYCODE_MENU -> { viewModel.showPanel(PlayerPanel.Controls); true }
+                in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> { viewModel.playEpisodeNumber(code - KeyEvent.KEYCODE_0); true }
                 else -> false
             }
         }) {
@@ -69,6 +104,9 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
             AndroidView(factory = { PlayerView(context).apply { useController = false; player = viewModel.player } },
                 modifier = Modifier.fillMaxSize(), update = { it.player = viewModel.player })
             Box(Modifier.fillMaxSize().focusRequester(rootFocus).focusable())
+            if (current.buffering && current.error == null) {
+                BufferingIndicator(Modifier.align(Alignment.Center))
+            }
             if (current.skip != null) {
                 Button(onClick = viewModel::skip,
                     modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 48.dp, vertical = 27.dp)
@@ -88,7 +126,7 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                     current.error?.let { Text(it, color = Color.White) }
                     if (current.panel == PlayerPanel.Controls) {
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = viewModel::togglePause) { Text(stringResource(if (current.playing) R.string.pause else R.string.play)) }
+                            Button(onClick = viewModel::togglePause, modifier = Modifier.focusRequester(panelFocus)) { Text(stringResource(if (current.playing) R.string.pause else R.string.play)) }
                             Button(onClick = { viewModel.seek(-1) }) { Text(stringResource(R.string.seek_back)) }
                             Button(onClick = { viewModel.seek(1) }) { Text(stringResource(R.string.seek_forward)) }
                             Button(onClick = viewModel::nextEpisode) { Text(stringResource(R.string.next_episode)) }
@@ -102,12 +140,26 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
                             Button(onClick = viewModel::toggleAutoSkip) {
                                 Text(stringResource(R.string.auto_skip) + if (current.autoSkip) " ✓" else "")
                             }
+                            Button(onClick = viewModel::cycleSpeed) {
+                                Text(stringResource(R.string.speed, formatSpeed(current.speed)))
+                            }
+                            Button(onClick = viewModel::toggleNightMode) {
+                                Text(stringResource(R.string.night_mode) + if (current.nightMode) " ✓" else "")
+                            }
                             Button(onClick = { viewModel.showPanel(PlayerPanel.Episodes) }) { Text(stringResource(R.string.episodes)) }
                         }
                     } else {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(current.release.episodes.sortedBy { it.ordinal ?: 0.0 }, key = { it.id }) { episode ->
-                                Button(onClick = { viewModel.playEpisode(episode.id) }) {
+                        val ordered = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
+                        // Start scrolled to the playing episode so it is composed and can take focus.
+                        val episodesState = androidx.compose.foundation.lazy.rememberLazyListState(
+                            initialFirstVisibleItemIndex = (ordered.indexOfFirst { it.id == current.episode.id } - 2).coerceAtLeast(0),
+                        )
+                        LazyRow(state = episodesState, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(ordered, key = { it.id }) { episode ->
+                                Button(
+                                    onClick = { viewModel.playEpisode(episode.id) },
+                                    modifier = if (episode.id == current.episode.id) Modifier.focusRequester(panelFocus) else Modifier,
+                                ) {
                                     Text(stringResource(R.string.episode_number, episode.ordinal?.toInt() ?: 0))
                                 }
                             }
@@ -126,6 +178,9 @@ fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel(
         }
     }
 }
+
+private fun formatSpeed(speed: Float): String =
+    if (speed % 1f == 0f) "${speed.toInt()}×" else "${"%.2f".format(java.util.Locale.US, speed).trimEnd('0')}×"
 
 private fun formatTime(ms: Long): String {
     val seconds = ms / 1000

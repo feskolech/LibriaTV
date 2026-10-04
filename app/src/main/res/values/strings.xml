@@ -108,4 +108,6 @@
     <string name="filter_any">Любой</string>
     <string name="recommended">Рекомендуем</string>
     <string name="random_release">Мне повезёт</string>
+    <string name="speed">Скорость %1$s</string>
+    <string name="night_mode">Ночной режим</string>
 </resources>

@@ -108,4 +108,6 @@
     <string name="filter_any">Any</string>
     <string name="recommended">Recommended</string>
     <string name="random_release">Feeling lucky</string>
+    <string name="speed">Speed %1$s</string>
+    <string name="night_mode">Night mode</string>
 </resources>

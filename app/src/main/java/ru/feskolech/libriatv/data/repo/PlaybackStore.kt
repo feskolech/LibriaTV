@@ -26,6 +26,19 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
     suspend fun autoSkip(): Boolean = context.playbackDataStore.data.first()[autoSkipKey] ?: false
     suspend fun setAutoSkip(value: Boolean) { context.playbackDataStore.edit { it[autoSkipKey] = value } }
 
+    private val speedKey = androidx.datastore.preferences.core.floatPreferencesKey("speed")
+    private val frameRateMatchKey = androidx.datastore.preferences.core.booleanPreferencesKey("frame_rate_match")
+    private val nightModeKey = androidx.datastore.preferences.core.booleanPreferencesKey("night_mode")
+
+    suspend fun speed(): Float = context.playbackDataStore.data.first()[speedKey] ?: 1f
+    suspend fun setSpeed(value: Float) { context.playbackDataStore.edit { it[speedKey] = value } }
+    /** Switch the TV refresh rate to the video frame rate (24p anime on a 60 Hz panel judders). On by default. */
+    suspend fun frameRateMatch(): Boolean = context.playbackDataStore.data.first()[frameRateMatchKey] ?: true
+    suspend fun setFrameRateMatch(value: Boolean) { context.playbackDataStore.edit { it[frameRateMatchKey] = value } }
+    /** Compress loud peaks and lift quiet dialogue. Off by default. */
+    suspend fun nightMode(): Boolean = context.playbackDataStore.data.first()[nightModeKey] ?: false
+    suspend fun setNightMode(value: Boolean) { context.playbackDataStore.edit { it[nightModeKey] = value } }
+
     suspend fun progress(episodeId: String): PlaybackProgress? {
         val prefs = context.playbackDataStore.data.first()
         val position = prefs[longPreferencesKey("position_$episodeId")] ?: return null

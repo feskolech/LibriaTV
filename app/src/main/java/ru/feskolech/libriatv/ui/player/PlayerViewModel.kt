@@ -29,6 +29,9 @@ data class PlayerContent(
     val panel: PlayerPanel = PlayerPanel.Hidden, val skip: Skip? = null,
     val skipOpening: Boolean = false, val nextCountdown: Int? = null,
     val autoSkip: Boolean = false, val error: String? = null,
+    val buffering: Boolean = true, val speed: Float = 1f,
+    /** Frame rate of the playing video, or null if the stream does not declare it. */
+    val frameRate: Float? = null, val frameRateMatch: Boolean = true, val nightMode: Boolean = false,
 )
 sealed interface PlayerUiState {
     data object Loading : PlayerUiState
@@ -52,10 +55,22 @@ class PlayerViewModel @Inject constructor(
     /** Auto-skip each segment (opening, ending) at most once per episode, so seeking back into it is respected. */
     private val autoSkipped = mutableSetOf<Skip>()
     private var lastSync = 0L
+    private val nightAudio = NightAudio()
 
     init {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { update { it.copy(playing = isPlaying) } }
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE) }
+            }
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                val rate = player.videoFormat?.frameRate?.takeIf { it > 0f }
+                update { it.copy(frameRate = rate) }
+            }
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                val night = (_state.value as? PlayerUiState.Content)?.value?.nightMode ?: false
+                nightAudio.apply(audioSessionId, night)
+            }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 update { it.copy(error = error.message ?: "Playback error", panel = PlayerPanel.Controls) }
             }
@@ -75,7 +90,12 @@ class PlayerViewModel @Inject constructor(
                     ?: result.value.episodes.firstOrNull()
                 if (episode == null) _state.value = PlayerUiState.Error("No episodes")
                 else {
-                    _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkip = store.autoSkip()))
+                    val speed = store.speed()
+                    val night = store.nightMode()
+                    _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkip = store.autoSkip(),
+                        speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night))
+                    player.setPlaybackSpeed(speed)
+                    nightAudio.apply(player.audioSessionId, night)
                     prepare(episode, resume = true)
                 }
             }
@@ -127,6 +147,34 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun togglePause() { if (player.isPlaying) player.pause() else player.play() }
+
+    fun cycleSpeed() = viewModelScope.launch {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val next = SPEEDS[(SPEEDS.indexOf(current.speed) + 1) % SPEEDS.size]
+        player.setPlaybackSpeed(next)
+        store.setSpeed(next)
+        update { it.copy(speed = next) }
+    }
+
+    fun toggleNightMode() = viewModelScope.launch {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val night = !current.nightMode
+        store.setNightMode(night)
+        nightAudio.apply(player.audioSessionId, night)
+        update { it.copy(nightMode = night) }
+    }
+
+    fun previousEpisode() {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val episodes = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
+        episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } - 1)?.let { playEpisode(it.id) }
+    }
+
+    /** Number keys on remotes that have them: jump to episode N. */
+    fun playEpisodeNumber(number: Int) {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        current.release.episodes.firstOrNull { it.ordinal?.toInt() == number }?.let { playEpisode(it.id) }
+    }
     fun seek(direction: Int, repeat: Int = 0) {
         val seconds = when { repeat >= 8 -> 60; repeat >= 3 -> 30; else -> 10 }
         player.seekTo((player.currentPosition + direction * seconds * 1000L).coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE))
@@ -192,5 +240,9 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() { player.release(); super.onCleared() }
+    override fun onCleared() { nightAudio.release(); player.release(); super.onCleared() }
+
+    private companion object {
+        val SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.75f)
+    }
 }
