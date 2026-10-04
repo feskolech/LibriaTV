@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +7,27 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+/**
+ * Release signing, never stored in the repo:
+ *  - CI: env KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD (from GitHub Secrets);
+ *  - locally: -PsigningProperties=/path/signing.properties (storeFile, storePassword, keyAlias, keyPassword).
+ * Without either, the release build is simply unsigned, so forks still build.
+ */
+val releaseSigning: Map<String, String>? = run {
+    System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file ->
+        return@run mapOf(
+            "storeFile" to file,
+            "storePassword" to System.getenv("KEYSTORE_PASSWORD").orEmpty(),
+            "keyAlias" to System.getenv("KEY_ALIAS").orEmpty(),
+            "keyPassword" to System.getenv("KEY_PASSWORD").orEmpty(),
+        )
+    }
+    (findProperty("signingProperties") as String?)?.let { path ->
+        val props = Properties().apply { file(path).inputStream().use(::load) }
+        props.stringPropertyNames().associateWith { props.getProperty(it) }
+    }
 }
 
 android {
@@ -17,6 +40,26 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // GitHub repo checked for app updates ("owner/name"); forks can override with -PupdateRepo=.
+        buildConfigField("String", "UPDATE_REPO", "\"${findProperty("updateRepo") ?: "feskolech/anilibria-androidtv"}\"")
+    }
+
+    signingConfigs {
+        if (releaseSigning != null) create("release") {
+            storeFile = file(releaseSigning.getValue("storeFile"))
+            storePassword = releaseSigning.getValue("storePassword")
+            keyAlias = releaseSigning.getValue("keyAlias")
+            keyPassword = releaseSigning.getValue("keyPassword")
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 
     compileOptions {
