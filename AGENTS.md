@@ -1,12 +1,13 @@
 # AGENTS.md — правила для агента-разработчика
 
-Ты пишешь Android TV клиент AniLibria. Перед любой задачей прочитай `docs/SPEC.md`
+Ты пишешь LibriaTV — неофициальный Android TV клиент AniLibria (публичный open-source, GPL-3.0). Перед любой задачей прочитай `docs/SPEC.md`
 (что строим) и нужный раздел `docs/ROADMAP.md` (что делать сейчас).
 
 ## Окружение
-- Windows 11 amd64, PowerShell. JDK 21 (`F:\Android Studio\jbr` или системный).
+- Windows 11 amd64, PowerShell. JDK 21: `C:\Program Files\Java\jdk-21` (JBR из Android Studio — Java 25, не использовать).
 - Android SDK: `F:\androisdk` (`local.properties`: `sdk.dir=F\:\\androisdk`, файл в .gitignore).
 - `GRADLE_USER_HOME=F:\gradle-home` — НИКОГДА не складывай кэши/артефакты на диск C:.
+- ОБЯЗАТЕЛЬНО перед Gradle: TEMP=TMP=F:\tmp (иначе Java падает с Unable to establish loopback connection).
 - Сборка: `.\gradlew.bat :app:assembleDebug`, тесты: `.\gradlew.bat :app:testDebugUnitTest`,
   линт: `.\gradlew.bat :app:lintDebug`.
 - Целевое устройство: Ugoos SK4, Android 14 (API 34), **ABI только armeabi-v7a (32-bit userspace)**,
@@ -33,11 +34,11 @@
 - DI: Hilt.  Асинхронность: Coroutines/Flow.  Картинки: Coil 3.
 - Плеер: Media3 ExoPlayer (+ media3-exoplayer-hls, media3-ui) с кастомным Compose-оверлеем.
 - Хранилище: DataStore Preferences (токен, device_id, настройки), Room — только если задача требует.
-- minSdk 24, targetSdk/compileSdk 36. Package / applicationId: `ru.feskolech.anilibriatv`.
+- minSdk 24, targetSdk/compileSdk 36. Package / applicationId: `ru.feskolech.libriatv`. Название приложения: **LibriaTV**.
 
 ## Архитектура
 ```
-app/src/main/java/ru/feskolech/anilibriatv/
+app/src/main/java/ru/feskolech/libriatv/
   data/api/        Retrofit-интерфейсы и DTO (1:1 с OpenAPI, суффикс Dto)
   data/repo/       репозитории: маппинг Dto -> domain, кэш, обработка ошибок
   domain/          модели приложения (Release, Episode, Torrent, ScheduleItem, User...)
