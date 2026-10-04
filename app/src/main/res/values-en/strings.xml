@@ -73,4 +73,12 @@
     <string name="torrent_no_app_title">No torrent app found</string>
     <string name="torrent_no_app_text">Install TorrServe or scan the magnet link with your phone.</string>
     <string name="close">Close</string>
+    <string name="search_hint">Anime title</string>
+    <string name="search_voice">Voice search</string>
+    <string name="search_voice_prompt">Say an anime title</string>
+    <string name="search_loading">Searching…</string>
+    <string name="search_nothing">Nothing found for “%1$s”.</string>
+    <string name="search_recent">Recent searches</string>
+    <string name="search_clear_history">Clear history</string>
+    <string name="search_empty_hint">Type a title in Russian, English or Japanese.</string>
 </resources>

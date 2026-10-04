@@ -23,6 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -57,6 +59,7 @@ import ru.feskolech.libriatv.ui.home.HomeScreen
 import ru.feskolech.libriatv.ui.home.FeedScreen
 import ru.feskolech.libriatv.ui.release.ReleaseScreen
 import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
+import ru.feskolech.libriatv.ui.search.SearchScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
 
 @AndroidEntryPoint
@@ -87,6 +90,8 @@ private fun AppNavigation(onExit: () -> Unit) {
     val currentRoute = currentEntry?.destination?.route ?: Destination.Home.route
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val firstItemFocus = remember { FocusRequester() }
+    val itemFocus = remember { Destination.entries.associateWith { FocusRequester() } }
+    val selectedDestination = Destination.entries.firstOrNull { it.route == currentRoute } ?: Destination.Home
     var confirmExit by remember { mutableStateOf(false) }
 
     BackHandler(confirmExit || drawerState.currentValue == DrawerValue.Open || currentRoute == Destination.Home.route) {
@@ -113,7 +118,10 @@ private fun AppNavigation(onExit: () -> Unit) {
                     .fillMaxHeight()
                     .background(Color(0xFF181818))
                     .padding(horizontal = 8.dp, vertical = 27.dp)
-                    .selectableGroup(),
+                    .selectableGroup()
+                    // Entering the drawer from content lands on the current section, not on the nearest row.
+                    .focusProperties { onEnter = { itemFocus.getValue(selectedDestination).requestFocus() } }
+                    .focusGroup(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Destination.entries.forEachIndexed { index, destination ->
@@ -131,6 +139,7 @@ private fun AppNavigation(onExit: () -> Unit) {
                         },
                         leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
+                            .focusRequester(itemFocus.getValue(destination))
                             .then(if (drawerValue == DrawerValue.Open) Modifier else Modifier.width(72.dp))
                             .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
                     ) {
@@ -147,6 +156,11 @@ private fun AppNavigation(onExit: () -> Unit) {
                         AuthScreen(
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenMenu = { firstItemFocus.requestFocus() },
+                        )
+                    } else if (destination == Destination.Search) {
+                        SearchScreen(
+                            onOpenRelease = { navController.navigate("release/$it") },
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                         )
                     } else if (destination == Destination.Home) {
                         HomeScreen(

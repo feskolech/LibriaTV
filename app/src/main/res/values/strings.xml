@@ -73,4 +73,12 @@
     <string name="torrent_no_app_title">Нет приложения для торрентов</string>
     <string name="torrent_no_app_text">Установите TorrServe или отсканируйте magnet-ссылку телефоном.</string>
     <string name="close">Закрыть</string>
+    <string name="search_hint">Название аниме</string>
+    <string name="search_voice">Голосовой поиск</string>
+    <string name="search_voice_prompt">Скажите название аниме</string>
+    <string name="search_loading">Ищем…</string>
+    <string name="search_nothing">По запросу «%1$s» ничего не нашлось.</string>
+    <string name="search_recent">Недавние запросы</string>
+    <string name="search_clear_history">Очистить историю</string>
+    <string name="search_empty_hint">Введите название на русском, английском или японском.</string>
 </resources>
