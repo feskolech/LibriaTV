@@ -25,3 +25,22 @@ data class Torrent(
     val createdAt: String? = null,
 )
 data class User(val id: Int, val nickname: String, val avatarUrl: String?)
+
+/** A selectable catalog filter value: [id] goes to the API, [title] to the screen. */
+data class FilterOption(val id: String, val title: String)
+
+data class CatalogReferences(
+    val genres: List<FilterOption>, val types: List<FilterOption>, val seasons: List<FilterOption>,
+    val years: List<Int>, val sorting: List<FilterOption>, val statuses: List<FilterOption>,
+)
+
+data class CatalogFilter(
+    val genres: Set<String> = emptySet(), val types: Set<String> = emptySet(),
+    val seasons: Set<String> = emptySet(), val statuses: Set<String> = emptySet(),
+    val fromYear: Int? = null, val toYear: Int? = null, val sorting: String? = null,
+) {
+    val activeCount: Int get() = listOf(genres, types, seasons, statuses).count { it.isNotEmpty() } +
+        (if (fromYear != null || toYear != null) 1 else 0)
+}
+
+data class ReleasePage(val releases: List<Release>, val page: Int, val totalPages: Int)

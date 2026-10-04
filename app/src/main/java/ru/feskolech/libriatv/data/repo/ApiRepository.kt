@@ -1,10 +1,13 @@
 package ru.feskolech.libriatv.data.repo
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
 import ru.feskolech.libriatv.data.api.ApiErrorDto
 import retrofit2.HttpException
 import ru.feskolech.libriatv.data.api.AniLibriaApi
+import ru.feskolech.libriatv.data.api.ReferenceDto
 import ru.feskolech.libriatv.data.api.TimecodeUpdateDto
 import ru.feskolech.libriatv.domain.*
 import javax.inject.Inject
@@ -51,6 +54,43 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     suspend fun episode(id: String): ApiResult<Episode> = request {
         api.episode(id).toDomain() ?: error("Episode has no id")
     }
+    suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30): ApiResult<ReleasePage> = request {
+        val response = api.catalog(
+            page = page, limit = limit,
+            genres = filter.genres.takeIf { it.isNotEmpty() }?.joinToString(","),
+            types = filter.types.toList().takeIf { it.isNotEmpty() },
+            seasons = filter.seasons.toList().takeIf { it.isNotEmpty() },
+            fromYear = filter.fromYear, toYear = filter.toYear,
+            publishStatuses = filter.statuses.toList().takeIf { it.isNotEmpty() },
+            sorting = filter.sorting,
+        )
+        val pagination = response.meta?.pagination
+        ReleasePage(response.data.mapNotNull { it.toDomain() }, pagination?.currentPage ?: page, pagination?.totalPages ?: page)
+    }
+
+    suspend fun catalogReferences(): ApiResult<CatalogReferences> = request {
+        fun List<ReferenceDto>.options() = mapNotNull { ref ->
+            ref.value?.let { FilterOption(it, ref.label ?: ref.description ?: it) }
+        }
+        coroutineScope {
+            val genres = async { api.catalogGenres() }
+            val types = async { api.catalogTypes() }
+            val seasons = async { api.catalogSeasons() }
+            val years = async { api.catalogYears() }
+            val sorting = async { api.catalogSorting() }
+            val statuses = async { api.catalogPublishStatuses() }
+            CatalogReferences(
+                genres = genres.await().mapNotNull { g -> g.id?.let { FilterOption(it.toString(), g.name.orEmpty()) } }
+                    .sortedBy { it.title },
+                types = types.await().map { FilterOption(it.value.orEmpty(), it.description ?: it.value.orEmpty()) },
+                seasons = seasons.await().map { FilterOption(it.value.orEmpty(), it.description ?: it.value.orEmpty()) },
+                years = years.await().sortedDescending(),
+                sorting = sorting.await().options(),
+                statuses = statuses.await().map { FilterOption(it.value.orEmpty(), it.description ?: it.value.orEmpty()) },
+            )
+        }
+    }
+
     suspend fun search(query: String): ApiResult<List<Release>> = request {
         api.search(query).mapNotNull { it.toDomain() }
     }

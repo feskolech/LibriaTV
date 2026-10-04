@@ -92,4 +92,18 @@
         <item>Sat</item>
         <item>Sun</item>
     </string-array>
+    <string name="catalog">Catalog</string>
+    <string name="catalog_empty">Nothing found. Try loosening the filters.</string>
+    <string name="filter_genres">Genres</string>
+    <string name="filter_types">Type</string>
+    <string name="filter_seasons">Season</string>
+    <string name="filter_years">Years</string>
+    <string name="filter_status">Status</string>
+    <string name="filter_sorting">Sort</string>
+    <string name="filter_reset">Reset filters</string>
+    <string name="filter_apply">Apply</string>
+    <string name="filter_clear">Clear</string>
+    <string name="filter_year_from">From</string>
+    <string name="filter_year_to">To</string>
+    <string name="filter_any">Any</string>
 </resources>

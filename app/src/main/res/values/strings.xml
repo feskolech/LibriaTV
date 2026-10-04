@@ -92,4 +92,18 @@
         <item>Сб</item>
         <item>Вс</item>
     </string-array>
+    <string name="catalog">Каталог</string>
+    <string name="catalog_empty">Ничего не найдено. Попробуйте ослабить фильтры.</string>
+    <string name="filter_genres">Жанры</string>
+    <string name="filter_types">Тип</string>
+    <string name="filter_seasons">Сезон</string>
+    <string name="filter_years">Годы</string>
+    <string name="filter_status">Статус</string>
+    <string name="filter_sorting">Сортировка</string>
+    <string name="filter_reset">Сбросить фильтры</string>
+    <string name="filter_apply">Применить</string>
+    <string name="filter_clear">Очистить</string>
+    <string name="filter_year_from">С года</string>
+    <string name="filter_year_to">По год</string>
+    <string name="filter_any">Любой</string>
 </resources>

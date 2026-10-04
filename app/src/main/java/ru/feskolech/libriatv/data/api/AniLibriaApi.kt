@@ -15,6 +15,23 @@ interface AniLibriaApi {
     @GET("anime/releases/latest") suspend fun latest(@Query("limit") limit: Int = 30): List<ReleaseDto>
     @GET("anime/releases/{idOrAlias}") suspend fun release(@Path("idOrAlias") idOrAlias: String): ReleaseDto
     @GET("anime/releases/episodes/{releaseEpisodeId}") suspend fun episode(@Path("releaseEpisodeId") id: String): EpisodeDto
+    @GET("anime/catalog/releases") suspend fun catalog(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+        @Query("f[genres]") genres: String? = null,
+        @Query("f[types][]") types: List<String>? = null,
+        @Query("f[seasons][]") seasons: List<String>? = null,
+        @Query("f[years][from_year]") fromYear: Int? = null,
+        @Query("f[years][to_year]") toYear: Int? = null,
+        @Query("f[publish_statuses][]") publishStatuses: List<String>? = null,
+        @Query("f[sorting]") sorting: String? = null,
+    ): FavoritesDto
+    @GET("anime/catalog/references/genres") suspend fun catalogGenres(): List<GenreDto>
+    @GET("anime/catalog/references/types") suspend fun catalogTypes(): List<ReferenceDto>
+    @GET("anime/catalog/references/seasons") suspend fun catalogSeasons(): List<ReferenceDto>
+    @GET("anime/catalog/references/years") suspend fun catalogYears(): List<Int>
+    @GET("anime/catalog/references/sorting") suspend fun catalogSorting(): List<ReferenceDto>
+    @GET("anime/catalog/references/publish-statuses") suspend fun catalogPublishStatuses(): List<ReferenceDto>
     @GET("app/search/releases") suspend fun search(@Query("query") query: String): List<ReleaseDto>
     @GET("anime/torrents/release/{releaseId}") suspend fun torrents(@Path("releaseId") releaseId: Int): List<TorrentDto>
     @POST("accounts/otp/get") suspend fun otpGet(@Body request: OtpGetRequestDto): OtpGetDto

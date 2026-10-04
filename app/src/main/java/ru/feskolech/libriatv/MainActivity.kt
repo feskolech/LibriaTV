@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
@@ -61,6 +62,7 @@ import ru.feskolech.libriatv.ui.release.ReleaseScreen
 import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 import ru.feskolech.libriatv.ui.search.SearchScreen
 import ru.feskolech.libriatv.ui.schedule.ScheduleScreen
+import ru.feskolech.libriatv.ui.catalog.CatalogScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
 
 @AndroidEntryPoint
@@ -78,6 +80,7 @@ class MainActivity : ComponentActivity() {
 private enum class Destination(val route: String, val title: Int, val icon: ImageVector) {
     Home("home", R.string.home, Icons.Default.Home),
     Search("search", R.string.search, Icons.Default.Search),
+    Catalog("catalog", R.string.catalog, Icons.Default.GridView),
     Favorites("favorites", R.string.favorites, Icons.Default.Favorite),
     Schedule("schedule", R.string.schedule, Icons.Default.DateRange),
     Profile("profile", R.string.profile, Icons.Default.Person),
@@ -157,6 +160,11 @@ private fun AppNavigation(onExit: () -> Unit) {
                         AuthScreen(
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenMenu = { firstItemFocus.requestFocus() },
+                        )
+                    } else if (destination == Destination.Catalog) {
+                        CatalogScreen(
+                            onOpenRelease = { navController.navigate("release/$it") },
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                         )
                     } else if (destination == Destination.Schedule) {
                         ScheduleScreen(

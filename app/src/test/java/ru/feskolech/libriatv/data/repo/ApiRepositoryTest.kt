@@ -71,6 +71,25 @@ class ApiRepositoryTest {
         assertTrue(episode.hls1080!!.startsWith("https://"))
     }
 
+    @Test fun catalogSendsFiltersAndReadsPagination() = runBlocking {
+        server.enqueue(MockResponse().setHeader("Content-Type", "application/json").setBody(
+            """{"data":[{"id":1,"name":{"main":"A"}}],"meta":{"pagination":{"current_page":2,"total_pages":5}}}""",
+        ))
+        val filter = ru.feskolech.libriatv.domain.CatalogFilter(
+            genres = linkedSetOf("15", "16"), types = setOf("TV"), fromYear = 2010, sorting = "RATING_DESC",
+        )
+        val page = (repo.catalog(filter, page = 2) as ApiResult.Success).value
+        assertEquals(2, page.page)
+        assertEquals(5, page.totalPages)
+        val url = java.net.URLDecoder.decode(server.takeRequest().path!!, "UTF-8")
+        assertTrue(url, url.startsWith("/api/v1/anime/catalog/releases?"))
+        assertTrue(url, "f[genres]=15,16" in url)
+        assertTrue(url, "f[types][]=TV" in url)
+        assertTrue(url, "f[years][from_year]=2010" in url)
+        assertTrue(url, "f[sorting]=RATING_DESC" in url)
+        assertTrue(url, "to_year" !in url && "f[seasons]" !in url)
+    }
+
     @Test fun scheduleWeekIsAPlainArray() = runBlocking {
         enqueue("schedule-week")
         val result = repo.scheduleWeek() as ApiResult.Success
