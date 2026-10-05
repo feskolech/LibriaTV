@@ -115,7 +115,6 @@ private fun CodeContent(state: AuthUiState, newCode: () -> Unit, password: () ->
             }
             Text(stringResource(R.string.auth_site_hint), style = MaterialTheme.typography.bodyMedium, color = Color(0xFFBDBDBD))
             Button(onClick = password, modifier = Modifier.fillMaxWidth().focusRequester(passwordFocus)) { Text(stringResource(R.string.auth_password_button)) }
-            Button(onClick = onOpenMenu) { Text(stringResource(R.string.open_menu)) }
         }
     }
 }
@@ -143,7 +142,6 @@ private fun PasswordContent(state: AuthUiState, submit: (String, String) -> Unit
             Text(stringResource(R.string.auth_keyboard_hint), style = MaterialTheme.typography.titleMedium)
             Text(stringResource(R.string.auth_password_note), color = Color(0xFFBDBDBD))
             Button(onClick = back) { Text(stringResource(R.string.auth_back_to_code)) }
-            Button(onClick = onOpenMenu) { Text(stringResource(R.string.open_menu)) }
         }
     }
 }
@@ -179,6 +177,5 @@ private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> U
         }
         Text(name, style = MaterialTheme.typography.headlineMedium)
         Button(onClick = logout, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.auth_logout)) }
-        Button(onClick = onOpenMenu) { Text(stringResource(R.string.open_menu)) }
     }
 }

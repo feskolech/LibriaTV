@@ -32,6 +32,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -105,6 +108,12 @@ private fun HomeContent(
     var focusedRelease by remember { mutableStateOf(content.latest.firstOrNull()) }
     var backgroundRelease by remember { mutableStateOf(focusedRelease) }
     val firstPoster = remember { FocusRequester() }
+    // Card that had focus last (row + release). Saved across navigation so Back from a release card
+    // and leaving the drawer land on it again instead of the first card / another row.
+    var lastRow by rememberSaveable { mutableIntStateOf(-1) }
+    var lastId by rememberSaveable { mutableIntStateOf(-1) }
+    val restore = remember { FocusRequester() }
+    fun restoreFor(row: Int, id: Int): Modifier = if (row == lastRow && id == lastId) Modifier.focusRequester(restore) else Modifier
     val rowsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     // Scroll only when focus moves to another row. Re-snapping on every horizontal move fought the
@@ -112,6 +121,8 @@ private fun HomeContent(
     var focusedRow by remember { mutableIntStateOf(-1) }
     fun focusRow(index: Int, release: Release) {
         focusedRelease = release
+        lastRow = index
+        lastId = release.id
         if (index == focusedRow) return
         focusedRow = index
         scope.launch { rowsState.animateScrollToItem(index) }
@@ -119,14 +130,16 @@ private fun HomeContent(
     LaunchedEffect(Unit) {
         // Lazy rows compose their items a frame later; requesting earlier leaves focus in the drawer.
         withFrameNanos { }
-        runCatching { firstPoster.requestFocus() }
+        if (lastId < 0 || runCatching { restore.requestFocus() }.isFailure) runCatching { firstPoster.requestFocus() }
     }
     LaunchedEffect(focusedRelease?.id) {
         delay(300)
         backgroundRelease = focusedRelease
     }
     // clipToBounds: the blur render effect otherwise bleeds left under the drawer as a light strip.
-    Box(Modifier.fillMaxSize().clipToBounds().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }) {
+    Box(Modifier.fillMaxSize().clipToBounds().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }
+        // Coming back from the drawer: return to the card that had focus, not the nearest one.
+        .focusRestorer()) {
         HomeBackdrop(backgroundRelease, content.videoPreviewEnabled && active)
         Column(Modifier.fillMaxSize()) {
             SelectedRelease(focusedRelease)
@@ -152,9 +165,9 @@ private fun HomeContent(
                     badge = { it.latestEpisode?.ordinal?.let { n -> stringResource(R.string.episode_number, n.toInt()) } },
                     timeBadge = { it.freshAt?.let { value -> freshLabel(value) } },
                     favoriteIds = content.favoriteIds,
-                    onTitleClick = onOpenFeed,
                     firstPoster = firstPoster,
                     onFocus = { focusRow(0, it) },
+                    cardModifier = { restoreFor(0, it.id) },
                     // Users asked for the release card on OK (with a TV remote a direct start is too easy to trigger).
                     onClick = onOpenRelease,
                     onLongClick = { onOpenRelease(it.id) },
@@ -162,21 +175,21 @@ private fun HomeContent(
                 )
             }
             if (c == 1) item {
-                ContinueRow(content.continueItems, remember { FocusRequester() },
+                ContinueRow(content.continueItems, { restoreFor(1, it.id) },
                     onFocus = { focusRow(1, it) }, onOpen = onOpenRelease)
             }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
-                    { focusRow(1 + c, it) }, onOpenRelease)
+                    { focusRow(1 + c, it) }, onOpenRelease, { restoreFor(1 + c, it.id) })
             }
             item {
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
-                    { focusRow(2 + c, it) }, onOpenRelease)
+                    { focusRow(2 + c, it) }, onOpenRelease, { restoreFor(2 + c, it.id) })
             }
             if (content.recommended.isNotEmpty()) item {
                 PosterRow(stringResource(R.string.recommended), content.recommended,
                     badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease, cardModifier = { restoreFor(3 + c, it.id) })
             }
             }
         }
@@ -199,7 +212,7 @@ private fun HomeContent(
 }
 
 @Composable
-private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
+private fun ContinueRow(items: List<ContinueItem>, cardModifier: (Release) -> Modifier,
     onFocus: (Release) -> Unit, onOpen: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.continue_watching), Modifier.padding(start = 48.dp),
@@ -209,7 +222,7 @@ private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
             items(items, key = { it.episode.id }) { item ->
                 var focused by remember { mutableStateOf(false) }
                 Column(Modifier.width(260.dp)
-                    .then(if (item == items.first()) Modifier.focusRequester(firstPoster) else Modifier)
+                    .then(cardModifier(item.release))
                     .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus(item.release) }
                     .graphicsLayer { scaleX = if (focused) 1.04f else 1f; scaleY = scaleX }
                     .clip(RoundedCornerShape(12.dp))
@@ -263,8 +276,9 @@ private fun ScheduleRow(
     favoriteIds: Set<Int>,
     onFocus: (Release) -> Unit,
     onClick: (Int) -> Unit,
+    cardModifier: (Release) -> Modifier = { Modifier },
 ) {
-    PosterRow(title, items.map { it.release },
+    PosterRow(title, items.map { it.release }, cardModifier = cardModifier,
         badge = { release -> items.firstOrNull { it.release.id == release.id }?.nextEpisodeNumber?.let { stringResource(R.string.episode_number, it) } },
         favoriteIds = favoriteIds, onFocus = onFocus, onClick = onClick)
 }
@@ -282,6 +296,7 @@ private fun PosterRow(
     onClick: (Int) -> Unit,
     onLongClick: (Release) -> Unit = { onClick(it.id) },
     onNearEnd: (() -> Unit)? = null,
+    cardModifier: (Release) -> Modifier = { Modifier },
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title + if (onTitleClick != null) "  ›" else "",
@@ -297,7 +312,8 @@ private fun PosterRow(
             ) {
                 itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->
                     PosterCard(release, badge(release), timeBadge(release), release.id in favoriteIds,
-                        modifier = if (firstPoster != null && release.id == releases.first().id) Modifier.focusRequester(firstPoster) else Modifier,
+                        modifier = (if (firstPoster != null && release.id == releases.first().id) Modifier.focusRequester(firstPoster) else Modifier)
+                            .then(cardModifier(release)),
                         onFocus = {
                             onFocus(release)
                             if (onNearEnd != null && index >= releases.size - 10) onNearEnd()

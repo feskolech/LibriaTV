@@ -62,7 +62,7 @@ fun SettingsScreen(
             item { SettingToggle(R.string.settings_auto_skip_ending, content.autoSkipEnding, viewModel::autoSkipEnding) }
             item { SettingToggle(R.string.settings_auto_next, content.autoNext, viewModel::autoNext) }
             item { SettingToggle(R.string.settings_frame_rate, content.frameRateMatch, viewModel::frameRateMatch) }
-            item { SettingToggle(R.string.night_mode, content.nightMode, viewModel::nightMode) }
+            item { SettingToggle(R.string.night_mode, content.nightMode, viewModel::nightMode, R.string.night_mode_hint) }
             item { SettingToggle(R.string.settings_home_video_preview, content.homeVideoPreview, viewModel::homeVideoPreview) }
             item { SettingChoices(R.string.settings_speed, listOf("0.75×", "1×", "1.25×", "1.5×", "2×"),
                 listOf(.75f, 1f, 1.25f, 1.5f, 2f).indexOf(content.speed), viewModel::speed,
@@ -135,9 +135,12 @@ private fun SettingTitle(title: Int) {
 }
 
 @Composable
-private fun SettingToggle(title: Int, enabled: Boolean, onClick: () -> Unit) {
+private fun SettingToggle(title: Int, enabled: Boolean, onClick: () -> Unit, hint: Int? = null) {
     Button(onClick = onClick, modifier = Modifier.fillMaxWidth(), scale = WideButtonScale) {
-        Text(stringResource(title) + "  " + stringResource(if (enabled) R.string.settings_on else R.string.settings_off))
+        Column {
+            Text(stringResource(title) + "  " + stringResource(if (enabled) R.string.settings_on else R.string.settings_off))
+            if (hint != null) Text(stringResource(hint), style = androidx.tv.material3.MaterialTheme.typography.bodySmall)
+        }
     }
 }
 

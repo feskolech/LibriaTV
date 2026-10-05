@@ -118,7 +118,7 @@ fun CatalogScreen(
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(160.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 27.dp),
+                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                 horizontalArrangement = Arrangement.spacedBy(22.dp),
                 verticalArrangement = Arrangement.spacedBy(22.dp),
             ) {

@@ -19,7 +19,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.focus.onFocusChanged
@@ -57,6 +67,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             val first = resume ?: ordered.firstOrNull()
             val listState = rememberLazyListState()
             val headerScope = rememberCoroutineScope()
+            var showDescription by remember { mutableStateOf(false) }
             LaunchedEffect(release.id) { focus.requestFocus(); kotlinx.coroutines.delay(100); listState.scrollToItem(0) }
             LazyColumn(
                 state = listState,
@@ -71,7 +82,10 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             Text(release.title, style = androidx.tv.material3.MaterialTheme.typography.headlineLarge, color = Color.White)
                             Text(listOfNotNull(release.year?.toString(), release.season, release.type, release.publishDay).joinToString(" • "), color = Color.White)
                             Text(release.genres.joinToString(" • "), color = Color.White)
-                            Text(release.description.orEmpty().replace(Regex("<[^>]*>"), ""), maxLines = 4, overflow = TextOverflow.Ellipsis, color = Color.White)
+                            // Short teaser keeps the header height stable (a long text made it jitter while moving
+                            // between the buttons); the full text is one button away.
+                            val description = release.description.orEmpty().replace(Regex("<[^>]*>"), "").trim()
+                            Text(description, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
                             // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
                             // visible and leaves the title cut off when coming back up from the episodes.
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -94,7 +108,11 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                     Text(stringResource(if (current.favorite) R.string.remove_favorite else R.string.add_favorite))
                                 }
                                 Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
+                                if (description.isNotEmpty()) {
+                                    Button(onClick = { showDescription = true }) { Text(stringResource(R.string.description_more)) }
+                                }
                             }
+                            if (showDescription) DescriptionDialog(release.title, description) { showDescription = false }
                             if (current.favoriteError != null) {
                                 Text(current.favoriteError, color = Color(0xFFFF8888))
                                 Button(onClick = { viewModel.toggleFavorite(onLogin) }) { Text(stringResource(R.string.retry)) }
@@ -125,7 +143,8 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
 private fun EpisodeRow(episode: Episode, progress: ru.feskolech.libriatv.data.repo.PlaybackProgress?, onPlay: (String) -> Unit) {
     Button(onClick = { onPlay(episode.id) }, modifier = Modifier.fillMaxWidth(), scale = WideButtonScale) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            AsyncImage(episode.previewUrl, null, Modifier.size(width = 110.dp, height = 64.dp), contentScale = ContentScale.Crop)
+            AsyncImage(episode.previewUrl, null, Modifier.size(width = 110.dp, height = 64.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
             Column {
                 Text(stringResource(R.string.episode_number, episode.ordinal?.toInt() ?: 0) + "  " + episode.name)
                 if (progress != null) Text(if (progress.watched) stringResource(R.string.watched)
@@ -133,4 +152,30 @@ private fun EpisodeRow(episode: Episode, progress: ru.feskolech.libriatv.data.re
             }
         }
     }
+}
+
+@Composable
+private fun DescriptionDialog(title: String, text: String, onDismiss: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        androidx.tv.material3.Surface {
+            Column(Modifier.width(720.dp).padding(32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                Text(title, style = androidx.tv.material3.MaterialTheme.typography.headlineSmall)
+                // Focus stays on Close; ▲/▼ scroll the text so long synopses are readable with a remote.
+                val scroll = androidx.compose.foundation.rememberScrollState()
+                val scope = rememberCoroutineScope()
+                Text(text, style = androidx.tv.material3.MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.height(360.dp).verticalScroll(scroll))
+                Button(onClick = onDismiss, modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { e ->
+                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (e.key) {
+                        Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(240f) }; true }
+                        Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-240f) }; true }
+                        else -> false
+                    }
+                }) { Text(stringResource(R.string.close)) }
+            }
+        }
+    }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { focus.requestFocus() } }
 }

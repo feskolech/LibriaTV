@@ -113,7 +113,7 @@
     <string name="recommended">Recommended</string>
     <string name="random_release">Feeling lucky</string>
     <string name="speed">Speed %1$s</string>
-    <string name="night_mode">Night mode</string>
+    <string name="night_mode">Night sound mode</string>
     <string name="settings_playback">Playback</string>
     <string name="settings_quality">Default quality</string>
     <string name="settings_auto_next">Play next episode automatically</string>
@@ -177,4 +177,6 @@
     <string name="player_switch_quality">Switch to %1$dp</string>
     <string name="catalog_title_progress">Building the A–Z catalog… %1$d / %2$d</string>
     <string name="days_ago">%1$d d ago</string>
+    <string name="night_mode_hint">Quieter explosions, louder dialogue — for late-night watching</string>
+    <string name="description_more">Description</string>
 </resources>

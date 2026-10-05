@@ -84,18 +84,36 @@ internal fun HomeBackdrop(release: Release?, videoEnabled: Boolean) {
         }
     }
     Box(Modifier.fillMaxSize()) {
-        if (frame == null) {
-            AsyncImage(release?.posterUrl, null, Modifier.fillMaxSize().graphicsLayer {
-                if (Build.VERSION.SDK_INT >= 31) {
-                    renderEffect = RenderEffect.createBlurEffect(34f, 34f, Shader.TileMode.CLAMP).asComposeRenderEffect()
+        // Crossfade between releases instead of a hard cut (users found the switch too abrupt).
+        androidx.compose.animation.Crossfade(
+            targetState = frame to release?.posterUrl,
+            animationSpec = androidx.compose.animation.core.tween(600),
+            label = "backdrop",
+        ) { (shownFrame, poster) ->
+            Box(Modifier.fillMaxSize()) {
+                if (shownFrame == null) {
+                    AsyncImage(poster, null, Modifier.fillMaxSize().graphicsLayer {
+                        if (Build.VERSION.SDK_INT >= 31) {
+                            renderEffect = RenderEffect.createBlurEffect(34f, 34f, Shader.TileMode.CLAMP).asComposeRenderEffect()
+                        }
+                        alpha = .36f
+                    }, contentScale = ContentScale.Crop)
+                    Box(Modifier.fillMaxSize().background(Color(0xB5101010)))
+                } else {
+                    Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(.66f).aspectRatio(16f / 9f)) {
+                        AsyncImage(shownFrame, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    }
                 }
-                alpha = .36f
-            }, contentScale = ContentScale.Crop)
-            Box(Modifier.fillMaxSize().background(Color(0xB5101010)))
-        } else {
-            Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(.66f).aspectRatio(16f / 9f)) {
-                AsyncImage(frame, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                if (ready) AndroidView(factory = { PlayerView(it).apply {
+            }
+        }
+        if (frame != null) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = ready,
+                enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(800)),
+                exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)),
+                modifier = Modifier.align(Alignment.TopEnd).fillMaxWidth(.66f).aspectRatio(16f / 9f),
+            ) {
+                AndroidView(factory = { PlayerView(it).apply {
                     useController = false
                     this.player = player
                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
