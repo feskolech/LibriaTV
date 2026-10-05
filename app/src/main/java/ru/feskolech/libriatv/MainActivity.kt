@@ -6,7 +6,6 @@ import android.app.Activity
 import android.speech.RecognizerIntent
 import android.view.KeyEvent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material.icons.filled.Mic
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -226,14 +225,6 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Destination.entries.forEachIndexed { index, destination ->
-                    if (destination == Destination.Search) {
-                        NavigationDrawerItem(selected = false, onClick = startVoiceSearch,
-                            leadingContent = { Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(24.dp)) },
-                            modifier = Modifier.then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
-                                .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) }) {
-                            if (drawerValue == DrawerValue.Open) Text(stringResource(R.string.search_voice))
-                        }
-                    }
                     NavigationDrawerItem(
                         selected = currentRoute == destination.route ||
                             (destination == Destination.Search && currentRoute.startsWith("search?")),
