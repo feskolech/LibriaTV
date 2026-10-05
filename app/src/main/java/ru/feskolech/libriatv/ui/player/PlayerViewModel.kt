@@ -7,6 +7,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.preload.DefaultPreloadManager
+import androidx.media3.exoplayer.source.preload.PreloadManagerListener
+import androidx.media3.exoplayer.source.preload.TargetPreloadStatusControl
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -52,15 +55,32 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
     private val releaseId: String = checkNotNull(savedState["id"])
     private val initialEpisodeId: String = checkNotNull(savedState["episodeId"])
-    val player: ExoPlayer = ExoPlayer.Builder(context).build()
+    private val preloadBuilder = DefaultPreloadManager.Builder(context,
+        TargetPreloadStatusControl<Int, DefaultPreloadManager.PreloadStatus> {
+            DefaultPreloadManager.PreloadStatus.specifiedRangeLoaded(10_000L)
+        })
+    val player: ExoPlayer = preloadBuilder.buildExoPlayer()
+    private val preloadManager = preloadBuilder.build()
+    private var queuedItem: MediaItem? = null
     private val _state = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val state: StateFlow<PlayerUiState> = _state
     /** Auto-skip each segment (opening, ending) at most once per episode, so seeking back into it is respected. */
     private val autoSkipped = mutableSetOf<Skip>()
     private var lastSync = 0L
+    private var progressSavedForTransition = false
     private val nightAudio = NightAudio()
 
     init {
+        preloadManager.addListener(object : PreloadManagerListener {
+            override fun onCompleted(mediaItem: MediaItem) {
+                viewModelScope.launch {
+                    val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+                    if (queuedItem?.mediaId != mediaItem.mediaId ||
+                        nextEpisode(current)?.id != mediaItem.mediaId || player.hasNextMediaItem()) return@launch
+                    preloadManager.getMediaSource(mediaItem)?.let { player.addMediaSource(it) }
+                }
+            }
+        })
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { update { it.copy(playing = isPlaying) } }
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -76,6 +96,30 @@ class PlayerViewModel @Inject constructor(
             }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
                 update { it.copy(error = error.message ?: "Playback error", panel = PlayerPanel.Controls) }
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+                val next = current.release.episodes.firstOrNull { it.id == mediaItem?.mediaId } ?: return
+                if (next.id == current.episode.id) return
+                if (!progressSavedForTransition) {
+                    viewModelScope.launch { saveProgress(current, current.positionMs, current.durationMs) }
+                }
+                progressSavedForTransition = false
+                autoSkipped.clear()
+                lastSync = 0
+                queuedItem = null
+                update { it.copy(episode = next, quality = streamFor(next, it.quality)?.first ?: it.quality,
+                    positionMs = 0, durationMs = 0,
+                    skip = null, skipOpening = false, nextCountdown = null, error = null,
+                    panel = PlayerPanel.Hidden) }
+                viewModelScope.launch {
+                    delay(5_000)
+                    if (player.currentMediaItemIndex > 0 && player.currentMediaItem?.mediaId == next.id) {
+                        val old = player.getMediaItemAt(0)
+                        player.removeMediaItems(0, player.currentMediaItemIndex)
+                        preloadManager.remove(old)
+                    }
+                }
             }
         })
         load()
@@ -95,8 +139,10 @@ class PlayerViewModel @Inject constructor(
                 else {
                     val speed = store.speed()
                     val night = store.nightMode()
+                    val autoNext = store.autoNext()
                     _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkip = store.autoSkip(),
-                        speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night, autoNext = store.autoNext()))
+                        speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night, autoNext = autoNext))
+                    player.setPauseAtEndOfMediaItems(!autoNext)
                     player.setPlaybackSpeed(speed)
                     nightAudio.apply(player.audioSessionId, night)
                     prepare(episode, resume = true)
@@ -118,18 +164,31 @@ class PlayerViewModel @Inject constructor(
             ?: run { update { it.copy(error = "No video stream") }; return }
         update { it.copy(episode = episode, quality = quality, positionMs = 0, durationMs = 0, skip = null, nextCountdown = null, error = null) }
         autoSkipped.clear()
-        player.setMediaItem(MediaItem.fromUri(url!!))
+        progressSavedForTransition = false
+        queuedItem = null
+        player.setMediaItem(mediaItem(episode, url!!))
+        preloadManager.reset()
         player.prepare()
         val position = if (resume) store.progress(episode.id)?.positionMs ?: 0 else 0
         player.seekTo(position)
         player.playWhenReady = true
     }
 
-    fun playEpisode(id: String) = viewModelScope.launch {
-        saveProgress()
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
-        current.release.episodes.firstOrNull { it.id == id }?.let { prepare(it, resume = true) }
-        update { it.copy(panel = PlayerPanel.Hidden) }
+    fun playEpisode(id: String) {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        if (player.hasNextMediaItem() && player.getMediaItemAt(player.currentMediaItemIndex + 1).mediaId == id) {
+            val position = player.currentPosition.coerceAtLeast(0)
+            val duration = player.duration.coerceAtLeast(0)
+            viewModelScope.launch { saveProgress(current, position, duration) }
+            progressSavedForTransition = true
+            player.seekToNextMediaItem()
+            player.play()
+            update { it.copy(panel = PlayerPanel.Hidden) }
+        } else viewModelScope.launch {
+            saveProgress()
+            current.release.episodes.firstOrNull { it.id == id }?.let { prepare(it, resume = true) }
+            update { it.copy(panel = PlayerPanel.Hidden) }
+        }
     }
 
     fun changeQuality(quality: Int) = viewModelScope.launch {
@@ -209,10 +268,23 @@ class PlayerViewModel @Inject constructor(
         }
         val remaining = if (duration > 0) (duration - position) / 1000 else Long.MAX_VALUE
         val next = nextEpisode(current)
+        if (remaining in 1..60 && next != null && queuedItem == null &&
+            player.currentMediaItemIndex == player.mediaItemCount - 1 &&
+            player.currentMediaItem?.mediaId == current.episode.id) {
+            streamFor(next, current.quality)?.let { (_, url) ->
+                val item = mediaItem(next, url)
+                queuedItem = item
+                val index = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
+                    .indexOfFirst { it.id == next.id }
+                preloadManager.setCurrentPlayingIndex(index - 1)
+                preloadManager.add(item, index)
+                preloadManager.invalidate()
+            }
+        }
         val countdown = if (current.autoNext && remaining in 1..8 && next != null) remaining.toInt() else null
         update { it.copy(positionMs = position, durationMs = duration, skip = if (current.autoSkip) null else skip,
             skipOpening = opening != null, nextCountdown = countdown) }
-        if (current.autoNext && duration > 0 && remaining <= 0 && next != null) playEpisode(next.id)
+        if (current.autoNext && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {
             lastSync = position
             viewModelScope.launch { saveProgress() }
@@ -242,6 +314,10 @@ class PlayerViewModel @Inject constructor(
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         val position = player.currentPosition.coerceAtLeast(0)
         val duration = player.duration.coerceAtLeast(0)
+        saveProgress(current, position, duration)
+    }
+
+    private suspend fun saveProgress(current: PlayerContent, position: Long, duration: Long) {
         store.save(current.episode.id, position, duration, current.release.id)
         if (!tokenStore.get().isNullOrBlank()) {
             repository.saveTimecode(current.episode.id, position / 1000.0,
@@ -249,7 +325,16 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() { nightAudio.release(); player.release(); super.onCleared() }
+    private fun streamFor(episode: Episode, preferredQuality: Int): Pair<Int, String>? =
+        listOf(1080 to episode.hls1080, 720 to episode.hls720, 480 to episode.hls480)
+            .filter { !it.second.isNullOrBlank() }
+            .let { options -> options.firstOrNull { it.first == preferredQuality } ?: options.firstOrNull() }
+            ?.let { it.first to it.second!! }
+
+    private fun mediaItem(episode: Episode, url: String): MediaItem = MediaItem.Builder()
+        .setMediaId(episode.id).setUri(url).build()
+
+    override fun onCleared() { nightAudio.release(); player.release(); preloadManager.release(); super.onCleared() }
 
     private companion object {
         val SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.75f)

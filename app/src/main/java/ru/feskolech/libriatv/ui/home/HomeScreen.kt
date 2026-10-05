@@ -146,7 +146,10 @@ private fun HomeContent(
                     favoriteIds = content.favoriteIds,
                     onTitleClick = onOpenFeed,
                     firstPoster = if (content.continueItems.isEmpty()) firstPoster else null,
-                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 0 else 1, it) }, onClick = onOpenRelease,
+                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 0 else 1, it) },
+                    onClick = { id -> content.latest.firstOrNull { it.id == id }?.latestEpisode
+                        ?.let { onPlay(id, it.id) } ?: onOpenRelease(id) },
+                    onLongClick = { onOpenRelease(it.id) },
                 )
             }
             item {
@@ -249,6 +252,7 @@ private fun PosterRow(
     firstPoster: FocusRequester? = null,
     onFocus: (Release) -> Unit,
     onClick: (Int) -> Unit,
+    onLongClick: (Release) -> Unit = { onClick(it.id) },
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title + if (onTitleClick != null) "  ›" else "",
@@ -265,7 +269,8 @@ private fun PosterRow(
                 items(releases, key = { it.id }) { release ->
                     PosterCard(release, badge(release), timeBadge(release), release.id in favoriteIds,
                         modifier = if (firstPoster != null && release.id == releases.first().id) Modifier.focusRequester(firstPoster) else Modifier,
-                        onFocus = { onFocus(release) }, onClick = { onClick(release.id) })
+                        onFocus = { onFocus(release) }, onClick = { onClick(release.id) },
+                        onLongClick = { onLongClick(release) })
                 }
             }
         }

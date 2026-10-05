@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import android.view.KeyEvent
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,14 +43,39 @@ fun PosterCard(
     modifier: Modifier = Modifier,
     onFocus: () -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = onClick,
 ) {
     var focused by remember { mutableStateOf(false) }
+    var longPressed by remember { mutableStateOf(false) }
     Column(modifier = modifier.width(142.dp).scale(if (focused) 1.1f else 1f)) {
         Box(
             Modifier.width(142.dp).height(213.dp)
                 .clip(RoundedCornerShape(9.dp))
                 .background(Color(0xFF303030))
-                .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() }
+                .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus() else longPressed = false }
+                .onPreviewKeyEvent { event ->
+                    val key = event.nativeKeyEvent
+                    when {
+                        key.keyCode == KeyEvent.KEYCODE_MENU && key.action == KeyEvent.ACTION_DOWN &&
+                            key.repeatCount == 0 -> {
+                            onLongClick(); true
+                        }
+                        (key.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || key.keyCode == KeyEvent.KEYCODE_ENTER) &&
+                            key.action == KeyEvent.ACTION_DOWN && key.repeatCount == 0 -> {
+                            longPressed = false; false
+                        }
+                        (key.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || key.keyCode == KeyEvent.KEYCODE_ENTER) &&
+                            key.action == KeyEvent.ACTION_DOWN && key.repeatCount > 0 -> {
+                            if (!longPressed) { longPressed = true; onLongClick() }
+                            true
+                        }
+                        (key.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || key.keyCode == KeyEvent.KEYCODE_ENTER) &&
+                            key.action == KeyEvent.ACTION_UP && longPressed -> {
+                            longPressed = false; true
+                        }
+                        else -> false
+                    }
+                }
                 .clickable(onClick = onClick)
         ) {
             AsyncImage(

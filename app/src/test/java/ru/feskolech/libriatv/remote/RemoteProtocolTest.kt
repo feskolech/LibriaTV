@@ -24,6 +24,19 @@ class RemoteProtocolTest {
         assertTrue(gate.allow("bad", "1234", "1234"))
     }
 
+    @Test fun failureTableEvictsLeastRecentlyUsedAddress() {
+        val gate = PinGate()
+        repeat(9) { assertFalse(gate.allow("old", "1234", "0000")) }
+        repeat(9) { assertFalse(gate.allow("recent", "1234", "0000")) }
+        for (index in 0 until 254) assertFalse(gate.allow("peer-$index", "1234", "0000"))
+        // Accessing an entry moves it to the end of the LRU order.
+        assertFalse(gate.allow("recent", "1234", "0000"))
+        assertFalse(gate.allow("new", "1234", "0000"))
+        assertFalse(gate.allow("old", "1234", "0000"))
+        assertTrue(gate.allow("old", "1234", "1234"))
+        assertFalse(gate.allow("recent", "1234", "1234"))
+    }
+
     @Test fun routesOnlyKnownCommandsWithValidIds() {
         assertEquals(RemoteCommand.OpenRelease(7), routeCommand("/api/open/release", mapOf("id" to "7")))
         assertEquals(RemoteCommand.OpenEpisode(7, "ep-9"), routeCommand("/api/open/episode", mapOf("id" to "7", "episode" to "ep-9")))

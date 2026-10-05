@@ -244,6 +244,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
             }
             composable("feed") {
                 FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
+                    onPlay = { releaseId, episodeId -> navController.navigate("player/$releaseId/$episodeId") },
                     onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
             }
             composable("release/{id}") { entry ->

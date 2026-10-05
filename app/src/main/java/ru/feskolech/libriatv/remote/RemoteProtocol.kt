@@ -30,7 +30,9 @@ internal fun routeCommand(path: String, parameters: Map<String, String>): Remote
 /** Failed attempts are counted per peer; the tenth failure starts a five minute lockout. */
 internal class PinGate(private val now: () -> Long = System::currentTimeMillis) {
     private data class Failure(var count: Int = 0, var blockedUntil: Long = 0)
-    private val failures = mutableMapOf<String, Failure>()
+    private val failures = object : LinkedHashMap<String, Failure>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Failure>): Boolean = size > 256
+    }
 
     @Synchronized fun allow(address: String, expected: String, supplied: String?): Boolean {
         val entry = failures.getOrPut(address) { Failure() }

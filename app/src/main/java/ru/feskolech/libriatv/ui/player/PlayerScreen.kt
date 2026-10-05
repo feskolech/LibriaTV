@@ -114,7 +114,11 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             }
         }) {
         if (current != null) {
-            AndroidView(factory = { PlayerView(context).apply { useController = false; player = viewModel.player } },
+            AndroidView(factory = { PlayerView(context).apply {
+                useController = false
+                setKeepContentOnPlayerReset(true)
+                player = viewModel.player
+            } },
                 modifier = Modifier.fillMaxSize(), update = { it.player = viewModel.player })
             Box(Modifier.fillMaxSize().focusRequester(rootFocus).focusable())
             if (current.buffering && current.error == null) {
