@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import ru.feskolech.libriatv.ui.components.LocalDrawerFocus
 import androidx.compose.runtime.CompositionLocalProvider
 import android.os.Bundle
@@ -209,6 +210,29 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     val selectedDestination = Destination.entries.firstOrNull { it.route == currentRoute }
         ?: if (currentRoute.startsWith("search?")) Destination.Search else Destination.Home
     var confirmExit by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    fun openSection(destination: Destination) {
+        if (currentRoute != destination.route) {
+            navController.navigate(destination.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+    // Side-menu browsing: the focused section opens after a short pause, so quickly scrolling
+    // past items does not load every screen on the way.
+    var lastMenuItem by remember { mutableStateOf<Destination?>(null) }
+    var previewTarget by remember { mutableStateOf<Destination?>(null) }
+    LaunchedEffect(drawerState.currentValue) {
+        DrawerBrowsing.active = drawerState.currentValue == DrawerValue.Open
+        if (drawerState.currentValue == DrawerValue.Closed) { lastMenuItem = null; previewTarget = null }
+    }
+    LaunchedEffect(previewTarget) {
+        val target = previewTarget ?: return@LaunchedEffect
+        kotlinx.coroutines.delay(300)
+        openSection(target)
+    }
 
     BackHandler(confirmExit || drawerState.currentValue == DrawerValue.Open || currentRoute == Destination.Home.route) {
         when {
@@ -248,22 +272,25 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                     NavigationDrawerItem(
                         selected = currentRoute == destination.route ||
                             (destination == Destination.Search && currentRoute.startsWith("search?")),
+                        // The section already opened while the item was focused; OK just steps into it.
                         onClick = {
-                            if (currentRoute != destination.route) {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                            drawerState.setValue(DrawerValue.Closed)
+                            openSection(destination)
+                            focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right)
                         },
                         leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
                             .focusRequester(itemFocus.getValue(destination))
                             // Open: items fill the drawer exactly, otherwise their default width overflows and the focus pill is clipped.
                             .then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
-                            .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
+                            .onFocusChanged {
+                                if (it.isFocused) {
+                                    drawerState.setValue(DrawerValue.Open)
+                                    // Moving within the menu opens the section as a preview (not the item the
+                                    // menu was entered on: that one is the current screen, e.g. a release page).
+                                    if (lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
+                                    lastMenuItem = destination
+                                }
+                            },
                     ) {
                         if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title), fontSize = 20.sp)
                     }

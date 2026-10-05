@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.home
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import android.os.Build
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -130,6 +131,7 @@ private fun HomeContent(
     LaunchedEffect(Unit) {
         // Lazy rows compose their items a frame later; requesting earlier leaves focus in the drawer.
         withFrameNanos { }
+        if (DrawerBrowsing.active) return@LaunchedEffect
         if (lastId < 0 || runCatching { restore.requestFocus() }.isFailure) runCatching { firstPoster.requestFocus() }
     }
     LaunchedEffect(focusedRelease?.id) {

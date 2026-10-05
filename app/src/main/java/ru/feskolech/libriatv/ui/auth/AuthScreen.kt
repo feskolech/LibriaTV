@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.auth
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.draw.clip
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
@@ -72,7 +73,7 @@ fun AuthScreen(onOpenMenu: () -> Unit, onContentFocus: () -> Unit, viewModel: Au
 private fun CodeContent(state: AuthUiState, newCode: () -> Unit, password: () -> Unit, onOpenMenu: () -> Unit) {
     val focus = remember { FocusRequester() }
     val passwordFocus = remember { FocusRequester() }
-    LaunchedEffect(state.expired, state.loadingCode) { if (!state.loadingCode) focus.requestFocus() }
+    LaunchedEffect(state.expired, state.loadingCode) { if (!state.loadingCode && !DrawerBrowsing.active) focus.requestFocus() }
     Row(
         Modifier.fillMaxSize().padding(top = 112.dp),
         horizontalArrangement = Arrangement.spacedBy(32.dp),
@@ -125,7 +126,7 @@ private fun PasswordContent(state: AuthUiState, submit: (String, String) -> Unit
     var login by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) { if (!DrawerBrowsing.active) focus.requestFocus() }
     Row(Modifier.fillMaxSize().padding(top = 112.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
         Column(
             Modifier.weight(1.1f).fillMaxHeight().background(Color(0xFF1D1D1F), RoundedCornerShape(20.dp)).padding(32.dp),
@@ -170,7 +171,7 @@ private fun AuthField(value: String, change: (String) -> Unit, label: String, mo
 @Composable
 private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> Unit, logout: () -> Unit) {
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focus.requestFocus() }
+    LaunchedEffect(Unit) { if (!DrawerBrowsing.active) focus.requestFocus() }
     // The screen title stays top-left; the account itself sits in the middle of the screen.
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(22.dp, Alignment.CenterVertically)) {

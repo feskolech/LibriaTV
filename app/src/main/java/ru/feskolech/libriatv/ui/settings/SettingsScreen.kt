@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.settings
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,7 +55,7 @@ fun SettingsScreen(
     }
     val first = remember { FocusRequester() }
     LaunchedEffect(state is SettingsUiState.Content) {
-        if (state is SettingsUiState.Content) { withFrameNanos { }; runCatching { first.requestFocus() } }
+        if (state is SettingsUiState.Content && !DrawerBrowsing.active) { withFrameNanos { }; runCatching { first.requestFocus() } }
     }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .onFocusChanged { if (it.hasFocus) onContentFocus() }

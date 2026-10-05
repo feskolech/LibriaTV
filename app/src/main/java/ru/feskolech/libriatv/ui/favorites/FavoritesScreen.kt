@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.favorites
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +51,7 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
     val first = remember { FocusRequester() }
     var sortingOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.reload() }
-    LaunchedEffect(state.authorized) { withFrameNanos { }; runCatching { first.requestFocus() } }
+    LaunchedEffect(state.authorized) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { first.requestFocus() } }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .onFocusChanged { if (it.hasFocus) onContentFocus() }.padding(top = 27.dp),

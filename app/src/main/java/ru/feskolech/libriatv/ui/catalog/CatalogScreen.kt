@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.catalog
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +61,7 @@ fun CatalogScreen(
     val filter = state.filter
     val refs = state.references
 
-    LaunchedEffect(refs != null) { withFrameNanos { }; runCatching { firstFilter.requestFocus() } }
+    LaunchedEffect(refs != null) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { firstFilter.requestFocus() } }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }

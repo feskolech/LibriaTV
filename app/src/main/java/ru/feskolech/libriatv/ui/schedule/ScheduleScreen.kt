@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.schedule
 
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +59,7 @@ fun ScheduleScreen(
             is ScheduleUiState.Error -> Column(Modifier.padding(horizontal = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(current.message, color = Color.White)
                 Button(onClick = { viewModel.refresh() }, modifier = Modifier.focusRequester(tabFocus)) { Text(stringResource(R.string.retry)) }
-                LaunchedEffect(Unit) { withFrameNanos { }; runCatching { tabFocus.requestFocus() } }
+                LaunchedEffect(Unit) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { tabFocus.requestFocus() } }
             }
             is ScheduleUiState.Content -> {
                 var selected by rememberSaveable { mutableIntStateOf(current.today) }
@@ -75,7 +76,7 @@ fun ScheduleScreen(
                         }
                     }
                 }
-                LaunchedEffect(Unit) { withFrameNanos { }; runCatching { tabFocus.requestFocus() } }
+                LaunchedEffect(Unit) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { tabFocus.requestFocus() } }
 
                 val items = current.days[selected]
                 if (items.isEmpty()) {
