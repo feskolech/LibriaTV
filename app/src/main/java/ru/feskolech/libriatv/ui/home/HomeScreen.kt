@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -85,7 +86,7 @@ fun HomeScreen(
             Button(onClick = { viewModel.refresh(force = true) }) { Text(stringResource(R.string.retry)) }
         }
         is HomeUiState.Content -> {
-            HomeContent(content, active, onContentFocus, onOpenFeed, onOpenRelease, viewModel::dismissEpisodeDialog)
+            HomeContent(content, active, onContentFocus, onOpenFeed, onOpenRelease, viewModel::dismissEpisodeDialog, viewModel::loadMoreLatest)
         }
     }
 }
@@ -98,9 +99,11 @@ private fun HomeContent(
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
     dismissEpisodeDialog: () -> Unit,
+    onLoadMoreLatest: () -> Unit,
 ) {
-    var focusedRelease by remember(content) { mutableStateOf(content.continueItems.firstOrNull()?.release ?: content.latest.firstOrNull()) }
-    var backgroundRelease by remember(content) { mutableStateOf(focusedRelease) }
+    // Not keyed on content: appending pages to the endless row must not reset focus or the backdrop.
+    var focusedRelease by remember { mutableStateOf(content.latest.firstOrNull()) }
+    var backgroundRelease by remember { mutableStateOf(focusedRelease) }
     val firstPoster = remember { FocusRequester() }
     val rowsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -113,7 +116,7 @@ private fun HomeContent(
         focusedRow = index
         scope.launch { rowsState.animateScrollToItem(index) }
     }
-    LaunchedEffect(content) {
+    LaunchedEffect(Unit) {
         // Lazy rows compose their items a frame later; requesting earlier leaves focus in the drawer.
         withFrameNanos { }
         runCatching { firstPoster.requestFocus() }
@@ -147,7 +150,7 @@ private fun HomeContent(
                     title = stringResource(R.string.new_episodes),
                     releases = content.latest,
                     badge = { it.latestEpisode?.ordinal?.let { n -> stringResource(R.string.episode_number, n.toInt()) } },
-                    timeBadge = { it.freshAt?.let { value -> relativeHours(value)?.let { hours -> stringResource(R.string.hours_ago, hours) } } },
+                    timeBadge = { it.freshAt?.let { value -> freshLabel(value) } },
                     favoriteIds = content.favoriteIds,
                     onTitleClick = onOpenFeed,
                     firstPoster = firstPoster,
@@ -155,6 +158,7 @@ private fun HomeContent(
                     // Users asked for the release card on OK (with a TV remote a direct start is too easy to trigger).
                     onClick = onOpenRelease,
                     onLongClick = { onOpenRelease(it.id) },
+                    onNearEnd = onLoadMoreLatest,
                 )
             }
             if (c == 1) item {
@@ -169,15 +173,10 @@ private fun HomeContent(
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
                     { focusRow(2 + c, it) }, onOpenRelease)
             }
-            if (content.isAuthorized) item {
-                PosterRow(stringResource(R.string.favorites), content.favorites,
-                    badge = { null }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease)
-            }
             if (content.recommended.isNotEmpty()) item {
                 PosterRow(stringResource(R.string.recommended), content.recommended,
                     badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow((if (content.isAuthorized) 4 else 3) + c, it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease)
             }
             }
         }
@@ -282,6 +281,7 @@ private fun PosterRow(
     onFocus: (Release) -> Unit,
     onClick: (Int) -> Unit,
     onLongClick: (Release) -> Unit = { onClick(it.id) },
+    onNearEnd: (() -> Unit)? = null,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title + if (onTitleClick != null) "  ›" else "",
@@ -295,10 +295,13 @@ private fun PosterRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(22.dp),
             ) {
-                items(releases, key = { it.id }) { release ->
+                itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->
                     PosterCard(release, badge(release), timeBadge(release), release.id in favoriteIds,
                         modifier = if (firstPoster != null && release.id == releases.first().id) Modifier.focusRequester(firstPoster) else Modifier,
-                        onFocus = { onFocus(release) }, onClick = { onClick(release.id) },
+                        onFocus = {
+                            onFocus(release)
+                            if (onNearEnd != null && index >= releases.size - 10) onNearEnd()
+                        }, onClick = { onClick(release.id) },
                         onLongClick = { onLongClick(release) })
                 }
             }
@@ -306,7 +309,15 @@ private fun PosterRow(
     }
 }
 
-private fun relativeHours(value: String): Long? = try {
-    val hours = ChronoUnit.HOURS.between(OffsetDateTime.parse(value), OffsetDateTime.now())
-    hours.coerceAtLeast(0)
-} catch (_: Exception) { null }
+/** "5 h ago" for the last two days, "12 d ago" up to two months, then the date itself. */
+@Composable
+private fun freshLabel(value: String): String? {
+    val time = runCatching { OffsetDateTime.parse(value) }.getOrNull() ?: return null
+    val hours = ChronoUnit.HOURS.between(time, OffsetDateTime.now()).coerceAtLeast(0)
+    return when {
+        hours < 48 -> stringResource(R.string.hours_ago, hours)
+        hours < 24 * 60 -> stringResource(R.string.days_ago, hours / 24)
+        else -> time.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+    }
+}
+

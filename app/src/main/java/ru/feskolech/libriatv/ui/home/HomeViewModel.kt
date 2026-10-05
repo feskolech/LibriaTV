@@ -13,6 +13,7 @@ import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.AuthRepository
 import ru.feskolech.libriatv.data.repo.AuthState
 import ru.feskolech.libriatv.domain.Release
+import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.ScheduleItem
 import ru.feskolech.libriatv.data.repo.ProgressRepository
 import ru.feskolech.libriatv.data.repo.ContinueItem
@@ -36,6 +37,8 @@ sealed interface HomeUiState {
         val newEpisodes: List<NewFavoriteEpisode> = emptyList(),
         val showEpisodeDialog: Boolean = false,
         val videoPreviewEnabled: Boolean = false,
+        /** Next catalog page for the endless "new episodes" row; null when the end was reached. */
+        val latestNextPage: Int? = 2,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -71,7 +74,7 @@ class HomeViewModel @Inject constructor(
         loading = true
         viewModelScope.launch {
             if (_state.value !is HomeUiState.Content) _state.value = HomeUiState.Loading
-            val latest = async { repository.latest() }
+            val latest = async { repository.latest(LATEST_FIRST_PAGE) }
             val schedule = async { repository.currentSchedule() }
             // Optional row: a failure here must not break the whole home screen.
             val recommended = async { (repository.recommended() as? ApiResult.Success)?.value.orEmpty() }
@@ -81,29 +84,21 @@ class HomeViewModel @Inject constructor(
             val scheduleResult = schedule.await()
             if (latestResult is ApiResult.Success && scheduleResult is ApiResult.Success) {
                 val authorized = auth.state.value is AuthState.Authorized
-                val favorites = if (authorized) favoritesRepository.allReleases() else ApiResult.Success(emptyList())
-                val favoriteList = (favorites as? ApiResult.Success)?.value.orEmpty()
-                if (authorized) favoritesRepository.refreshIds()
                 val previous = _state.value as? HomeUiState.Content
-                var newEpisodes = previous?.newEpisodes.orEmpty()
-                var showDialog = previous?.showEpisodeDialog ?: false
-                val userId = (auth.state.value as? AuthState.Authorized)?.user?.id
-                if (checkedUserId != userId && userId != null && favorites is ApiResult.Success) {
-                    newEpisodes = compareFavoriteEpisodes(episodeStore.previous(userId), favoriteList)
-                    episodeStore.save(userId, favoriteList)
-                    showDialog = newEpisodes.isNotEmpty()
-                    checkedUserId = userId
-                }
-                if (userId == null) checkedUserId = null
+                // Show the screen right away; the full favorites list (only needed for the
+                // "new in favorites" notice) is fetched afterwards in the background.
                 _state.value = HomeUiState.Content(
                     latestResult.value.sortedByDescending { it.freshAt },
                     scheduleResult.value.today, scheduleResult.value.tomorrow,
-                    favoriteList, favoritesRepository.ids.value, authorized,
+                    previous?.favorites.orEmpty(), favoritesRepository.ids.value, authorized,
                     recommended = recommended.await(),
                     videoPreviewEnabled = videoPreviewEnabled.await(),
                     continueItems = continueItems.await(),
-                    newEpisodes = newEpisodes, showEpisodeDialog = showDialog,
+                    newEpisodes = previous?.newEpisodes.orEmpty(),
+                    showEpisodeDialog = previous?.showEpisodeDialog ?: false,
+                    latestNextPage = if (latestResult.value.size < LATEST_FIRST_PAGE) null else 2,
                 )
+                if (authorized) viewModelScope.launch { checkFavorites() }
                 lastRefresh = System.currentTimeMillis()
             } else {
                 val error = (latestResult as? ApiResult.Failure)?.message
@@ -114,8 +109,52 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private var loadingMoreLatest = false
+
+    private suspend fun checkFavorites() {
+        favoritesRepository.refreshIds()
+        val userId = (auth.state.value as? AuthState.Authorized)?.user?.id ?: run { checkedUserId = null; return }
+        if (checkedUserId == userId) return
+        val favorites = favoritesRepository.allReleases() as? ApiResult.Success ?: return
+        val newEpisodes = compareFavoriteEpisodes(episodeStore.previous(userId), favorites.value)
+        episodeStore.save(userId, favorites.value)
+        checkedUserId = userId
+        val current = _state.value as? HomeUiState.Content ?: return
+        _state.value = current.copy(favoriteIds = favoritesRepository.ids.value, newEpisodes = newEpisodes,
+            showEpisodeDialog = newEpisodes.isNotEmpty())
+    }
+
+    /**
+     * Endless "new episodes": `releases/latest` caps at 50 and has no paging, but the catalog sorted
+     * by FRESH_AT_DESC returns the same order with pages, so page N (size 50) continues the list.
+     * Catalog items carry no latest episode, so older cards show only the "hours ago" badge.
+     */
+    fun loadMoreLatest() {
+        val content = _state.value as? HomeUiState.Content ?: return
+        val page = content.latestNextPage ?: return
+        if (loadingMoreLatest) return
+        loadingMoreLatest = true
+        viewModelScope.launch {
+            val result = repository.catalog(CatalogFilter(sorting = "FRESH_AT_DESC"), page, LATEST_FIRST_PAGE,
+                fields = "id,name,alias,poster,year,type,season,publish_day,fresh_at,description,genres")
+            val current = _state.value as? HomeUiState.Content
+            if (current != null && result is ApiResult.Success) {
+                val known = current.latest.mapTo(HashSet()) { it.id }
+                _state.value = current.copy(
+                    latest = current.latest + result.value.releases.filter { it.id !in known },
+                    latestNextPage = if (page < result.value.totalPages) page + 1 else null,
+                )
+            }
+            loadingMoreLatest = false
+        }
+    }
+
     fun dismissEpisodeDialog() {
         val content = _state.value as? HomeUiState.Content ?: return
         _state.value = content.copy(showEpisodeDialog = false)
+    }
+
+    private companion object {
+        const val LATEST_FIRST_PAGE = 50 // API maximum for releases/latest and the catalog
     }
 }

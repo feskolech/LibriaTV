@@ -60,7 +60,7 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     }
     suspend fun episodeDetails(id: String): ApiResult<EpisodeDto> = request { api.episode(id) }
     /** [compact] asks the API only for what a poster grid needs (~8x smaller pages). */
-    suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30, compact: Boolean = false): ApiResult<ReleasePage> = request {
+    suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30, compact: Boolean = false, fields: String? = null): ApiResult<ReleasePage> = request {
         val response = api.catalog(
             page = page, limit = limit,
             genres = filter.genres.takeIf { it.isNotEmpty() }?.joinToString(","),
@@ -69,7 +69,7 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
             fromYear = filter.fromYear, toYear = filter.toYear,
             publishStatuses = filter.statuses.toList().takeIf { it.isNotEmpty() },
             sorting = filter.sorting,
-            include = if (compact) "id,name,poster,year,type" else null,
+            include = fields ?: if (compact) "id,name,poster,year,type" else null,
         )
         val pagination = response.meta?.pagination
         ReleasePage(response.data.mapNotNull { it.toDomain() }, pagination?.currentPage ?: page, pagination?.totalPages ?: page)

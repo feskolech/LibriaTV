@@ -176,4 +176,5 @@
     <string name="player_network_error">Can’t load the video. Check your internet connection.</string>
     <string name="player_switch_quality">Switch to %1$dp</string>
     <string name="catalog_title_progress">Building the A–Z catalog… %1$d / %2$d</string>
+    <string name="days_ago">%1$d d ago</string>
 </resources>
