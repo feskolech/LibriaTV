@@ -22,7 +22,8 @@ class LibraryRepository @Inject constructor(private val api: AniLibriaApi) {
         block()
     } catch (cancelled: CancellationException) {
         throw cancelled
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        android.util.Log.w("LibriaTV", "Library request failed", e)
         null
     }
 

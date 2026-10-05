@@ -11,6 +11,8 @@ import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.AuthRepository
 import ru.feskolech.libriatv.data.repo.AuthState
 import ru.feskolech.libriatv.data.repo.FavoritesRepository
+import ru.feskolech.libriatv.data.repo.LibraryRepository
+import ru.feskolech.libriatv.domain.UserList
 import ru.feskolech.libriatv.domain.FilterOption
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.sortedByTitle
@@ -25,12 +27,15 @@ data class FavoritesUiState(
     val page: Int = 0,
     val totalPages: Int = 1,
     val error: String? = null,
+    /** null = favorites; otherwise one of the account lists (Watching, Planned, ...). */
+    val tab: UserList? = null,
 )
 
 @HiltViewModel
 class FavoritesViewModel @Inject constructor(
     private val repository: FavoritesRepository,
     private val auth: AuthRepository,
+    private val library: LibraryRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow(FavoritesUiState())
     val state: StateFlow<FavoritesUiState> = _state
@@ -70,6 +75,12 @@ class FavoritesViewModel @Inject constructor(
         }
     }
 
+    fun selectTab(tab: UserList?) {
+        if (tab == _state.value.tab) return
+        _state.value = _state.value.copy(tab = tab, releases = emptyList(), page = 0, totalPages = 1)
+        reload()
+    }
+
     fun sort(id: String?) {
         _state.value = _state.value.copy(selectedSorting = id)
         reload()
@@ -77,12 +88,24 @@ class FavoritesViewModel @Inject constructor(
 
     fun loadMore() {
         val current = _state.value
-        if (!loading && current.selectedSorting != "TITLE_ASC" && current.page < current.totalPages)
+        if (!loading && (current.tab != null || current.selectedSorting != "TITLE_ASC") && current.page < current.totalPages)
             loadJob = viewModelScope.launch { load(current.page + 1) }
     }
 
     private suspend fun load(page: Int) {
         if (loading) return
+        _state.value.tab?.let { tab ->
+            loading = true
+            _state.value = _state.value.copy(loading = true, error = null)
+            val result = library.listReleases(tab, page)
+            if (_state.value.tab != tab) { loading = false; return }
+            _state.value = if (result == null) _state.value.copy(loading = false, error = "Network error")
+                else _state.value.copy(loading = false,
+                    releases = if (page == 1) result.releases else (_state.value.releases + result.releases).distinctBy { it.id },
+                    page = result.page, totalPages = result.totalPages)
+            loading = false
+            return
+        }
         if (_state.value.selectedSorting == "TITLE_ASC") {
             loadAllByTitle()
             return

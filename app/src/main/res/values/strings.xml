@@ -186,6 +186,7 @@
     <string name="list_watched">Просмотрено</string>
     <string name="list_postponed">Отложено</string>
     <string name="list_abandoned">Брошено</string>
+    <string name="list_empty">В списке «%1$s» пока пусто. Добавить релиз можно кнопкой «В список» в его карточке.</string>
     <string name="list_remove">Убрать из списка</string>
     <string name="rating_rate">Оценить</string>
     <string name="rating_own">★ %1$d</string>

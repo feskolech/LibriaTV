@@ -186,6 +186,7 @@
     <string name="list_watched">Watched</string>
     <string name="list_postponed">On hold</string>
     <string name="list_abandoned">Dropped</string>
+    <string name="list_empty">“%1$s” is empty. Add a release with the “Add to list” button on its page.</string>
     <string name="list_remove">Remove from list</string>
     <string name="rating_rate">Rate</string>
     <string name="rating_own">★ %1$d</string>
