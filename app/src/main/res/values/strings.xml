@@ -77,6 +77,12 @@
     <string name="torrent_hardsub">хардсаб</string>
     <string name="torrent_no_app_title">Нет приложения для торрентов</string>
     <string name="torrent_no_app_text">Установите TorrServe или отсканируйте magnet-ссылку телефоном.</string>
+    <string name="torrent_loading_files">Получаем файлы раздачи…</string>
+    <string name="torrent_files_error">Не удалось получить файлы из TorrServe. Повторите выбор раздачи.</string>
+    <string name="torrent_server_hint">Включите в TorrServe автозапуск сервера — тогда серию можно выбрать прямо здесь.</string>
+    <string name="torrent_choose_file">Выберите серию</string>
+    <string name="torrent_mark_title">Какие серии отметить просмотренными?</string>
+    <string name="torrent_mark_done">Готово</string>
     <string name="close">Закрыть</string>
     <string name="search_hint">Название аниме</string>
     <string name="search_voice">Голосовой поиск</string>

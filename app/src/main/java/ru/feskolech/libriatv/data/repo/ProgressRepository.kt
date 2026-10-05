@@ -7,13 +7,14 @@ import ru.feskolech.libriatv.domain.Release
 data class ServerTimecode(val episodeId: String, val positionMs: Long, val watched: Boolean)
 data class ContinueItem(val release: Release, val episode: Episode, val progress: PlaybackProgress)
 
-/** Server's watched flag is authoritative; otherwise retain the furthest position. */
+/** Server's watched flag is authoritative, except for explicit local manual marks. */
 fun mergeProgress(local: PlaybackProgress?, server: ServerTimecode?): PlaybackProgress? {
     if (local == null && server == null) return null
     return PlaybackProgress(
         maxOf(local?.positionMs ?: 0, server?.positionMs ?: 0),
         local?.durationMs ?: 0,
         server?.watched,
+        local?.manualWatched == true,
     )
 }
 
@@ -22,6 +23,11 @@ class ProgressRepository @Inject constructor(
     private val store: PlaybackStore,
     private val tokens: TokenStore,
 ) {
+    suspend fun markWatched(episode: Episode, releaseId: Int) {
+        val seconds = (store.progress(episode.id)?.positionMs ?: 0) / 1000.0
+        store.markWatched(episode.id, releaseId)
+        if (!tokens.get().isNullOrBlank()) repository.saveTimecode(episode.id, seconds, true)
+    }
     suspend fun serverTimecodes(): ApiResult<List<ServerTimecode>> {
         if (tokens.get().isNullOrBlank()) return ApiResult.Success(emptyList())
         return repository.timecodes()

@@ -33,6 +33,21 @@ fun openMagnet(context: Context, magnet: String): Boolean {
     }
 }
 
+fun openTorrServeStream(context: Context, url: String): Boolean {
+    val view = Intent(Intent.ACTION_VIEW).setDataAndType(Uri.parse(url), "video/*")
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    for (pkg in TORRSERVE_PACKAGES) {
+        try {
+            context.startActivity(Intent(view).setPackage(pkg))
+            return true
+        } catch (_: ActivityNotFoundException) { }
+    }
+    return try {
+        context.startActivity(Intent.createChooser(view, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (_: ActivityNotFoundException) { false }
+}
+
 /** Short magnet (info-hash only) — fits a QR code that a phone camera can still read from the sofa. */
 fun shortMagnet(magnet: String): String =
     Regex("xt=urn:btih:[0-9A-Za-z]+").find(magnet)?.let { "magnet:?${it.value}" } ?: magnet

@@ -76,6 +76,12 @@
     <string name="torrent_hardsub">hardsub</string>
     <string name="torrent_no_app_title">No torrent app found</string>
     <string name="torrent_no_app_text">Install TorrServe or scan the magnet link with your phone.</string>
+    <string name="torrent_loading_files">Loading torrent files…</string>
+    <string name="torrent_files_error">Could not load files from TorrServe. Try selecting the torrent again.</string>
+    <string name="torrent_server_hint">Enable server autostart in TorrServe to choose an episode here.</string>
+    <string name="torrent_choose_file">Choose an episode</string>
+    <string name="torrent_mark_title">Which episodes have you watched?</string>
+    <string name="torrent_mark_done">Done</string>
     <string name="close">Close</string>
     <string name="search_hint">Anime title</string>
     <string name="search_voice">Voice search</string>

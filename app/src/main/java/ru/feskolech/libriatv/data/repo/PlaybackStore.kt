@@ -13,8 +13,9 @@ import kotlinx.coroutines.flow.first
 
 private val Context.playbackDataStore by preferencesDataStore(name = "playback")
 
-data class PlaybackProgress(val positionMs: Long, val durationMs: Long, val serverWatched: Boolean? = null) {
-    val watched: Boolean get() = serverWatched ?: (durationMs > 0 && positionMs >= durationMs * 0.9)
+data class PlaybackProgress(val positionMs: Long, val durationMs: Long, val serverWatched: Boolean? = null,
+    val manualWatched: Boolean = false) {
+    val watched: Boolean get() = manualWatched || (serverWatched ?: (durationMs > 0 && positionMs >= durationMs * 0.9))
 }
 
 data class PlaybackEntry(val episodeId: String, val releaseId: Int?, val progress: PlaybackProgress)
@@ -53,7 +54,8 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
     suspend fun progress(episodeId: String): PlaybackProgress? {
         val prefs = context.playbackDataStore.data.first()
         val position = prefs[longPreferencesKey("position_$episodeId")] ?: return null
-        return PlaybackProgress(position, prefs[longPreferencesKey("duration_$episodeId")] ?: 0)
+        return PlaybackProgress(position, prefs[longPreferencesKey("duration_$episodeId")] ?: 0,
+            manualWatched = prefs[intPreferencesKey("manual_watched_$episodeId")] == 1)
     }
 
     suspend fun entries(): List<PlaybackEntry> {
@@ -63,7 +65,8 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
         return (indexed + legacy).distinct().mapNotNull { id ->
             val releaseId = prefs[intPreferencesKey("release_$id")]
             val position = prefs[longPreferencesKey("position_$id")] ?: return@mapNotNull null
-            PlaybackEntry(id, releaseId, PlaybackProgress(position, prefs[longPreferencesKey("duration_$id")] ?: 0))
+            PlaybackEntry(id, releaseId, PlaybackProgress(position, prefs[longPreferencesKey("duration_$id")] ?: 0,
+                manualWatched = prefs[intPreferencesKey("manual_watched_$id")] == 1))
         }
     }
 
@@ -79,5 +82,18 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
                 it[key] = ids.joinToString(",")
             }
         }
+    }
+
+    suspend fun markWatched(episodeId: String, releaseId: Int) {
+        val previous = progress(episodeId)
+        save(episodeId, previous?.positionMs ?: 0, previous?.durationMs ?: 0, releaseId)
+        context.playbackDataStore.edit { it[intPreferencesKey("manual_watched_$episodeId")] = 1 }
+    }
+
+    suspend fun torrentPrompted(id: Int): Boolean =
+        context.playbackDataStore.data.first()[intPreferencesKey("torrent_prompt_$id")] == 1
+
+    suspend fun setTorrentPrompted(id: Int) {
+        context.playbackDataStore.edit { it[intPreferencesKey("torrent_prompt_$id")] = 1 }
     }
 }

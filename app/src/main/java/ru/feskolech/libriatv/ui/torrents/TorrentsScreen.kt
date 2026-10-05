@@ -18,6 +18,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +41,11 @@ import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.Torrent
 import ru.feskolech.libriatv.ui.components.makeQr
+import ru.feskolech.libriatv.data.repo.TorrServeListing
+import ru.feskolech.libriatv.domain.Episode
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 @Composable
 fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
@@ -61,6 +68,9 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
                 LaunchedEffect(Unit) { withFrameNanos { }; runCatching { firstFocus.requestFocus() } }
             }
             is TorrentsUiState.Content -> {
+                if (current.busy) Text(stringResource(R.string.torrent_loading_files), color = Color.White)
+                if (current.error) Text(stringResource(R.string.torrent_files_error), color = Color.White)
+                if (current.hint) Text(stringResource(R.string.torrent_server_hint), color = Color.White)
                 if (current.torrents.isEmpty()) {
                     Text(stringResource(R.string.torrents_empty), color = Color.White)
                 } else {
@@ -71,7 +81,9 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
                                 modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
                                 onClick = {
                                     val magnet = torrent.magnet ?: return@TorrentRow
-                                    if (!openMagnet(context, magnet)) viewModel.showQr(magnet)
+                                    viewModel.openTorrent(torrent) { link ->
+                                        openMagnet(context, link).also { if (!it) viewModel.showQr(link) }
+                                    }
                                 },
                             )
                         }
@@ -83,6 +95,63 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
     }
 
     qrMagnet?.let { magnet -> MagnetQrDialog(magnet, onDismiss = { viewModel.showQr(null) }) }
+    (state as? TorrentsUiState.Content)?.let { content ->
+        content.listing?.let { listing -> FileChoiceDialog(listing, content.watchedNumbers,
+            onPick = { viewModel.selectFile(it) { url -> openTorrServeStream(context, url) } },
+            onDismiss = viewModel::closeListing) }
+        content.markChoices?.let { choices -> MarkChoiceDialog(choices, content.watched,
+            onConfirm = viewModel::mark, onDismiss = { viewModel.mark(emptySet()) }) }
+    }
+}
+
+@Composable
+private fun FileChoiceDialog(
+    listing: TorrServeListing, watched: Set<Int>,
+    onPick: (ru.feskolech.libriatv.data.repo.TorrServeFile) -> Unit, onDismiss: () -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    val first = listing.files.indexOfFirst { it.episode !in watched }.coerceAtLeast(0)
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.width(650.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.torrent_choose_file), style = MaterialTheme.typography.headlineSmall)
+                LazyColumn(Modifier.heightIn(max = 470.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    itemsIndexed(listing.files) { index, file ->
+                        Button(onClick = { onPick(file) }, scale = WideButtonScale,
+                            modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier)) {
+                            Text("${if (file.episode in watched) "✓  " else ""}${file.episode?.let { "$it. " }.orEmpty()}${file.name}  •  ${formatSize(file.size).orEmpty()}",
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    LaunchedEffect(listing) { withFrameNanos { }; runCatching { focus.requestFocus() } }
+}
+
+@Composable
+private fun MarkChoiceDialog(choices: List<Episode>, watched: Set<String>, onConfirm: (Set<String>) -> Unit, onDismiss: () -> Unit) {
+    var selected by remember(choices) { mutableStateOf(emptySet<String>()) }
+    val focus = remember { FocusRequester() }
+    val first = choices.indexOfFirst { it.id !in watched }.coerceAtLeast(0)
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(16.dp)) {
+            Column(Modifier.width(500.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.torrent_mark_title), style = MaterialTheme.typography.headlineSmall)
+                LazyColumn(Modifier.heightIn(max = 390.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    itemsIndexed(choices) { index, episode ->
+                        Button(onClick = { selected = if (episode.id in selected) selected - episode.id else selected + episode.id },
+                            modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier), scale = WideButtonScale) {
+                            Text("${if (episode.id in selected || episode.id in watched) "✓" else "○"}  ${episode.ordinal?.toInt() ?: ""} ${episode.name}")
+                        }
+                    }
+                }
+                Button(onClick = { onConfirm(selected) }) { Text(stringResource(R.string.torrent_mark_done)) }
+            }
+        }
+    }
+    LaunchedEffect(choices) { withFrameNanos { }; runCatching { focus.requestFocus() } }
 }
 
 @Composable

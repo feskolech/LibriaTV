@@ -60,6 +60,7 @@ android {
 
     buildTypes {
         debug {
+            (findProperty("debugApplicationIdSuffix") as String?)?.let { applicationIdSuffix = it }
             // Local emulator verification can replace an installed release without clearing its account.
             if (releaseSigning != null) signingConfig = signingConfigs.getByName("release")
         }
