@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv.ui.favorites
 
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
@@ -49,12 +51,19 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
     onContentFocus: () -> Unit, viewModel: FavoritesViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val first = remember { FocusRequester() }
+    // Entering from the side menu lands on the tabs (on the selected one), unless the viewer left the
+    // grid for the menu a moment ago - then the grid gets its last card back.
+    val selectedTab = remember { FocusRequester() }
+    var gridHadFocus by remember { mutableStateOf(false) }
     var sortingOpen by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.reload() }
     LaunchedEffect(state.authorized) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { first.requestFocus() } }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-        .onFocusChanged { if (it.hasFocus) onContentFocus() }.padding(top = 27.dp),
+        .onFocusChanged { if (it.hasFocus) onContentFocus() }
+        .focusProperties { onEnter = { if (state.authorized && !gridHadFocus) runCatching { selectedTab.requestFocus() } } }
+        .focusGroup()
+        .padding(top = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (!state.authorized && !state.loading) {
             Text(stringResource(R.string.favorites), Modifier.padding(horizontal = 48.dp),
@@ -67,16 +76,19 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
             // Favorites and the account lists in one place; tabs switch on focus like the schedule.
             val tabs = listOf<UserList?>(null) + UserList.entries
             androidx.tv.material3.TabRow(selectedTabIndex = tabs.indexOf(state.tab).coerceAtLeast(0),
-                modifier = Modifier.padding(horizontal = 48.dp).focusRequester(first)) {
+                // Up from the sort button / grid returns to the selected tab, not the nearest one.
+                modifier = Modifier.padding(horizontal = 48.dp).focusRequester(first).focusRestorer(selectedTab)
+                    .onFocusChanged { if (it.hasFocus) gridHadFocus = false }) {
                 tabs.forEachIndexed { index, tab ->
-                    Tab(selected = tab == state.tab, onFocus = { viewModel.selectTab(tab) }) {
+                    Tab(selected = tab == state.tab, onFocus = { viewModel.selectTab(tab) },
+                        modifier = if (tab == state.tab) Modifier.focusRequester(selectedTab) else Modifier) {
                         Text(stringResource(tab.tabLabel()), fontSize = 20.sp,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
                     }
                 }
             }
             if (state.tab == null) Button(onClick = { sortingOpen = true },
-                modifier = Modifier.padding(horizontal = 48.dp)) {
+                modifier = Modifier.padding(horizontal = 48.dp).onFocusChanged { if (it.isFocused) gridHadFocus = false }) {
                 Text(stringResource(R.string.filter_sorting) + ": " +
                     (if (state.selectedSorting == "TITLE_ASC") stringResource(R.string.sort_title)
                         else state.sorting.firstOrNull { it.id == state.selectedSorting }?.title
@@ -95,7 +107,7 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                 state.tab == null && state.selectedSorting == "TITLE_ASC" -> AlphabetGrid(state.releases,
                     badge = { it.latestFavoriteOrdinal()?.let { n -> stringResource(R.string.episode_number, n) } },
                     favoriteIds = state.ids, onOpen = onOpenRelease)
-                else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize().focusRestorer(),
+                else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize().focusRestorer().onFocusChanged { if (it.hasFocus) gridHadFocus = true },
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                     itemsIndexed(state.releases, key = { _, release -> release.id }) { index, release ->

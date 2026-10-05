@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv
 
+import androidx.compose.runtime.withFrameNanos
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import ru.feskolech.libriatv.ui.components.LocalDrawerFocus
 import androidx.compose.runtime.CompositionLocalProvider
@@ -228,6 +229,19 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
         DrawerBrowsing.active = drawerState.currentValue == DrawerValue.Open
         if (drawerState.currentValue == DrawerValue.Closed) { lastMenuItem = null; previewTarget = null }
     }
+    var enterAfterOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(currentRoute, enterAfterOpen) {
+        if (!enterAfterOpen) return@LaunchedEffect
+        // Wait out the cross-fade (the old screen must be gone), then give the new one up to ~1 s of
+        // loading to have something to focus.
+        kotlinx.coroutines.delay(200)
+        repeat(20) {
+            withFrameNanos { }
+            if (focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right)) { enterAfterOpen = false; return@LaunchedEffect }
+            kotlinx.coroutines.delay(50)
+        }
+        enterAfterOpen = false
+    }
     LaunchedEffect(previewTarget) {
         val target = previewTarget ?: return@LaunchedEffect
         kotlinx.coroutines.delay(300)
@@ -274,8 +288,15 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             (destination == Destination.Search && currentRoute.startsWith("search?")),
                         // The section already opened while the item was focused; OK just steps into it.
                         onClick = {
-                            openSection(destination)
-                            focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right)
+                            if (currentRoute == destination.route) {
+                                focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Right)
+                            } else {
+                                // Scrolled quickly: the section is not open yet. Stepping right now would land in
+                                // the old screen, which then disappears and drops the focus back into the menu.
+                                previewTarget = null
+                                openSection(destination)
+                                enterAfterOpen = true
+                            }
                         },
                         leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
@@ -300,7 +321,13 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     ) {
         // Screens use this to send Left from their leftmost controls straight to the side menu.
         CompositionLocalProvider(LocalDrawerFocus provides itemFocus.getValue(selectedDestination)) {
-            NavHost(navController = navController, startDestination = Destination.Home.route) {
+            // Short cross-fade: the old screen stays focusable while it fades out, and browsing the menu
+            // swaps sections often, so the default 700 ms fade felt slow and could catch the focus.
+            NavHost(navController = navController, startDestination = Destination.Home.route,
+                enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+                exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) },
+                popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+                popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(150)) }) {
                 Destination.entries.forEach { destination ->
                     composable(destination.route) {
                         if (destination == Destination.Profile) {

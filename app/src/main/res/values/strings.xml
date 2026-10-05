@@ -185,7 +185,6 @@
     <string name="player_network_error">Не удаётся загрузить видео. Проверьте подключение к интернету.</string>
     <string name="player_switch_quality">Включить %1$dp</string>
     <string name="catalog_title_progress">Собираем каталог по алфавиту… %1$d / %2$d</string>
-    <string name="days_ago">%1$d дн. назад</string>
     <string name="night_mode_hint">Взрывы тише, диалоги громче — чтобы не будить соседей</string>
     <string name="description_more">Описание</string>
     <string name="list_add">В список</string>
@@ -225,4 +224,10 @@
     <string name="about_issues">Сообщить о проблеме</string>
     <string name="about_license">Лицензия: GPL-3.0</string>
     <string name="about_disclaimer">LibriaTV — неофициальный клиент AniLiberty (бывш. AniLibria). Не связан ни с командой AniLiberty, ни со студией AniLibria.</string>
+    <plurals name="days_ago">
+        <item quantity="one">%1$d день назад</item>
+        <item quantity="few">%1$d дня назад</item>
+        <item quantity="many">%1$d дней назад</item>
+        <item quantity="other">%1$d дня назад</item>
+    </plurals>
 </resources>

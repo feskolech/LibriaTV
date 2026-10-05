@@ -185,7 +185,6 @@
     <string name="player_network_error">Can’t load the video. Check your internet connection.</string>
     <string name="player_switch_quality">Switch to %1$dp</string>
     <string name="catalog_title_progress">Building the A–Z catalog… %1$d / %2$d</string>
-    <string name="days_ago">%1$d d ago</string>
     <string name="night_mode_hint">Quieter explosions, louder dialogue — for late-night watching</string>
     <string name="description_more">Description</string>
     <string name="list_add">Add to list</string>
@@ -225,4 +224,8 @@
     <string name="about_issues">Report an issue</string>
     <string name="about_license">License: GPL-3.0</string>
     <string name="about_disclaimer">LibriaTV is an unofficial AniLiberty (formerly AniLibria) client, not affiliated with the AniLiberty team or the AniLibria studio.</string>
+    <plurals name="days_ago">
+        <item quantity="one">%1$d day ago</item>
+        <item quantity="other">%1$d days ago</item>
+    </plurals>
 </resources>

@@ -1,5 +1,8 @@
 package ru.feskolech.libriatv.ui.home
 
+import ru.feskolech.libriatv.ui.components.rowFocusItem
+import ru.feskolech.libriatv.ui.components.rowFocusMemory
+import ru.feskolech.libriatv.ui.components.rememberRowFocusMemory
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import android.os.Build
 import android.graphics.RenderEffect
@@ -222,11 +225,13 @@ private fun ContinueRow(items: List<ContinueItem>, cardModifier: (Release) -> Mo
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.continue_watching), Modifier.padding(start = 48.dp),
             fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        val memory = rememberRowFocusMemory()
         LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-            items(items, key = { it.episode.id }) { item ->
+            horizontalArrangement = Arrangement.spacedBy(22.dp), modifier = Modifier.rowFocusMemory(memory)) {
+            itemsIndexed(items, key = { _, it -> it.episode.id }) { index, item ->
                 var focused by remember { mutableStateOf(false) }
                 Column(Modifier.width(260.dp)
+                    .rowFocusItem(memory, index)
                     .then(cardModifier(item.release))
                     .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus(item.release) }
                     .graphicsLayer { scaleX = if (focused) 1.04f else 1f; scaleY = scaleX }
@@ -301,13 +306,16 @@ private fun PosterRow(
         if (releases.isEmpty()) {
             Text(stringResource(R.string.home_no_releases), Modifier.padding(start = 48.dp), color = Color.LightGray)
         } else {
+            val memory = rememberRowFocusMemory()
             LazyRow(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(22.dp),
+                modifier = Modifier.rowFocusMemory(memory),
             ) {
                 itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->
                     PosterCard(release, badge(release), timeBadge(release), release.id in favoriteIds,
                         modifier = (if (firstPoster != null && release.id == releases.first().id) Modifier.focusRequester(firstPoster) else Modifier)
+                            .rowFocusItem(memory, index)
                             .then(cardModifier(release)),
                         onFocus = {
                             onFocus(release)
@@ -337,15 +345,15 @@ private fun SelectedInfo(release: Release, episode: String?) {
     }
 }
 
-/** "<1 h ago" within the first hour, "5 h ago" for the last two days, "12 d ago" up to two months, then the date itself. */
+/** "<1 h ago" within the first hour, "5 h ago" within a day, then "1 day ago", "12 days ago" up to two months, then the date. */
 @Composable
 private fun freshLabel(value: String): String? {
     val time = runCatching { OffsetDateTime.parse(value) }.getOrNull() ?: return null
     val hours = ChronoUnit.HOURS.between(time, OffsetDateTime.now()).coerceAtLeast(0)
     return when {
         hours < 1 -> stringResource(R.string.less_than_hour_ago)
-        hours < 48 -> stringResource(R.string.hours_ago, hours)
-        hours < 24 * 60 -> stringResource(R.string.days_ago, hours / 24)
+        hours < 24 -> stringResource(R.string.hours_ago, hours)
+        hours < 24 * 60 -> (hours / 24).toInt().let { days -> androidx.compose.ui.res.pluralStringResource(R.plurals.days_ago, days, days) }
         else -> time.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
     }
 }
