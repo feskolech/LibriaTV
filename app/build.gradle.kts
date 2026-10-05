@@ -42,6 +42,11 @@ android {
         versionName = "0.1.0"
         // GitHub repo checked for app updates ("owner/name"); forks can override with -PupdateRepo=.
         buildConfigField("String", "UPDATE_REPO", "\"${findProperty("updateRepo") ?: "feskolech/anilibria-androidtv"}\"")
+        fun escapedProperty(name: String) = (findProperty(name) as String?).orEmpty()
+            .replace("\\", "\\\\").replace("\"", "\\\"")
+        buildConfigField("String", "CRASH_REPORT_URL", "\"${escapedProperty("crashReportUrl")}\"")
+        buildConfigField("String", "CRASH_REPORT_LOGIN", "\"${escapedProperty("crashReportLogin")}\"")
+        buildConfigField("String", "CRASH_REPORT_PASSWORD", "\"${escapedProperty("crashReportPassword")}\"")
     }
 
     signingConfigs {
@@ -103,6 +108,7 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
+    implementation(libs.acra.core)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.mockwebserver)

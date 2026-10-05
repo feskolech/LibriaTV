@@ -70,6 +70,7 @@ import ru.feskolech.libriatv.ui.settings.SettingsScreen
 import ru.feskolech.libriatv.ui.settings.UpdateDialog
 import ru.feskolech.libriatv.ui.settings.UpdateUiState
 import ru.feskolech.libriatv.ui.settings.UpdateViewModel
+import ru.feskolech.libriatv.crash.CrashReportViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -95,6 +96,8 @@ private enum class Destination(val route: String, val title: Int, val icon: Imag
 
 @Composable
 private fun AppNavigation(onExit: () -> Unit) {
+    val crashViewModel: CrashReportViewModel = hiltViewModel()
+    val crashPrompt by crashViewModel.prompt.collectAsState()
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.state.collectAsState()
     LaunchedEffect(Unit) { updateViewModel.check() }
@@ -224,6 +227,25 @@ private fun AppNavigation(onExit: () -> Unit) {
     UpdateDialog(updateState,
         download = { (updateState as? UpdateUiState.Available)?.let { updateViewModel.download(it.release) } },
         dismiss = updateViewModel::dismiss)
+
+    if (crashPrompt) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = crashViewModel::decline) {
+            androidx.tv.material3.Surface {
+                Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Text(stringResource(R.string.crash_report_question), style = MaterialTheme.typography.headlineSmall)
+                    Button(onClick = { crashViewModel.send(always = false) }) {
+                        Text(stringResource(R.string.crash_report_send))
+                    }
+                    Button(onClick = crashViewModel::decline) {
+                        Text(stringResource(R.string.crash_report_decline))
+                    }
+                    Button(onClick = { crashViewModel.send(always = true) }) {
+                        Text(stringResource(R.string.crash_report_always))
+                    }
+                }
+            }
+        }
+    }
 
     if (confirmExit) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { confirmExit = false }) {

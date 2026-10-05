@@ -13,3 +13,6 @@
 # Keep stack traces readable in crash reports.
 -keepattributes SourceFile, LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# ACRA loads the consent gate by its META-INF/services class name.
+-keep class ru.feskolech.libriatv.crash.DeferredCrashInteraction { *; }

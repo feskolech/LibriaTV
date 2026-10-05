@@ -136,4 +136,11 @@
     <string name="update_ready">Обновление готово к установке</string>
     <string name="update_install">Установить</string>
     <string name="update_permission_hint">Разрешите установку из этого приложения, затем вернитесь и нажмите «Установить».</string>
+    <string name="settings_crash_reports">Отчёты о падениях</string>
+    <string name="settings_crash_reports_automatic">Отправлять отчёты автоматически</string>
+    <string name="settings_crash_reports_unavailable">Отчёты выключены в этой сборке</string>
+    <string name="crash_report_question">Отправить отчёт о падении?</string>
+    <string name="crash_report_send">Отправить</string>
+    <string name="crash_report_decline">Не отправлять</string>
+    <string name="crash_report_always">Всегда отправлять</string>
 </resources>

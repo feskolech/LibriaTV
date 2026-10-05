@@ -136,4 +136,11 @@
     <string name="update_ready">Update ready to install</string>
     <string name="update_install">Install</string>
     <string name="update_permission_hint">Allow installs from this app, then return and select Install.</string>
+    <string name="settings_crash_reports">Crash reports</string>
+    <string name="settings_crash_reports_automatic">Send crash reports automatically</string>
+    <string name="settings_crash_reports_unavailable">Crash reports are disabled in this build</string>
+    <string name="crash_report_question">Send a crash report?</string>
+    <string name="crash_report_send">Send</string>
+    <string name="crash_report_decline">Don’t send</string>
+    <string name="crash_report_always">Always send</string>
 </resources>

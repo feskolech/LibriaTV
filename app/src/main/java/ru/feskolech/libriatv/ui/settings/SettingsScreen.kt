@@ -68,6 +68,15 @@ fun SettingsScreen(
             item { SettingChoices(R.string.settings_mirror, listOf("anilibria.top", "aniliberty.top"),
                 listOf("anilibria.top", "aniliberty.top").indexOf(content.mirror), viewModel::mirror,
                 listOf("anilibria.top", "aniliberty.top")) }
+            item { SettingTitle(R.string.settings_crash_reports) }
+            item {
+                if (content.crashReportsAvailable) {
+                    SettingToggle(R.string.settings_crash_reports_automatic, content.automaticCrashReports,
+                        viewModel::automaticCrashReports)
+                } else {
+                    Text(stringResource(R.string.settings_crash_reports_unavailable), color = Color.LightGray)
+                }
+            }
             item { SettingTitle(R.string.settings_about) }
             item {
                 Button(onClick = checkUpdates) { Text(stringResource(R.string.settings_check_updates)) }

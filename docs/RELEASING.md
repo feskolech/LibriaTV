@@ -41,3 +41,24 @@ Settings → Secrets and variables → Actions → New repository secret:
 Проверка обновлений смотрит в репозиторий из `BuildConfig.UPDATE_REPO`
 (по умолчанию `feskolech/anilibria-androidtv`). Для своего форка: `-PupdateRepo=owner/repo`.
 Автообновление работает только с публичным репозиторием (GitHub API без токена).
+
+## Сборка с отчётами о падениях
+
+По умолчанию `CRASH_REPORT_URL` пустой: ACRA не инициализируется, отчёты не собираются.
+Для сборки с отчётами задайте HTTPS URL приёмника и, при необходимости, Basic-auth через
+локальные Gradle-свойства (не сохраняйте их в репозитории):
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21'
+$env:GRADLE_USER_HOME='F:\gradle-home'
+$env:TEMP='F:\tmp'; $env:TMP='F:\tmp'
+.\gradlew.bat :app:assembleRelease -PcrashReportUrl=https://example.org/crash `
+  -PcrashReportLogin=LOGIN -PcrashReportPassword=PASSWORD `
+  -PsigningProperties=F:\private\signing.properties
+```
+
+Приёмник должен принимать POST с `Content-Type: application/json` и отвечать кодом 2xx.
+Отчёт содержит версию приложения, модель устройства, Android, время и стек падения.
+DataStore, SharedPreferences и logcat не включены. После падения отчёт остаётся на устройстве
+до выбора «Отправить», «Не отправлять» или «Всегда отправлять» при следующем запуске.
+Автоматическую отправку можно отключить в Настройках.
