@@ -24,7 +24,8 @@ import javax.inject.Singleton
 object ApiModule {
     @Provides @Singleton fun json(): Json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
-    @Provides @Singleton fun client(tokenStore: TokenStore, settingsStore: SettingsStore): OkHttpClient {
+    @Provides @Singleton fun client(tokenStore: TokenStore, settingsStore: SettingsStore,
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context): OkHttpClient {
         val auth = Interceptor { chain ->
             val token = runBlocking { tokenStore.get() }
             val preferred = runBlocking { settingsStore.mirror() }
@@ -45,10 +46,43 @@ object ApiModule {
             if (response.code == 401) runBlocking { tokenStore.set(null) }
             response
         }
+        // Path + status + duration only (no query, headers or body): safe in release, used to diagnose
+        // slow screens on real TV boxes via `adb logcat -s LibriaNet`.
+        val timing = Interceptor { chain ->
+            val started = System.nanoTime()
+            val request = chain.request()
+            try {
+                chain.proceed(request).also {
+                    android.util.Log.i("LibriaNet", "${it.code} ${(System.nanoTime() - started) / 1_000_000} ms ${request.method} ${request.url.host}${request.url.encodedPath}")
+                }
+            } catch (e: IOException) {
+                android.util.Log.w("LibriaNet", "FAIL ${(System.nanoTime() - started) / 1_000_000} ms ${request.method} ${request.url.host}${request.url.encodedPath}: ${e.javaClass.simpleName}")
+                throw e
+            }
+        }
+        // Per-phase timings (DNS / connect / TLS / waiting for a connection) for the same diagnostics.
+        val phases = okhttp3.EventListener.Factory { call ->
+            val t0 = System.nanoTime()
+            fun log(phase: String) { android.util.Log.i("LibriaNet", "+${(System.nanoTime() - t0) / 1_000_000} ms $phase ${call.request().url.encodedPath}") }
+            object : okhttp3.EventListener() {
+                override fun dnsStart(call: okhttp3.Call, domainName: String) { log("dnsStart") }
+                override fun dnsEnd(call: okhttp3.Call, domainName: String, inetAddressList: List<java.net.InetAddress>) { log("dnsEnd ${inetAddressList.joinToString { it.hostAddress.orEmpty() }}") }
+                override fun connectStart(call: okhttp3.Call, inetSocketAddress: java.net.InetSocketAddress, proxy: java.net.Proxy) { log("connectStart ${inetSocketAddress.address.hostAddress}") }
+                override fun secureConnectStart(call: okhttp3.Call) { log("tlsStart") }
+                override fun secureConnectEnd(call: okhttp3.Call, handshake: okhttp3.Handshake?) { log("tlsEnd") }
+                override fun connectFailed(call: okhttp3.Call, inetSocketAddress: java.net.InetSocketAddress, proxy: java.net.Proxy, protocol: okhttp3.Protocol?, ioe: IOException) { log("connectFailed ${inetSocketAddress.address.hostAddress} ${ioe.javaClass.simpleName}") }
+                override fun connectionAcquired(call: okhttp3.Call, connection: okhttp3.Connection) { log("connectionAcquired") }
+                override fun responseHeadersStart(call: okhttp3.Call) { log("responseHeadersStart") }
+            }
+        }
         return OkHttpClient.Builder()
+            .eventListenerFactory(phases)
+            .addInterceptor(timing)
             .addInterceptor(auth)
             .apply { if (BuildConfig.DEBUG) addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }) }
-            .connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
+            .dns(ru.feskolech.libriatv.data.api.FallbackDns(context))
+            // 8 s per address: Cloudflare gives two, so a dead one costs 8 s, not 15.
+            .connectTimeout(8, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .build()
     }

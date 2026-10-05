@@ -72,6 +72,7 @@ class HomeViewModel @Inject constructor(
     fun refresh(force: Boolean = false) {
         if (loading || (!force && System.currentTimeMillis() - lastRefresh < 300_000L)) return
         loading = true
+        val started = System.currentTimeMillis()
         viewModelScope.launch {
             if (_state.value !is HomeUiState.Content) _state.value = HomeUiState.Loading
             val latest = async { repository.latest(LATEST_FIRST_PAGE) }
@@ -98,6 +99,7 @@ class HomeViewModel @Inject constructor(
                     showEpisodeDialog = previous?.showEpisodeDialog ?: false,
                     latestNextPage = if (latestResult.value.size < LATEST_FIRST_PAGE) null else 2,
                 )
+                android.util.Log.i("LibriaNet", "home shown after ${System.currentTimeMillis() - started} ms")
                 if (authorized) viewModelScope.launch { checkFavorites() }
                 lastRefresh = System.currentTimeMillis()
             } else {
