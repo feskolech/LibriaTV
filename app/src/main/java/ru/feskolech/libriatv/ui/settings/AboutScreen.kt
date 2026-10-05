@@ -50,6 +50,12 @@ import ru.feskolech.libriatv.ui.components.makeQr
 fun AboutScreen(notes: String, checkUpdates: () -> Unit, updateState: UpdateUiState,
     loadChangelog: suspend () -> List<ChangelogEntry>?, onBack: () -> Unit) {
     var history by remember { mutableStateOf(false) }
+    // "What's new" describes the installed version; the cached notes of the last update check
+    // (possibly an older release) are only a fallback while offline.
+    var installedNotes by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        installedNotes = loadChangelog()?.firstOrNull { it.version == BuildConfig.VERSION_NAME }?.notes
+    }
     if (history) ChangelogDialog(loadChangelog, onDismiss = { history = false })
     val context = LocalContext.current
     val first = remember { FocusRequester() }
@@ -66,7 +72,7 @@ fun AboutScreen(notes: String, checkUpdates: () -> Unit, updateState: UpdateUiSt
             color = MaterialTheme.colorScheme.onBackground) }
         // A short teaser of the latest release; the whole history of versions is one button away.
         item {
-            val teaser = notes.replace(Regex("\\s+"), " ").trim()
+            val teaser = (installedNotes ?: notes).replace(Regex("\\s+"), " ").trim()
             Text(if (teaser.isBlank()) stringResource(R.string.about_no_notes)
                 else if (teaser.length > 100) teaser.take(100).trimEnd() + "…" else teaser,
                 color = MaterialTheme.colorScheme.onBackground)
