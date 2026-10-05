@@ -60,4 +60,21 @@ class UpdateCheckerTest {
         assertEquals("First release", releaseNotesForDisplay(body, "en"))
         assertEquals("Only one part", releaseNotesForDisplay("Only one part", "en"))
     }
+
+    @Test fun changelogListsPublishedVersionsInUiLanguage() {
+        val json = """[
+            {"tag_name":"v0.9.2","published_at":"2026-10-05T14:00:00Z","draft":false,"body":"**Фикс**\n\n---\n\n**Fix**"},
+            {"tag_name":"v0.9.1","published_at":"2026-10-05T12:00:00Z","draft":true,"body":"x"},
+            {"tag_name":"v0.9.0","published_at":"2026-10-04T10:00:00Z","body":"Первая"}
+        ]"""
+        val ru = parseChangelog(json, "ru")
+        assertEquals(listOf("0.9.2", "0.9.0"), ru.map { it.version })
+        assertEquals("2026-10-05", ru[0].date)
+        assertEquals("Фикс", ru[0].notes)
+        assertEquals("Fix", parseChangelog(json, "en")[0].notes)
+    }
+
+    @Test fun wrappedNoteLinesAreJoined() {
+        assertEquals("• one two\n• three", releaseNotesForDisplay("- one\n  two\n- three", "ru"))
+    }
 }

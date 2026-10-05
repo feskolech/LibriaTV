@@ -228,4 +228,8 @@
         <item quantity="one">%1$d day ago</item>
         <item quantity="other">%1$d days ago</item>
     </plurals>
+    <string name="about_more">More</string>
+    <string name="about_history">Version history</string>
+    <string name="about_history_loading">Loading version history…</string>
+    <string name="about_history_error">Could not load the version history. Check the connection.</string>
 </resources>

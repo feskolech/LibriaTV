@@ -369,6 +369,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                                 checkUpdates = { updateViewModel.check(force = true) },
                                 updateState = updateState,
                                 latestNotes = latestNotes,
+                                loadChangelog = { updateViewModel.changelog() },
                             )
                         } else {
                             PlaceholderScreen(destination.title,

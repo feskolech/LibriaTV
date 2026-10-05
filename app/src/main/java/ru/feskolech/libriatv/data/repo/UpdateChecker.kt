@@ -94,6 +94,8 @@ internal fun releaseNotesForDisplay(body: String, language: String): String {
     val parts = body.replace("\r\n", "\n").split(Regex("\n-{3,}\n"))
     val part = if (parts.size > 1 && language != "ru") parts.last() else parts.first()
     return part.replace("**", "").replace("`", "")
+        // An indented line continues the previous sentence (wrapped in the Markdown source).
+        .replace(Regex("""\n[ \t]+(?![-*] )"""), " ")
         .replace(Regex("""(?m)^\s*[-*] """), "• ")
         .trim()
 }
@@ -128,6 +130,18 @@ internal fun verifyDownloadedApk(context: Context, file: File): Boolean = runCat
     own.isNotEmpty() && certs(archive) == own
 }.getOrDefault(false)
 
+/** One published version for the in-app version history. */
+data class ChangelogEntry(val version: String, val date: String?, val notes: String)
+
+internal fun parseChangelog(json: String, language: String): List<ChangelogEntry> =
+    Json.parseToJsonElement(json).jsonArray.mapNotNull { item ->
+        val obj = item.jsonObject
+        if (obj["draft"]?.jsonPrimitive?.content == "true") return@mapNotNull null
+        val tag = obj["tag_name"]?.jsonPrimitive?.content ?: return@mapNotNull null
+        ChangelogEntry(tag.removePrefix("v"), obj["published_at"]?.jsonPrimitive?.content?.take(10),
+            releaseNotesForDisplay(obj["body"]?.jsonPrimitive?.content.orEmpty(), language))
+    }
+
 internal sealed interface GithubReleaseResponse {
     data class Release(val value: UpdateRelease) : GithubReleaseResponse
     data object NotFound : GithubReleaseResponse
@@ -153,6 +167,25 @@ class UpdateChecker @Inject constructor(@ApplicationContext private val context:
     // Keep GitHub requests separate from the AniLibria client: no account token may reach GitHub.
     private val client = OkHttpClient()
     private val downloadClient = client.newBuilder().followRedirects(false).build()
+
+    /** All published versions, newest first (GitHub's order), or null when GitHub is unreachable. */
+    suspend fun changelog(): List<ChangelogEntry>? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases?per_page=50")
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "LibriaTV/${BuildConfig.VERSION_NAME}")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) null
+                else parseChangelog(response.body?.string().orEmpty(), java.util.Locale.getDefault().language)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     suspend fun check(force: Boolean = false): UpdateCheckResult = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()

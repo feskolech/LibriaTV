@@ -44,13 +44,14 @@ fun SettingsScreen(
     checkUpdates: () -> Unit,
     updateState: UpdateUiState,
     latestNotes: String,
+    loadChangelog: suspend () -> List<ru.feskolech.libriatv.data.repo.ChangelogEntry>?,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
     var about by remember { mutableStateOf(false) }
     BackHandler(about) { about = false }
     if (about) {
-        AboutScreen(latestNotes, checkUpdates, updateState, onBack = { about = false })
+        AboutScreen(latestNotes, checkUpdates, updateState, loadChangelog, onBack = { about = false })
         return
     }
     val first = remember { FocusRequester() }

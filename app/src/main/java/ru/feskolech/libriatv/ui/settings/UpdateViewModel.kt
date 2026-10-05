@@ -29,6 +29,7 @@ sealed interface UpdateUiState {
 @HiltViewModel
 class UpdateViewModel @Inject constructor(private val checker: UpdateChecker) : ViewModel() {
     val latestNotes = checker.latestNotes
+    suspend fun changelog() = checker.changelog()
     private val _state = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val state: StateFlow<UpdateUiState> = _state
     private var busy = false

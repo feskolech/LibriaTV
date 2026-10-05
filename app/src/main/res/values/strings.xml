@@ -230,4 +230,8 @@
         <item quantity="many">%1$d дней назад</item>
         <item quantity="other">%1$d дня назад</item>
     </plurals>
+    <string name="about_more">Подробнее</string>
+    <string name="about_history">История версий</string>
+    <string name="about_history_loading">Загружаем историю версий…</string>
+    <string name="about_history_error">Не удалось загрузить историю версий. Проверьте интернет.</string>
 </resources>
