@@ -20,8 +20,7 @@ import ru.feskolech.libriatv.data.repo.AuthState
 sealed interface ReleaseUiState {
     data object Loading : ReleaseUiState
     data class Content(val release: Release, val progress: Map<String, PlaybackProgress>,
-        val favorite: Boolean, val authorized: Boolean, val favoriteError: String? = null,
-        val similar: List<Release> = emptyList()) : ReleaseUiState
+        val favorite: Boolean, val authorized: Boolean, val favoriteError: String? = null) : ReleaseUiState
     data class Error(val message: String) : ReleaseUiState
 }
 
@@ -56,10 +55,6 @@ class ReleaseViewModel @Inject constructor(
                 _state.value = ReleaseUiState.Content(result.value,
                     progressRepository.releaseProgress(result.value),
                     result.value.id in favorites.ids.value, authorized)
-                val similar = (repository.recommended(releaseId = result.value.id) as? ApiResult.Success)?.value.orEmpty()
-                    .filter { it.id != result.value.id }
-                val current = _state.value as? ReleaseUiState.Content
-                if (current?.release?.id == result.value.id) _state.value = current.copy(similar = similar)
             }
         }
     }
