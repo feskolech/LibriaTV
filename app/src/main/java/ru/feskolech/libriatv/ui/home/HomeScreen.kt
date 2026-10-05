@@ -27,6 +27,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -103,9 +104,14 @@ private fun HomeContent(
     val firstPoster = remember { FocusRequester() }
     val rowsState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+    // Scroll only when focus moves to another row. Re-snapping on every horizontal move fought the
+    // focus system's own bring-into-view and made the rows bounce up and down (seen on Ugoos SK4).
+    var focusedRow by remember { mutableIntStateOf(-1) }
     fun focusRow(index: Int, release: Release) {
         focusedRelease = release
-        scope.launch { delay(80); rowsState.scrollToItem(index) }
+        if (index == focusedRow) return
+        focusedRow = index
+        scope.launch { rowsState.animateScrollToItem(index) }
     }
     LaunchedEffect(content) {
         // Lazy rows compose their items a frame later; requesting earlier leaves focus in the drawer.
