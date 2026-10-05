@@ -1,0 +1,9 @@
+{
+  "tag_name": "v1.2.3",
+  "body": "Исправлено воспроизведение и навигация.",
+  "assets": [
+    {"name": "sources.zip", "browser_download_url": "https://github.com/example/sources.zip"},
+    {"name": "LibriaTV-1.2.3.apk", "browser_download_url": "https://github.com/example/LibriaTV-1.2.3.apk"},
+    {"name": "LibriaTV-1.2.3-debug.apk", "browser_download_url": "https://github.com/example/LibriaTV-1.2.3-debug.apk"}
+  ]
+}

@@ -44,6 +44,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.runtime.collectAsState
 import androidx.tv.material3.Button
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.MaterialTheme
@@ -64,6 +66,10 @@ import ru.feskolech.libriatv.ui.search.SearchScreen
 import ru.feskolech.libriatv.ui.schedule.ScheduleScreen
 import ru.feskolech.libriatv.ui.catalog.CatalogScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
+import ru.feskolech.libriatv.ui.settings.SettingsScreen
+import ru.feskolech.libriatv.ui.settings.UpdateDialog
+import ru.feskolech.libriatv.ui.settings.UpdateUiState
+import ru.feskolech.libriatv.ui.settings.UpdateViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -89,6 +95,9 @@ private enum class Destination(val route: String, val title: Int, val icon: Imag
 
 @Composable
 private fun AppNavigation(onExit: () -> Unit) {
+    val updateViewModel: UpdateViewModel = hiltViewModel()
+    val updateState by updateViewModel.state.collectAsState()
+    LaunchedEffect(Unit) { updateViewModel.check() }
     val navController = rememberNavController()
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route ?: Destination.Home.route
@@ -182,6 +191,12 @@ private fun AppNavigation(onExit: () -> Unit) {
                             onOpenFeed = { navController.navigate("feed") },
                             onOpenRelease = { navController.navigate("release/$it") },
                         )
+                    } else if (destination == Destination.Settings) {
+                        SettingsScreen(
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            checkUpdates = { updateViewModel.check(force = true) },
+                            updateState = updateState,
+                        )
                     } else {
                         PlaceholderScreen(destination.title,
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
@@ -205,6 +220,10 @@ private fun AppNavigation(onExit: () -> Unit) {
             }
         }
     }
+
+    UpdateDialog(updateState,
+        download = { (updateState as? UpdateUiState.Available)?.let { updateViewModel.download(it.release) } },
+        dismiss = updateViewModel::dismiss)
 
     if (confirmExit) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { confirmExit = false }) {

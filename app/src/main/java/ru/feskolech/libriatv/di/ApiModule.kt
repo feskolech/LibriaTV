@@ -15,6 +15,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import ru.feskolech.libriatv.BuildConfig
 import ru.feskolech.libriatv.data.api.AniLibriaApi
 import ru.feskolech.libriatv.data.repo.TokenStore
+import ru.feskolech.libriatv.data.repo.SettingsStore
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -23,18 +24,23 @@ import javax.inject.Singleton
 object ApiModule {
     @Provides @Singleton fun json(): Json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
-    @Provides @Singleton fun client(tokenStore: TokenStore): OkHttpClient {
+    @Provides @Singleton fun client(tokenStore: TokenStore, settingsStore: SettingsStore): OkHttpClient {
         val auth = Interceptor { chain ->
             val token = runBlocking { tokenStore.get() }
-            val request = chain.request().newBuilder()
+            val preferred = runBlocking { settingsStore.mirror() }
+            val original = chain.request()
+            val apiRequest = if (original.url.host == "anilibria.top" || original.url.host == "aniliberty.top")
+                original.newBuilder().url(original.url.newBuilder().host(preferred).build()).build() else original
+            val request = apiRequest.newBuilder()
                 .header("User-Agent", "LibriaTV/${BuildConfig.VERSION_NAME}")
                 .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
                 .build()
             val response = try {
                 chain.proceed(request)
             } catch (error: IOException) {
-                if (request.url.host != "anilibria.top") throw error
-                chain.proceed(request.newBuilder().url(request.url.newBuilder().host("aniliberty.top").build()).build())
+                if (request.url.host != "anilibria.top" && request.url.host != "aniliberty.top") throw error
+                val fallback = if (request.url.host == "anilibria.top") "aniliberty.top" else "anilibria.top"
+                chain.proceed(request.newBuilder().url(request.url.newBuilder().host(fallback).build()).build())
             }
             if (response.code == 401) runBlocking { tokenStore.set(null) }
             response

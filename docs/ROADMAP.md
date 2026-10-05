@@ -109,13 +109,13 @@
 ## T10 — Расписание недели + Watch Next `[~]` (расписание готово; Watch Next — после T09)
 - По SPEC F10, F11.
 
-## T11 — Релизы и автообновление `[~]` (подпись, R8, release.yml, docs/RELEASING.md готовы; автообновление и настройки — T11b)
+## T11 — Релизы и автообновление `[x]` (нужны GitHub Secrets — docs/RELEASING.md)
 - Release signing через переменные окружения/GitHub Secrets (`KEYSTORE_BASE64`,
   `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`); workflow `release.yml` по тегу `v*`
   собирает подписанный APK и создаёт GitHub Release.
 - Автообновление по SPEC F12. Экран Настроек по SPEC.
 
-## T11b — Автообновление, экран настроек, индикатор загрузки `[ ]`
+## T11b — Автообновление, экран настроек, индикатор загрузки `[x]`
 - Автообновление по SPEC F12: `UpdateChecker` (GitHub API `repos/${BuildConfig.UPDATE_REPO}/releases/latest`,
   не чаще раза в 6 ч, время последней проверки в DataStore; сравнение semver `tag_name` без `v` с
   `BuildConfig.VERSION_NAME`; ассет — первый `*.apk`). Диалог на главной «Доступна версия X» с

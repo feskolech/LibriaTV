@@ -20,11 +20,14 @@ data class PlaybackProgress(val positionMs: Long, val durationMs: Long) {
 class PlaybackStore @Inject constructor(@ApplicationContext private val context: Context) {
     private val qualityKey = intPreferencesKey("quality")
     private val autoSkipKey = androidx.datastore.preferences.core.booleanPreferencesKey("auto_skip")
+    private val autoNextKey = androidx.datastore.preferences.core.booleanPreferencesKey("auto_next")
 
     suspend fun quality(): Int = context.playbackDataStore.data.first()[qualityKey] ?: 1080
     suspend fun setQuality(value: Int) { context.playbackDataStore.edit { it[qualityKey] = value } }
     suspend fun autoSkip(): Boolean = context.playbackDataStore.data.first()[autoSkipKey] ?: false
     suspend fun setAutoSkip(value: Boolean) { context.playbackDataStore.edit { it[autoSkipKey] = value } }
+    suspend fun autoNext(): Boolean = context.playbackDataStore.data.first()[autoNextKey] ?: true
+    suspend fun setAutoNext(value: Boolean) { context.playbackDataStore.edit { it[autoNextKey] = value } }
 
     private val speedKey = androidx.datastore.preferences.core.floatPreferencesKey("speed")
     private val frameRateMatchKey = androidx.datastore.preferences.core.booleanPreferencesKey("frame_rate_match")

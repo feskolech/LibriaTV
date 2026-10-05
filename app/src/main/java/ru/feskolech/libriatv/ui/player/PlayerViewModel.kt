@@ -32,6 +32,7 @@ data class PlayerContent(
     val buffering: Boolean = true, val speed: Float = 1f,
     /** Frame rate of the playing video, or null if the stream does not declare it. */
     val frameRate: Float? = null, val frameRateMatch: Boolean = true, val nightMode: Boolean = false,
+    val autoNext: Boolean = true,
 )
 sealed interface PlayerUiState {
     data object Loading : PlayerUiState
@@ -93,7 +94,7 @@ class PlayerViewModel @Inject constructor(
                     val speed = store.speed()
                     val night = store.nightMode()
                     _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkip = store.autoSkip(),
-                        speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night))
+                        speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night, autoNext = store.autoNext()))
                     player.setPlaybackSpeed(speed)
                     nightAudio.apply(player.audioSessionId, night)
                     prepare(episode, resume = true)
@@ -206,10 +207,10 @@ class PlayerViewModel @Inject constructor(
         }
         val remaining = if (duration > 0) (duration - position) / 1000 else Long.MAX_VALUE
         val next = nextEpisode(current)
-        val countdown = if (remaining in 1..8 && next != null) remaining.toInt() else null
+        val countdown = if (current.autoNext && remaining in 1..8 && next != null) remaining.toInt() else null
         update { it.copy(positionMs = position, durationMs = duration, skip = if (current.autoSkip) null else skip,
             skipOpening = opening != null, nextCountdown = countdown) }
-        if (duration > 0 && remaining <= 0 && next != null) playEpisode(next.id)
+        if (current.autoNext && duration > 0 && remaining <= 0 && next != null) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {
             lastSync = position
             viewModelScope.launch { saveProgress() }
