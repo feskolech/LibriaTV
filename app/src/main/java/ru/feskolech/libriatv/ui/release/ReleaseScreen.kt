@@ -290,10 +290,16 @@ private fun ChoiceDialog(title: String, options: List<String>, selected: Int?, o
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { focus.requestFocus() } }
 }
 
-/** Scrolls only when the focused element is not fully visible; otherwise delegates to the TV pivot spec. */
+/**
+ * Keeps the page still while the focused element sits comfortably on screen (the header buttons).
+ * Once it is cut off or reaches the bottom part of the screen (a seasons row with its captions, an
+ * episode near the edge) it is brought to the middle, so the whole row and its titles are visible.
+ */
 @OptIn(ExperimentalFoundationApi::class)
-private class StillBringIntoViewSpec(private val fallback: BringIntoViewSpec) : BringIntoViewSpec {
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
-        if (offset >= 0f && offset + size <= containerSize) 0f
-        else fallback.calculateScrollDistance(offset, size, containerSize)
+private class StillBringIntoViewSpec(@Suppress("unused") private val fallback: BringIntoViewSpec) : BringIntoViewSpec {
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
+        offset >= 0f && offset + size <= containerSize * 0.8f -> 0f
+        size >= containerSize -> offset
+        else -> offset - (containerSize - size) / 2f
+    }
 }

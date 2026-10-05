@@ -1,4 +1,15 @@
 package ru.feskolech.libriatv.ui.player
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.tv.material3.MaterialTheme
 
 import android.view.KeyEvent
@@ -93,6 +104,16 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             runCatching { panelFocus.requestFocus() }
         }
     }
+    // The controls / episode strip hide by themselves after 5 s without a key press while the video
+    // plays (a paused video keeps them, so the viewer sees where they stopped).
+    var lastKeyAt by remember { mutableStateOf(0L) }
+    LaunchedEffect(current?.panel, current?.playing, lastKeyAt) {
+        if (current != null && current.playing &&
+            (current.panel == PlayerPanel.Controls || current.panel == PlayerPanel.Episodes)) {
+            kotlinx.coroutines.delay(5_000)
+            viewModel.showPanel(PlayerPanel.Hidden)
+        }
+    }
     BackHandler {
         if (current?.qualityHint != null) viewModel.dismissQualityHint()
         else if (!viewModel.hidePanel()) viewModel.close(onBack)
@@ -103,6 +124,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
     Box(Modifier.fillMaxSize().background(Color.Black)
         .onPreviewKeyEvent { event ->
             val native = event.nativeKeyEvent
+            if (native.action == KeyEvent.ACTION_DOWN) lastKeyAt = native.eventTime
             val hidden = current?.panel == PlayerPanel.Hidden
             val code = native.keyCode
             if (current?.sleepWarning == true && native.action == KeyEvent.ACTION_UP &&
@@ -133,7 +155,8 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     PlayerPanel.Hidden, PlayerPanel.Episodes -> { viewModel.showPanel(PlayerPanel.Controls); true }
                     else -> false
                 }
-                KeyEvent.KEYCODE_DPAD_DOWN -> if (hidden) { viewModel.showPanel(PlayerPanel.Episodes); true } else false
+                // Any arrow up/down on the bare video brings the playback controls; episodes are one button away.
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (hidden) { viewModel.showPanel(PlayerPanel.Controls); true } else false
                 // Bonus keys: only some remotes have them, nothing depends on them.
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { viewModel.togglePause(); true }
                 KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_CHANNEL_UP -> { viewModel.nextEpisode(); true }
@@ -157,7 +180,8 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                 BufferingIndicator(Modifier.align(Alignment.Center))
             }
             current.seekTargetMs?.let { target ->
-                Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 110.dp)
+                Column(Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = if (current.panel == PlayerPanel.Hidden) 110.dp else 300.dp)
                     .background(Color(0xE6101010)).padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     current.seekFrame?.let { bitmap ->
@@ -203,10 +227,13 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     .padding(horizontal = 48.dp, vertical = 27.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(current.release.title + " • " + stringResource(R.string.episode_number, current.episode.ordinal?.toInt() ?: 0), color = Color.White)
                     Text(formatTime(current.positionMs) + " / " + formatTime(current.durationMs), color = Color.White)
-                    Box(Modifier.fillMaxWidth().height(5.dp).background(Color.DarkGray)) {
-                        Box(Modifier.fillMaxWidth(if (current.durationMs > 0) (current.positionMs.toFloat() / current.durationMs).coerceIn(0f, 1f) else 0f)
-                            .fillMaxHeight().background(MaterialTheme.colorScheme.primary))
-                    }
+                    SeekBar(
+                        positionMs = current.seekTargetMs ?: current.positionMs,
+                        durationMs = current.durationMs,
+                        // Selectable only with the controls shown; Left/Right on it rewind / fast-forward.
+                        selectable = current.panel == PlayerPanel.Controls,
+                        onSeek = { direction, repeat -> viewModel.seek(direction, repeat, keepPanel = true) },
+                    )
                     current.error?.let { error ->
                         if (error == PlayerViewModel.PLAYBACK_FAILED) {
                             Text(stringResource(R.string.player_network_error), color = Color.White)
@@ -227,11 +254,11 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                         // Playback only; everything that is a setting lives behind the gear.
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, viewModel::previousEpisode)
-                            ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1) })
+                            ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
                             ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
                                 if (current.error == null) Modifier.focusRequester(panelFocus) else Modifier)
-                            ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1) })
+                            ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1, keepPanel = true) })
                             ControlButton(Icons.Filled.SkipNext, R.string.next_episode, viewModel::nextEpisode)
                             Spacer(Modifier.weight(1f))
                             ControlButton(Icons.AutoMirrored.Filled.List, R.string.episodes, { viewModel.showPanel(PlayerPanel.Episodes) })
@@ -274,4 +301,34 @@ private fun formatSpeed(speed: Float): String =
 private fun formatTime(ms: Long): String {
     val seconds = ms / 1000
     return "%02d:%02d".format(seconds / 60, seconds % 60)
+}
+
+@Composable
+private fun SeekBar(positionMs: Long, durationMs: Long, selectable: Boolean, onSeek: (Int, Int) -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
+    val accent = MaterialTheme.colorScheme.primary
+    Box(
+        Modifier.fillMaxWidth().height(24.dp)
+            .then(if (!selectable) Modifier else Modifier
+                .onFocusChanged { focused = it.isFocused }
+                .onKeyEvent { event ->
+                    val direction = when (event.key) { Key.DirectionLeft -> -1; Key.DirectionRight -> 1; else -> 0 }
+                    if (direction != 0 && event.type == KeyEventType.KeyDown) {
+                        onSeek(direction, event.nativeKeyEvent.repeatCount); true
+                    } else false
+                }
+                .focusable()),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        val track = if (focused) 10.dp else 5.dp
+        Box(Modifier.fillMaxWidth().height(track).background(Color.DarkGray, RoundedCornerShape(track / 2))) {
+            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(accent, RoundedCornerShape(track / 2)))
+        }
+        if (focused) {
+            Box(Modifier.fillMaxWidth(fraction), contentAlignment = Alignment.CenterEnd) {
+                Box(Modifier.size(22.dp).background(Color.White, CircleShape))
+            }
+        }
+    }
 }

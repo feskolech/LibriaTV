@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.auth
 
+import androidx.compose.ui.draw.clip
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
@@ -170,8 +171,10 @@ private fun AuthField(value: String, change: (String) -> Unit, label: String, mo
 private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> Unit, logout: () -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    Column(Modifier.fillMaxSize().padding(top = 150.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
-        Box(Modifier.size(112.dp).background(accent, RoundedCornerShape(56.dp)), contentAlignment = Alignment.Center) {
+    // The screen title stays top-left; the account itself sits in the middle of the screen.
+    Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(22.dp, Alignment.CenterVertically)) {
+        Box(Modifier.size(112.dp).clip(RoundedCornerShape(56.dp)).background(accent), contentAlignment = Alignment.Center) {
             Text(name.take(1).uppercase(), fontSize = 54.sp, fontWeight = FontWeight.Bold)
             if (avatarUrl != null) AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
         }

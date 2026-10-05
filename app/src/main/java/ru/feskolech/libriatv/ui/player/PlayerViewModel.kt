@@ -312,7 +312,8 @@ class PlayerViewModel @Inject constructor(
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         current.release.episodes.firstOrNull { it.ordinal?.toInt() == number }?.let { playEpisode(it.id) }
     }
-    fun seek(direction: Int, repeat: Int = 0) {
+    /** [keepPanel]: seeking from the progress bar keeps the controls open instead of hiding them. */
+    fun seek(direction: Int, repeat: Int = 0, keepPanel: Boolean = false) {
         val seconds = when { repeat >= 8 -> 60; repeat >= 3 -> 30; else -> 10 }
         val base = (_state.value as? PlayerUiState.Content)?.value?.seekTargetMs ?: player.currentPosition
         val target = (base + direction * seconds * 1000L)
@@ -320,7 +321,7 @@ class PlayerViewModel @Inject constructor(
         bufferingHint.interrupt()
         ignoreBufferUntil = SystemClock.elapsedRealtime() + 3_000
         player.seekTo(target)
-        update { it.copy(panel = PlayerPanel.Hidden, nextCountdown = null,
+        update { it.copy(panel = if (keepPanel) it.panel else PlayerPanel.Hidden, nextCountdown = null,
             seekTargetMs = if (repeat > 0) target else null, seekFrame = null) }
         seekJob?.cancel()
         seekHideJob?.cancel()
