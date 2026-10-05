@@ -26,6 +26,8 @@ data class CatalogUiState(
     val loading: Boolean = false,
     val error: String? = null,
     val titleSorted: Boolean = false,
+    /** Pages fetched / total while building the title-sorted catalog; null when not doing that. */
+    val titleProgress: Pair<Int, Int>? = null,
 ) {
     val canLoadMore: Boolean get() = !loading && page < totalPages
 }
@@ -91,20 +93,24 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
         pageJob = viewModelScope.launch {
             val first = repository.catalog(filter, 1, TITLE_PAGE, compact = true)
             if (first is ApiResult.Failure) {
-                _state.value = _state.value.copy(loading = false, error = first.message); return@launch
+                _state.value = _state.value.copy(loading = false, titleProgress = null, error = first.message); return@launch
             }
             first as ApiResult.Success
-            val pages = (2..first.value.totalPages).chunked(4).flatMap { chunk ->
+            val total = first.value.totalPages
+            var done = 1
+            _state.value = _state.value.copy(titleProgress = done to total)
+            val pages = (2..total).chunked(4).flatMap { chunk ->
                 chunk.map { page -> async { repository.catalog(filter, page, TITLE_PAGE, compact = true) } }.awaitAll()
+                    .also { done += it.size; _state.value = _state.value.copy(titleProgress = done to total) }
             }
             val failure = pages.filterIsInstance<ApiResult.Failure>().firstOrNull()
             if (failure != null) {
-                _state.value = _state.value.copy(loading = false, error = failure.message); return@launch
+                _state.value = _state.value.copy(loading = false, titleProgress = null, error = failure.message); return@launch
             }
             val all = (listOf(first) + pages).flatMap { (it as ApiResult.Success).value.releases }
                 .distinctBy { it.id }.sortedByTitle()
             titleCache[filter] = all
-            _state.value = _state.value.copy(releases = all, page = 1, totalPages = 1, loading = false)
+            _state.value = _state.value.copy(releases = all, page = 1, totalPages = 1, loading = false, titleProgress = null)
         }
     }
 

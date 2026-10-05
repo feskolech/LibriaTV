@@ -75,7 +75,16 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
                             // visible and leaves the title cut off when coming back up from the episodes.
                             Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                modifier = Modifier.onFocusChanged { if (it.hasFocus) headerScope.launch { listState.animateScrollToItem(0) } }) {
+                                modifier = Modifier.onFocusChanged {
+                                    // Let the focus system's own bring-into-view finish first; scrolling at the
+                                    // same time gets cancelled by it and the header stays cut off.
+                                    if (it.hasFocus) headerScope.launch {
+                                        kotlinx.coroutines.delay(250)
+                                        if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
+                                            listState.animateScrollToItem(0)
+                                        }
+                                    }
+                                }) {
                                 Button(onClick = { first?.let { onPlay(it.id) } }, enabled = first != null,
                                     modifier = Modifier.focusRequester(focus)) {
                                     Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)

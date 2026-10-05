@@ -105,7 +105,8 @@ fun CatalogScreen(
 
         when {
             state.releases.isEmpty() && state.loading ->
-                Text(stringResource(R.string.home_loading), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
+                Text(state.titleProgress?.let { (done, total) -> stringResource(R.string.catalog_title_progress, done, total) }
+                    ?: stringResource(R.string.home_loading), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
             state.releases.isEmpty() && state.error != null -> Column(Modifier.padding(horizontal = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(state.error.orEmpty(), color = Color.White)
                 Button(onClick = viewModel::reload) { Text(stringResource(R.string.retry)) }

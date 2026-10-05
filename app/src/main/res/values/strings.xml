@@ -175,4 +175,5 @@
     <string name="sort_title">По названию</string>
     <string name="player_network_error">Не удаётся загрузить видео. Проверьте подключение к интернету.</string>
     <string name="player_switch_quality">Включить %1$dp</string>
+    <string name="catalog_title_progress">Собираем каталог по алфавиту… %1$d / %2$d</string>
 </resources>
