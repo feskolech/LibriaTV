@@ -68,6 +68,26 @@ fun SettingsScreen(
             item { SettingChoices(R.string.settings_mirror, listOf("anilibria.top", "aniliberty.top"),
                 listOf("anilibria.top", "aniliberty.top").indexOf(content.mirror), viewModel::mirror,
                 listOf("anilibria.top", "aniliberty.top")) }
+            item { SettingToggle(R.string.settings_phone_remote, content.phoneRemoteEnabled, viewModel::phoneRemote) }
+            if (content.phoneRemoteEnabled) {
+                item {
+                    val url = content.phoneRemoteUrl
+                    if (url != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            val qr = remember(url) { makeQr(url, 180) }
+                            Image(qr.asImageBitmap(), contentDescription = stringResource(R.string.settings_phone_remote_qr),
+                                modifier = Modifier.size(130.dp).background(Color.White).padding(6.dp))
+                            Column {
+                                Text(stringResource(R.string.settings_phone_remote_hint), color = Color.LightGray)
+                                Text(stringResource(R.string.settings_phone_remote_pin, url.substringAfter("pin=")), color = Color.White)
+                                Text(url, color = Color.White)
+                            }
+                        }
+                    } else if (content.phoneRemoteError) {
+                        Text(stringResource(R.string.settings_phone_remote_error), color = Color.LightGray)
+                    }
+                }
+            }
             item { SettingTitle(R.string.settings_crash_reports) }
             item {
                 if (content.crashReportsAvailable) {

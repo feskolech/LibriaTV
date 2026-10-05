@@ -109,6 +109,7 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
     implementation(libs.acra.core)
+    implementation(libs.nanohttpd)
     debugImplementation(libs.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.mockwebserver)

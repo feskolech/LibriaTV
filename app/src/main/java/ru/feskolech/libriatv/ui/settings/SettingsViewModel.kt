@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import ru.feskolech.libriatv.data.repo.PlaybackStore
 import ru.feskolech.libriatv.data.repo.SettingsStore
 import ru.feskolech.libriatv.crash.CrashReportManager
+import ru.feskolech.libriatv.remote.PhoneRemote
 
 sealed interface SettingsUiState {
     data object Loading : SettingsUiState
@@ -23,6 +24,9 @@ sealed interface SettingsUiState {
         val mirror: String,
         val crashReportsAvailable: Boolean,
         val automaticCrashReports: Boolean,
+        val phoneRemoteEnabled: Boolean,
+        val phoneRemoteUrl: String?,
+        val phoneRemoteError: Boolean,
     ) : SettingsUiState
 }
 
@@ -31,6 +35,7 @@ class SettingsViewModel @Inject constructor(
     private val playback: PlaybackStore,
     private val settings: SettingsStore,
     private val crashReports: CrashReportManager,
+    private val phoneRemote: PhoneRemote,
 ) : ViewModel() {
     private val _state = MutableStateFlow<SettingsUiState>(SettingsUiState.Loading)
     val state: StateFlow<SettingsUiState> = _state
@@ -39,7 +44,12 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkip(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
-                crashReports.available, crashReports.automatic())
+                crashReports.available, crashReports.automatic(), false, null, false)
+            phoneRemote.state.collect { remote ->
+                val current = _state.value as? SettingsUiState.Content ?: return@collect
+                _state.value = current.copy(phoneRemoteEnabled = remote.enabled, phoneRemoteUrl = remote.url,
+                    phoneRemoteError = remote.error)
+            }
         }
     }
 
@@ -60,4 +70,8 @@ class SettingsViewModel @Inject constructor(
         { crashReports.setAutomatic(it.automaticCrashReports) },
         { it.copy(automaticCrashReports = !it.automaticCrashReports) },
     )
+    fun phoneRemote() = viewModelScope.launch {
+        val current = _state.value as? SettingsUiState.Content ?: return@launch
+        phoneRemote.setEnabled(!current.phoneRemoteEnabled)
+    }
 }

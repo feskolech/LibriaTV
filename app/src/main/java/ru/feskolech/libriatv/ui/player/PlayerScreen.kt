@@ -36,9 +36,22 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.remote.RemoteCommand
+import kotlinx.coroutines.flow.Flow
 
 @Composable
-fun PlayerScreen(onBack: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
+fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewModel: PlayerViewModel = hiltViewModel()) {
+    LaunchedEffect(remoteCommands) {
+        remoteCommands.collect { command ->
+            when (command) {
+                RemoteCommand.Pause -> viewModel.togglePause()
+                RemoteCommand.SeekBack -> viewModel.seek(-1)
+                RemoteCommand.SeekForward -> viewModel.seek(1)
+                RemoteCommand.NextEpisode -> viewModel.nextEpisode()
+                else -> Unit
+            }
+        }
+    }
     val state by viewModel.state.collectAsState()
     val rootFocus = remember { FocusRequester() }
     val skipFocus = remember { FocusRequester() }

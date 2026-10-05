@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LibriaTV</title>
+<style>
+body{background:#101010;color:#eee;font:18px system-ui,sans-serif;max-width:720px;margin:0 auto;padding:20px}
+h1{color:#e05252}input,button,select{font:inherit;padding:12px;margin:5px 0;background:#252525;color:white;border:1px solid #777;border-radius:7px}input{width:65%}button{cursor:pointer}button:focus{outline:3px solid #e05252}.item{border-top:1px solid #444;padding:14px 0}.item strong{display:block;margin-bottom:8px}.episode{display:block;width:100%;text-align:left}
+</style>
+<h1>LibriaTV</h1><p id="hint"></p>
+<form id="search"><input id="query" maxlength="100" required><button id="searchButton"></button></form>
+<div id="status" role="status"></div><div id="results"></div>
+<h2 id="remoteTitle"></h2><div id="remote"></div>
+<script>
+const t=document.documentElement.lang==='en'?
+ {hint:'Search for anime, open a release or episode on TV, or control playback.',search:'Search',remote:'Remote',open:'Open on TV',episodes:'Show episodes',episode:'Episode',pause:'Play / pause',back:'−10 s',forward:'+10 s',next:'Next episode',failed:'Request failed',empty:'No results'}:
+ {hint:'Найдите аниме, откройте релиз или серию на ТВ либо управляйте воспроизведением.',search:'Поиск',remote:'Пульт',open:'Открыть на ТВ',episodes:'Показать серии',episode:'Серия',pause:'Пауза / продолжить',back:'−10 с',forward:'+10 с',next:'Следующая серия',failed:'Ошибка запроса',empty:'Ничего не найдено'};
+for(const [id,key] of [['hint','hint'],['searchButton','search'],['remoteTitle','remote']])document.getElementById(id).textContent=t[key];
+const pin=new URLSearchParams(location.search).get('pin');
+async function api(path,method='GET'){
+ const url=new URL(path,location.origin);url.searchParams.set('pin',pin||'');
+ const response=await fetch(url,{method,cache:'no-store'});if(!response.ok)throw Error(t.failed+' ('+response.status+')');
+ return response.json();
+}
+function button(label,action,cls){const b=document.createElement('button');b.textContent=label;if(cls)b.className=cls;b.onclick=async()=>{try{await action();document.getElementById('status').textContent='✓'}catch(e){document.getElementById('status').textContent=e.message}};return b}
+for(const [label,path] of [[t.pause,'pause'],[t.back,'back'],[t.forward,'forward'],[t.next,'next']])
+ document.getElementById('remote').append(button(label,()=>api('/api/remote/'+path,'POST')));
+document.getElementById('search').onsubmit=async e=>{
+ e.preventDefault();const results=document.getElementById('results');results.replaceChildren();const status=document.getElementById('status');status.textContent='…';
+ try{const q=document.getElementById('query').value;const releases=await api('/api/search?q='+encodeURIComponent(q));status.textContent=releases.length?'':t.empty;
+ for(const release of releases){const row=document.createElement('div');row.className='item';const title=document.createElement('strong');title.textContent=release.title;row.append(title,button(t.open,()=>api('/api/open/release?id='+release.id,'POST')));
+ const episodes=document.createElement('div');row.append(button(t.episodes,async()=>{const detail=await api('/api/release?id='+release.id);episodes.replaceChildren();
+ for(const episode of detail.episodes)episodes.append(button(t.episode+' '+(episode.ordinal||episode.name),()=>api('/api/open/episode?id='+release.id+'&episode='+encodeURIComponent(episode.id),'POST'),'episode'))}),episodes);results.append(row)}
+ }catch(error){status.textContent=error.message}
+};
+</script>
+</html>

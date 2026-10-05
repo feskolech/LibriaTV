@@ -118,6 +118,11 @@
     <string name="settings_speed">Скорость по умолчанию</string>
     <string name="settings_network">Сеть</string>
     <string name="settings_mirror">Зеркало API</string>
+    <string name="settings_phone_remote">Отправить на ТВ с телефона</string>
+    <string name="settings_phone_remote_qr">QR для подключения телефона</string>
+    <string name="settings_phone_remote_pin">PIN: %1$s</string>
+    <string name="settings_phone_remote_hint">Откройте адрес на телефоне в той же сети. PIN указан в адресе.</string>
+    <string name="settings_phone_remote_error">Не удалось запустить сервер или определить локальный IP-адрес. Проверьте подключение к сети.</string>
     <string name="settings_about">О приложении</string>
     <string name="settings_check_updates">Проверить обновления</string>
     <string name="settings_checking">Проверяем обновления…</string>

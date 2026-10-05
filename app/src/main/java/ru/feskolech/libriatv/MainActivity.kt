@@ -71,17 +71,25 @@ import ru.feskolech.libriatv.ui.settings.UpdateDialog
 import ru.feskolech.libriatv.ui.settings.UpdateUiState
 import ru.feskolech.libriatv.ui.settings.UpdateViewModel
 import ru.feskolech.libriatv.crash.CrashReportViewModel
+import ru.feskolech.libriatv.remote.PhoneRemote
+import ru.feskolech.libriatv.remote.RemoteCommand
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var phoneRemote: PhoneRemote
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             LibriaTvTheme {
-                AppNavigation(onExit = { finish() })
+                AppNavigation(phoneRemote, onExit = { finish() })
             }
         }
     }
+    override fun onResume() { super.onResume(); lifecycleScope.launch { phoneRemote.foreground(true) } }
+    override fun onPause() { lifecycleScope.launch { phoneRemote.foreground(false) }; super.onPause() }
 }
 
 private enum class Destination(val route: String, val title: Int, val icon: ImageVector) {
@@ -95,13 +103,22 @@ private enum class Destination(val route: String, val title: Int, val icon: Imag
 }
 
 @Composable
-private fun AppNavigation(onExit: () -> Unit) {
+private fun AppNavigation(phoneRemote: PhoneRemote, onExit: () -> Unit) {
     val crashViewModel: CrashReportViewModel = hiltViewModel()
     val crashPrompt by crashViewModel.prompt.collectAsState()
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.state.collectAsState()
     LaunchedEffect(Unit) { updateViewModel.check() }
     val navController = rememberNavController()
+    LaunchedEffect(phoneRemote) {
+        phoneRemote.commands.collect { command ->
+            when (command) {
+                is RemoteCommand.OpenRelease -> navController.navigate("release/${command.id}")
+                is RemoteCommand.OpenEpisode -> navController.navigate("player/${command.releaseId}/${command.episodeId}")
+                else -> Unit
+            }
+        }
+    }
     val currentEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentEntry?.destination?.route ?: Destination.Home.route
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -219,7 +236,7 @@ private fun AppNavigation(onExit: () -> Unit) {
             }
             composable("torrents/{releaseId}") { TorrentsScreen() }
             composable("player/{id}/{episodeId}") {
-                PlayerScreen(onBack = { navController.popBackStack() })
+                PlayerScreen(onBack = { navController.popBackStack() }, remoteCommands = phoneRemote.commands)
             }
         }
     }

@@ -17,6 +17,7 @@ private val Context.settingsDataStore by preferencesDataStore(name = "app_settin
 class SettingsStore @Inject constructor(@ApplicationContext private val context: Context) {
     private val mirrorKey = stringPreferencesKey("api_mirror")
     private val automaticCrashReportsKey = booleanPreferencesKey("automatic_crash_reports")
+    private val phoneRemoteKey = booleanPreferencesKey("phone_remote_enabled")
     val mirror = context.settingsDataStore.data.map { it[mirrorKey] ?: "anilibria.top" }
     suspend fun mirror(): String = mirror.first()
     suspend fun setMirror(host: String) {
@@ -26,5 +27,9 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     suspend fun automaticCrashReports(): Boolean = context.settingsDataStore.data.first()[automaticCrashReportsKey] ?: false
     suspend fun setAutomaticCrashReports(enabled: Boolean) {
         context.settingsDataStore.edit { it[automaticCrashReportsKey] = enabled }
+    }
+    suspend fun phoneRemoteEnabled(): Boolean = context.settingsDataStore.data.first()[phoneRemoteKey] ?: false
+    suspend fun setPhoneRemoteEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[phoneRemoteKey] = enabled }
     }
 }

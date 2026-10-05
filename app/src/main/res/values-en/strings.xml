@@ -118,6 +118,11 @@
     <string name="settings_speed">Default speed</string>
     <string name="settings_network">Network</string>
     <string name="settings_mirror">API mirror</string>
+    <string name="settings_phone_remote">Send to TV from phone</string>
+    <string name="settings_phone_remote_qr">QR code to connect phone</string>
+    <string name="settings_phone_remote_pin">PIN: %1$s</string>
+    <string name="settings_phone_remote_hint">Open this address on a phone on the same network. The PIN is in the address.</string>
+    <string name="settings_phone_remote_error">Could not start the server or find a local IP address. Check the network connection.</string>
     <string name="settings_about">About</string>
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_checking">Checking for updates…</string>
