@@ -27,7 +27,7 @@ import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Tab
 import androidx.tv.material3.TabRow
@@ -46,7 +46,7 @@ fun ScheduleScreen(
     val tabFocus = remember { FocusRequester() }
 
     Column(
-        Modifier.fillMaxSize().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
             .padding(top = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

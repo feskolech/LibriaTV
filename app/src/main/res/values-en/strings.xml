@@ -196,4 +196,24 @@
     <string name="season_current">Now</string>
     <string name="channel_new_episodes">LibriaTV: new in favorites</string>
     <string name="episodes_range">Episodes %1$d–%2$d</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_oled">OLED black</string>
+    <string name="settings_accent">Accent</string>
+    <string name="settings_ui_scale">Interface size</string>
+    <string name="accent_red">Red</string>
+    <string name="accent_orange">Orange</string>
+    <string name="accent_yellow">Yellow</string>
+    <string name="accent_green">Green</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_purple">Purple</string>
+    <string name="settings_about_open">About app</string>
+    <string name="about_back">Back to settings</string>
+    <string name="about_whats_new">What’s new</string>
+    <string name="about_no_notes">Release notes are not available yet</string>
+    <string name="about_repository">Repository</string>
+    <string name="about_issues">Report an issue</string>
+    <string name="about_license">License: GPL-3.0</string>
+    <string name="about_disclaimer">LibriaTV is an unofficial AniLibria client.</string>
 </resources>

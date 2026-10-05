@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -48,7 +48,7 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
     val firstFocus = remember { FocusRequester() }
 
     Column(
-        Modifier.fillMaxSize().background(Color(0xFF101010)).padding(horizontal = 48.dp, vertical = 27.dp),
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 48.dp, vertical = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(stringResource(R.string.torrents), style = MaterialTheme.typography.headlineLarge, color = Color.White)

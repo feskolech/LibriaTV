@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.home
+import androidx.tv.material3.MaterialTheme
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -98,7 +99,7 @@ internal fun HomeBackdrop(release: Release?, videoEnabled: Boolean) {
                         }
                         alpha = .36f
                     }, contentScale = ContentScale.Crop)
-                    Box(Modifier.fillMaxSize().background(Color(0xB5101010)))
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = .71f)))
                 } else {
                     Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(.66f).aspectRatio(16f / 9f)) {
                         AsyncImage(shownFrame, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -120,9 +121,9 @@ internal fun HomeBackdrop(release: Release?, videoEnabled: Boolean) {
                 } }, modifier = Modifier.fillMaxSize())
             }
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(
-                Color(0xFF101010), Color(0xEB101010), Color.Transparent))))
+                MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background.copy(alpha = .92f), Color.Transparent))))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-                Color.Transparent, Color(0x88101010), Color(0xFF101010)))))
+                Color.Transparent, MaterialTheme.colorScheme.background.copy(alpha = .53f), MaterialTheme.colorScheme.background))))
         }
     }
 }

@@ -196,4 +196,24 @@
     <string name="season_current">Сейчас</string>
     <string name="channel_new_episodes">LibriaTV: новые серии в избранном</string>
     <string name="episodes_range">Серии %1$d–%2$d</string>
+    <string name="settings_appearance">Оформление</string>
+    <string name="settings_theme">Тема</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_theme_oled">OLED-чёрная</string>
+    <string name="settings_accent">Акцент</string>
+    <string name="settings_ui_scale">Размер интерфейса</string>
+    <string name="accent_red">Красный</string>
+    <string name="accent_orange">Оранжевый</string>
+    <string name="accent_yellow">Жёлтый</string>
+    <string name="accent_green">Зелёный</string>
+    <string name="accent_blue">Синий</string>
+    <string name="accent_purple">Фиолетовый</string>
+    <string name="settings_about_open">О приложении</string>
+    <string name="about_back">Назад к настройкам</string>
+    <string name="about_whats_new">Что нового</string>
+    <string name="about_no_notes">Сведения о выпуске пока недоступны</string>
+    <string name="about_repository">Репозиторий</string>
+    <string name="about_issues">Сообщить о проблеме</string>
+    <string name="about_license">Лицензия: GPL-3.0</string>
+    <string name="about_disclaimer">LibriaTV — неофициальный клиент AniLibria.</string>
 </resources>

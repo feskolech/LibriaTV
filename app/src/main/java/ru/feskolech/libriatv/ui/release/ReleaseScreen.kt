@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.release
+import androidx.tv.material3.MaterialTheme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -42,7 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import ru.feskolech.libriatv.R
@@ -75,7 +76,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             LaunchedEffect(release.id) { focus.requestFocus(); kotlinx.coroutines.delay(100); listState.scrollToItem(0) }
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().background(Color(0xFF101010)),
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 27.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
@@ -95,7 +96,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             Text(description, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
                             // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
                             // visible and leaves the title cut off when coming back up from the episodes.
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.onFocusChanged {
                                     // Let the focus system's own bring-into-view finish first; scrolling at the
                                     // same time gets cancelled by it and the header stays cut off.
@@ -106,17 +107,21 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                         }
                                     }
                                 }) {
-                                Button(onClick = { first?.let { onPlay(it.id) } }, enabled = first != null,
-                                    modifier = Modifier.focusRequester(focus)) {
-                                    Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
-                                        else stringResource(R.string.watch))
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Button(onClick = { first?.let { onPlay(it.id) } }, enabled = first != null,
+                                        modifier = Modifier.focusRequester(focus)) {
+                                        Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
+                                            else stringResource(R.string.watch))
+                                    }
+                                    Button(onClick = { viewModel.toggleFavorite(onLogin) }) {
+                                        Text(stringResource(if (current.favorite) R.string.remove_favorite else R.string.add_favorite))
+                                    }
                                 }
-                                Button(onClick = { viewModel.toggleFavorite(onLogin) }) {
-                                    Text(stringResource(if (current.favorite) R.string.remove_favorite else R.string.add_favorite))
-                                }
-                                Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
-                                if (description.isNotEmpty()) {
-                                    Button(onClick = { showDescription = true }) { Text(stringResource(R.string.description_more)) }
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
+                                    if (description.isNotEmpty()) {
+                                        Button(onClick = { showDescription = true }) { Text(stringResource(R.string.description_more)) }
+                                    }
                                 }
                             }
                             if (showDescription) DescriptionDialog(release.title, description) { showDescription = false }

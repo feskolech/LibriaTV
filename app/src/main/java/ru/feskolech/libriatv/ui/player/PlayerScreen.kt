@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.player
+import androidx.tv.material3.MaterialTheme
 
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
@@ -47,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.ui.PlayerView
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.UiSounds
@@ -201,7 +202,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     Text(formatTime(current.positionMs) + " / " + formatTime(current.durationMs), color = Color.White)
                     Box(Modifier.fillMaxWidth().height(5.dp).background(Color.DarkGray)) {
                         Box(Modifier.fillMaxWidth(if (current.durationMs > 0) (current.positionMs.toFloat() / current.durationMs).coerceIn(0f, 1f) else 0f)
-                            .fillMaxHeight().background(Color(0xFFB32121)))
+                            .fillMaxHeight().background(MaterialTheme.colorScheme.primary))
                     }
                     current.error?.let { error ->
                         if (error == PlayerViewModel.PLAYBACK_FAILED) {

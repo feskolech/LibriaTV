@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import ru.feskolech.libriatv.data.repo.PlaybackStore
 import ru.feskolech.libriatv.data.repo.SettingsStore
+import ru.feskolech.libriatv.data.repo.AppearanceSettings
+import kotlinx.coroutines.flow.first
 import ru.feskolech.libriatv.crash.CrashReportManager
 import ru.feskolech.libriatv.remote.PhoneRemote
 
@@ -29,6 +31,7 @@ sealed interface SettingsUiState {
         val phoneRemoteUrl: String?,
         val phoneRemoteError: Boolean,
         val homeVideoPreview: Boolean,
+        val appearance: AppearanceSettings,
     ) : SettingsUiState
 }
 
@@ -46,7 +49,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkipOpening(), playback.autoSkipEnding(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
-                crashReports.available, crashReports.automatic(), false, null, false, settings.homeVideoPreview())
+                crashReports.available, crashReports.automatic(), false, null, false, settings.homeVideoPreview(), settings.appearance.first())
+            launch {
+                settings.appearance.collect { appearance ->
+                    val current = _state.value as? SettingsUiState.Content ?: return@collect
+                    _state.value = current.copy(appearance = appearance)
+                }
+            }
             phoneRemote.state.collect { remote ->
                 val current = _state.value as? SettingsUiState.Content ?: return@collect
                 _state.value = current.copy(phoneRemoteEnabled = remote.enabled, phoneRemoteUrl = remote.url,
@@ -81,4 +90,7 @@ class SettingsViewModel @Inject constructor(
         { settings.setHomeVideoPreview(it.homeVideoPreview) },
         { it.copy(homeVideoPreview = !it.homeVideoPreview) },
     )
+    fun oled(value: Boolean) = change({ settings.setOled(value) }, { it.copy(appearance = it.appearance.copy(oled = value)) })
+    fun accent(value: Int) = change({ settings.setAccent(value) }, { it.copy(appearance = it.appearance.copy(accent = value)) })
+    fun scale(value: Int) = change({ settings.setScale(value) }, { it.copy(appearance = it.appearance.copy(scale = value)) })
 }

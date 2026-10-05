@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.components
+import androidx.tv.material3.MaterialTheme
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -69,8 +70,8 @@ fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String
             items(letters.size) { letterIndex ->
                 val letter = letters[letterIndex]
                 var focused by remember { mutableStateOf(false) }
-                Box(Modifier.width(42.dp).border(2.dp, if (focused) Color.White else Color.Transparent)
-                    .background(if (focused) Color(0xFFB32121) else Color(0xFF252525))
+                Box(Modifier.width(42.dp).border(2.dp, if (focused) MaterialTheme.colorScheme.primary else Color.Transparent)
+                    .background(if (focused) MaterialTheme.colorScheme.primary else Color(0xFF252525))
                     .then(if (letterIndex == 0) Modifier.focusRequester(alphabetFocus) else Modifier)
                     .onFocusChanged { focused = it.isFocused }
                     .clickable {

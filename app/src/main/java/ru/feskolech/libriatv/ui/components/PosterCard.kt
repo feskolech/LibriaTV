@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.components
+import androidx.tv.material3.MaterialTheme
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -86,15 +87,15 @@ fun PosterCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
-            if (focused) Box(Modifier.fillMaxSize().border(3.dp, Color.White, RoundedCornerShape(9.dp)))
+            if (focused) Box(Modifier.fillMaxSize().border(3.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(9.dp)))
             if (badge != null) {
                 Text(badge, modifier = Modifier.align(Alignment.BottomStart)
                     .padding(7.dp).clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xE6B32121)).padding(horizontal = 7.dp, vertical = 4.dp),
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = .9f)).padding(horizontal = 7.dp, vertical = 4.dp),
                     color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             if (isFavorite) Text("♥", modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
-                color = Color(0xFFFF5555), fontSize = 20.sp)
+                color = MaterialTheme.colorScheme.primary, fontSize = 20.sp)
         }
         // Focused card shows the full title (2 lines, larger). The title area has a fixed height for
         // two large lines so focusing a card never changes the row height (no jumping).

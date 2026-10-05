@@ -30,7 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -51,7 +51,7 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
     LaunchedEffect(Unit) { viewModel.reload() }
     LaunchedEffect(state.authorized) { withFrameNanos { }; runCatching { first.requestFocus() } }
 
-    Column(Modifier.fillMaxSize().background(Color(0xFF101010))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .onFocusChanged { if (it.hasFocus) onContentFocus() }.padding(top = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (!state.authorized && !state.loading) {

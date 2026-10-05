@@ -19,17 +19,19 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.tv.material3.MaterialTheme
 
 /** Spinner shown while the player buffers, so a slow 1080p start is not just a black screen. */
 @Composable
 fun BufferingIndicator(modifier: Modifier = Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
     val transition = rememberInfiniteTransition(label = "buffering")
     val angle by transition.animateFloat(
         0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart), label = "angle",
     )
     Canvas(modifier.size(56.dp)) {
         drawArc(Color(0x33FFFFFF), 0f, 360f, false, style = Stroke(5.dp.toPx()))
-        drawArc(Color(0xFFB32121), angle, 90f, false, style = Stroke(5.dp.toPx(), cap = StrokeCap.Round))
+        drawArc(accent, angle, 90f, false, style = Stroke(5.dp.toPx(), cap = StrokeCap.Round))
     }
 }
 

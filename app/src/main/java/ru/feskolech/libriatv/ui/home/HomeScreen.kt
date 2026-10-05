@@ -51,7 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import java.time.OffsetDateTime
@@ -137,7 +137,7 @@ private fun HomeContent(
         backgroundRelease = focusedRelease
     }
     // clipToBounds: the blur render effect otherwise bleeds left under the drawer as a light strip.
-    Box(Modifier.fillMaxSize().clipToBounds().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }
+    Box(Modifier.fillMaxSize().clipToBounds().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
         // Coming back from the drawer: return to the card that had focus, not the nearest one.
         .focusRestorer()) {
         HomeBackdrop(backgroundRelease, content.videoPreviewEnabled && active)
@@ -230,7 +230,7 @@ private fun ContinueRow(items: List<ContinueItem>, cardModifier: (Release) -> Mo
                     .graphicsLayer { scaleX = if (focused) 1.04f else 1f; scaleY = scaleX }
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF202020))
-                    .border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                    .border(2.dp, if (focused) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(12.dp))
                     .clickable { onOpen(item.release.id) }) {
                         Box(Modifier.fillMaxWidth().height(146.dp)) {
                             AsyncImage(item.episode.previewUrl ?: item.release.posterUrl, null,
@@ -239,7 +239,7 @@ private fun ContinueRow(items: List<ContinueItem>, cardModifier: (Release) -> Mo
                                 .align(androidx.compose.ui.Alignment.BottomStart))
                             Box(Modifier.fillMaxWidth((item.progress.positionMs.toFloat() /
                                 item.progress.durationMs.coerceAtLeast(1)).coerceIn(0f, 1f))
-                                .height(5.dp).background(Color(0xFFB32121))
+                                .height(5.dp).background(MaterialTheme.colorScheme.primary)
                                 .align(androidx.compose.ui.Alignment.BottomStart))
                         }
                         Text(item.release.title, Modifier.padding(horizontal = 8.dp, vertical = 2.dp),

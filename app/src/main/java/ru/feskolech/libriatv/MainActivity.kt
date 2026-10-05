@@ -54,7 +54,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NavigationDrawer
@@ -65,6 +65,7 @@ import androidx.tv.material3.Surface
 import androidx.tv.material3.rememberDrawerState
 import dagger.hilt.android.AndroidEntryPoint
 import ru.feskolech.libriatv.ui.theme.LibriaTvTheme
+import ru.feskolech.libriatv.data.repo.SettingsStore
 import ru.feskolech.libriatv.ui.auth.AuthScreen
 import ru.feskolech.libriatv.ui.home.HomeScreen
 import ru.feskolech.libriatv.ui.home.FeedScreen
@@ -90,6 +91,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var phoneRemote: PhoneRemote
+    @Inject lateinit var settingsStore: SettingsStore
     private val deepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
     private val voiceQuery = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -108,7 +110,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         deepLink.value = intent?.data
         setContent {
-            LibriaTvTheme {
+            LibriaTvTheme(settingsStore) {
                 AppNavigation(phoneRemote, deepLink, voiceQuery, ::startVoiceSearch, onExit = { finishAndRemoveTask() })
             }
         }
@@ -164,6 +166,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     val crashPrompt by crashViewModel.prompt.collectAsState()
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.state.collectAsState()
+    val latestNotes by updateViewModel.latestNotes.collectAsState(initial = "")
     LaunchedEffect(Unit) { updateViewModel.check() }
     val navController = rememberNavController()
     LaunchedEffect(voiceQuery) {
@@ -211,7 +214,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
         drawerState = drawerState,
         drawerContent = { drawerValue ->
             val drawerColor by androidx.compose.animation.animateColorAsState(
-                if (drawerValue == DrawerValue.Open) Color(0xFF181818) else Color(0xFF101010), label = "drawer")
+                if (drawerValue == DrawerValue.Open) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background, label = "drawer")
             Column(
                 modifier = Modifier
                     .then(
@@ -301,6 +304,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             checkUpdates = { updateViewModel.check(force = true) },
                             updateState = updateState,
+                            latestNotes = latestNotes,
                         )
                     } else {
                         PlaceholderScreen(destination.title,

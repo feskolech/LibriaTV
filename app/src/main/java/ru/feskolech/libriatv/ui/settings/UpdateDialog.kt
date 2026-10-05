@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -48,7 +48,7 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
                     is UpdateUiState.Downloading -> {
                         Text(stringResource(R.string.update_downloading, state.percent), style = MaterialTheme.typography.headlineSmall)
                         Box(Modifier.fillMaxWidth().height(8.dp).background(Color.DarkGray)) {
-                            Box(Modifier.fillMaxWidth(state.percent / 100f).height(8.dp).background(Color(0xFFB32121)))
+                            Box(Modifier.fillMaxWidth(state.percent / 100f).height(8.dp).background(MaterialTheme.colorScheme.primary))
                         }
                     }
                     is UpdateUiState.Ready -> {

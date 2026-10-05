@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,38 +29,66 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import ru.feskolech.libriatv.BuildConfig
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.ui.components.makeQr
-
-private val githubUrl = "https://github.com/${BuildConfig.UPDATE_REPO}"
 
 @Composable
 fun SettingsScreen(
     onContentFocus: () -> Unit,
     checkUpdates: () -> Unit,
     updateState: UpdateUiState,
+    latestNotes: String,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    var about by remember { mutableStateOf(false) }
+    BackHandler(about) { about = false }
+    if (about) {
+        AboutScreen(latestNotes, checkUpdates, updateState, onBack = { about = false })
+        return
+    }
     val first = remember { FocusRequester() }
     LaunchedEffect(state is SettingsUiState.Content) {
         if (state is SettingsUiState.Content) { withFrameNanos { }; runCatching { first.requestFocus() } }
     }
-    Column(Modifier.fillMaxSize().background(Color(0xFF101010))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .onFocusChanged { if (it.hasFocus) onContentFocus() }
         .padding(start = 48.dp, end = 48.dp, top = 27.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineLarge, color = Color.White)
         val content = state as? SettingsUiState.Content ?: return@Column
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { SettingTitle(R.string.settings_appearance) }
+            item { SettingChoices(R.string.settings_theme,
+                listOf(stringResource(R.string.settings_theme_dark), stringResource(R.string.settings_theme_oled)),
+                if (content.appearance.oled) 1 else 0, viewModel::oled, listOf(false, true), Modifier.focusRequester(first)) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.settings_accent), color = Color.LightGray)
+                    val names = listOf(R.string.accent_red, R.string.accent_orange, R.string.accent_yellow,
+                        R.string.accent_green, R.string.accent_blue, R.string.accent_purple)
+                    names.chunked(3).forEachIndexed { row, group ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            group.forEachIndexed { column, name ->
+                                val index = row * 3 + column
+                                Button(onClick = { viewModel.accent(index) }) {
+                                    Text(stringResource(name) + if (content.appearance.accent == index) " ✓" else "")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item { SettingChoices(R.string.settings_ui_scale, listOf("90%", "100%", "115%", "130%"),
+                listOf(90, 100, 115, 130).indexOf(content.appearance.scale), viewModel::scale,
+                listOf(90, 100, 115, 130)) }
             item { SettingTitle(R.string.settings_playback) }
             item { SettingChoices(R.string.settings_quality, listOf("480p", "720p", "1080p"),
                 listOf(480, 720, 1080).indexOf(content.quality), viewModel::quality,
-                listOf(480, 720, 1080), Modifier.focusRequester(first)) }
+                listOf(480, 720, 1080)) }
             item { SettingToggle(R.string.settings_auto_skip_opening, content.autoSkipOpening, viewModel::autoSkipOpening) }
             item { SettingToggle(R.string.settings_auto_skip_ending, content.autoSkipEnding, viewModel::autoSkipEnding) }
             item { SettingToggle(R.string.settings_auto_next, content.autoNext, viewModel::autoNext) }
@@ -101,29 +132,7 @@ fun SettingsScreen(
                 }
             }
             item { SettingTitle(R.string.settings_about) }
-            item {
-                Button(onClick = checkUpdates) { Text(stringResource(R.string.settings_check_updates)) }
-            }
-            item {
-                val result = when (updateState) {
-                    UpdateUiState.Checking -> R.string.settings_checking
-                    UpdateUiState.Current -> R.string.settings_current
-                    UpdateUiState.NoRelease -> R.string.settings_no_release
-                    UpdateUiState.Unavailable -> R.string.settings_unavailable
-                    UpdateUiState.Failed -> R.string.settings_download_failed
-                    else -> null
-                }
-                if (result != null) Text(stringResource(result), color = Color.LightGray)
-            }
-            item { Text(stringResource(R.string.settings_version, BuildConfig.VERSION_NAME), color = Color.LightGray) }
-            item {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    val qr = remember { makeQr(githubUrl, 160) }
-                    Image(qr.asImageBitmap(), contentDescription = stringResource(R.string.settings_github),
-                        modifier = Modifier.size(110.dp).background(Color.White).padding(6.dp))
-                    Text(githubUrl, color = Color.LightGray)
-                }
-            }
+            item { Button(onClick = { about = true }) { Text(stringResource(R.string.settings_about_open)) } }
         }
     }
 }

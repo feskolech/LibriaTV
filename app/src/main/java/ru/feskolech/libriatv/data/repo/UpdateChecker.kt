@@ -3,6 +3,7 @@ package ru.feskolech.libriatv.data.repo
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -12,6 +13,7 @@ import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -23,6 +25,7 @@ import ru.feskolech.libriatv.BuildConfig
 
 private val Context.updateDataStore by preferencesDataStore(name = "updates")
 private val lastCheckKey = longPreferencesKey("last_check")
+private val latestNotesKey = stringPreferencesKey("latest_notes")
 private const val CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000L
 
 data class UpdateRelease(val version: String, val notes: String, val apkUrl: String)
@@ -75,7 +78,7 @@ internal fun parseUpdateRelease(json: String): UpdateRelease? = runCatching {
     }?.jsonObject ?: return null
     val url = asset["browser_download_url"]?.jsonPrimitive?.content ?: return null
     if (!url.startsWith("https://")) return null
-    UpdateRelease(tag.removePrefix("v"), root["body"]?.jsonPrimitive?.content.orEmpty().take(800), url)
+    UpdateRelease(tag.removePrefix("v"), root["body"]?.jsonPrimitive?.content.orEmpty(), url)
 }.getOrNull()
 
 internal sealed interface GithubReleaseResponse {
@@ -99,6 +102,7 @@ internal fun fetchLatestRelease(client: OkHttpClient, url: String): GithubReleas
 
 @Singleton
 class UpdateChecker @Inject constructor(@ApplicationContext private val context: Context) {
+    val latestNotes = context.updateDataStore.data.map { it[latestNotesKey].orEmpty() }
     // Keep GitHub requests separate from the AniLibria client: no account token may reach GitHub.
     private val client = OkHttpClient()
 
@@ -109,7 +113,10 @@ class UpdateChecker @Inject constructor(@ApplicationContext private val context:
         try {
             val response = fetchLatestRelease(client,
                 "https://api.github.com/repos/${BuildConfig.UPDATE_REPO}/releases/latest")
-            context.updateDataStore.edit { it[lastCheckKey] = now }
+            context.updateDataStore.edit {
+                it[lastCheckKey] = now
+                if (response is GithubReleaseResponse.Release) it[latestNotesKey] = response.value.notes
+            }
             when (response) {
                 is GithubReleaseResponse.Release -> if (compareVersions(response.value.version, BuildConfig.VERSION_NAME) > 0)
                     UpdateCheckResult.Available(response.value) else UpdateCheckResult.Current

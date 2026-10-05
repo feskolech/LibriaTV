@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Button
+import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
@@ -37,7 +37,7 @@ import ru.feskolech.libriatv.ui.components.makeQr
 import ru.feskolech.libriatv.data.repo.AuthState
 
 private const val LINK_URL = "https://aniliberty.top/app/auth/otp/linkDevice"
-private val accent = Color(0xFFB32121)
+private val accent: Color @Composable get() = MaterialTheme.colorScheme.primary
 
 @Composable
 fun AuthScreen(onOpenMenu: () -> Unit, onContentFocus: () -> Unit, viewModel: AuthViewModel = hiltViewModel()) {
@@ -46,7 +46,7 @@ fun AuthScreen(onOpenMenu: () -> Unit, onContentFocus: () -> Unit, viewModel: Au
     BackHandler(state.passwordMode) { viewModel.showPassword(false) }
     Surface(
         modifier = Modifier.fillMaxSize().onFocusChanged { if (it.hasFocus) onContentFocus() },
-        colors = androidx.tv.material3.SurfaceDefaults.colors(containerColor = Color(0xFF101010)),
+        colors = androidx.tv.material3.SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
         Box(Modifier.fillMaxSize().padding(horizontal = 48.dp, vertical = 27.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
