@@ -129,7 +129,10 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             when (code) {
                 KeyEvent.KEYCODE_DPAD_LEFT -> if (hidden) { viewModel.seek(-1, native.repeatCount); true } else false
                 KeyEvent.KEYCODE_DPAD_RIGHT -> if (hidden) { viewModel.seek(1, native.repeatCount); true } else false
-                KeyEvent.KEYCODE_DPAD_UP -> if (hidden) { viewModel.showPanel(PlayerPanel.Controls); true } else false
+                KeyEvent.KEYCODE_DPAD_UP -> when (current?.panel) {
+                    PlayerPanel.Hidden, PlayerPanel.Episodes -> { viewModel.showPanel(PlayerPanel.Controls); true }
+                    else -> false
+                }
                 KeyEvent.KEYCODE_DPAD_DOWN -> if (hidden) { viewModel.showPanel(PlayerPanel.Episodes); true } else false
                 // Bonus keys: only some remotes have them, nothing depends on them.
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> { viewModel.togglePause(); true }

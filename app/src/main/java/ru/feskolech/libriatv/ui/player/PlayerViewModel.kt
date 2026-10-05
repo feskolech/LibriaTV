@@ -386,8 +386,9 @@ class PlayerViewModel @Inject constructor(
     fun hidePanel(): Boolean {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return false
         if (current.panel == PlayerPanel.Hidden) return false
-        // Back from the settings menu returns to the controls it was opened from.
-        update { it.copy(panel = if (current.panel == PlayerPanel.Settings) PlayerPanel.Controls else PlayerPanel.Hidden) }
+        // Back from the settings menu or the episode list returns to the playback controls, not to
+        // the bare video: both are reached from the controls' buttons.
+        update { it.copy(panel = if (current.panel == PlayerPanel.Controls) PlayerPanel.Hidden else PlayerPanel.Controls) }
         return true
     }
     fun skip() {

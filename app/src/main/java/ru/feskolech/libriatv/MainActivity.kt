@@ -111,7 +111,11 @@ class MainActivity : ComponentActivity() {
         deepLink.value = intent?.data
         setContent {
             LibriaTvTheme(settingsStore) {
-                AppNavigation(phoneRemote, deepLink, voiceQuery, ::startVoiceSearch, onExit = { finishAndRemoveTask() })
+                // While the drawer collapses, its slot is briefly wider than its content; without a themed
+                // background under everything that gap showed the window's grey (#303030) as a light strip.
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    AppNavigation(phoneRemote, deepLink, voiceQuery, ::startVoiceSearch, onExit = { finishAndRemoveTask() })
+                }
             }
         }
     }
