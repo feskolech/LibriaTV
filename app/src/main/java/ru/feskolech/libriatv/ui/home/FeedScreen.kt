@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.home
 
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,7 +46,7 @@ fun FeedScreen(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit,
             Button(onClick = viewModel::loadMore, modifier = Modifier.padding(start = 48.dp)) { Text(stringResource(R.string.retry)) }
         }
         LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), state = gridState,
-            modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxSize().focusRestorer(), contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
             items(state.releases, key = { it.id }) { release ->
                 PosterCard(release, release.latestEpisode?.ordinal?.toInt()?.let { stringResource(R.string.episode_number, it) },

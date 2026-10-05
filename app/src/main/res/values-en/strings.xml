@@ -47,6 +47,7 @@
     <string name="tomorrow">Airing tomorrow</string>
     <string name="episode_number">Episode %1$d</string>
     <string name="hours_ago">%1$d h ago</string>
+    <string name="less_than_hour_ago">&lt;1 h ago</string>
     <string name="release_details">Release details</string>
     <string name="back">Back</string>
     <string name="watch">Watch</string>

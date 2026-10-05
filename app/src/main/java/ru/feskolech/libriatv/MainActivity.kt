@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv
 
+import ru.feskolech.libriatv.ui.components.LocalDrawerFocus
+import androidx.compose.runtime.CompositionLocalProvider
 import android.os.Bundle
 import android.content.Intent
 import android.app.Activity
@@ -269,76 +271,79 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
             }
         },
     ) {
-        NavHost(navController = navController, startDestination = Destination.Home.route) {
-            Destination.entries.forEach { destination ->
-                composable(destination.route) {
-                    if (destination == Destination.Profile) {
-                        AuthScreen(
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                            onOpenMenu = { firstItemFocus.requestFocus() },
-                        )
-                    } else if (destination == Destination.Catalog) {
-                        CatalogScreen(
-                            onOpenRelease = { navController.navigate("release/$it") },
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                        )
-                    } else if (destination == Destination.Favorites) {
-                        FavoritesScreen(
-                            onOpenRelease = { navController.navigate("release/$it") },
-                            onLogin = { navController.navigate(Destination.Profile.route) },
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                        )
-                    } else if (destination == Destination.Schedule) {
-                        ScheduleScreen(
-                            onOpenRelease = { navController.navigate("release/$it") },
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                        )
-                    } else if (destination == Destination.Search) {
-                        SearchScreen(
-                            onOpenRelease = { navController.navigate("release/$it") },
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                        )
-                    } else if (destination == Destination.Home) {
-                        HomeScreen(
-                            active = currentRoute == Destination.Home.route,
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                            onOpenFeed = { navController.navigate("feed") },
-                            onOpenRelease = { navController.navigate("release/$it") },
-                        )
-                    } else if (destination == Destination.Settings) {
-                        SettingsScreen(
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                            checkUpdates = { updateViewModel.check(force = true) },
-                            updateState = updateState,
-                            latestNotes = latestNotes,
-                        )
-                    } else {
-                        PlaceholderScreen(destination.title,
-                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                            onOpenMenu = { firstItemFocus.requestFocus() })
+        // Screens use this to send Left from their leftmost controls straight to the side menu.
+        CompositionLocalProvider(LocalDrawerFocus provides itemFocus.getValue(selectedDestination)) {
+            NavHost(navController = navController, startDestination = Destination.Home.route) {
+                Destination.entries.forEach { destination ->
+                    composable(destination.route) {
+                        if (destination == Destination.Profile) {
+                            AuthScreen(
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                                onOpenMenu = { firstItemFocus.requestFocus() },
+                            )
+                        } else if (destination == Destination.Catalog) {
+                            CatalogScreen(
+                                onOpenRelease = { navController.navigate("release/$it") },
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            )
+                        } else if (destination == Destination.Favorites) {
+                            FavoritesScreen(
+                                onOpenRelease = { navController.navigate("release/$it") },
+                                onLogin = { navController.navigate(Destination.Profile.route) },
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            )
+                        } else if (destination == Destination.Schedule) {
+                            ScheduleScreen(
+                                onOpenRelease = { navController.navigate("release/$it") },
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            )
+                        } else if (destination == Destination.Search) {
+                            SearchScreen(
+                                onOpenRelease = { navController.navigate("release/$it") },
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                            )
+                        } else if (destination == Destination.Home) {
+                            HomeScreen(
+                                active = currentRoute == Destination.Home.route,
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                                onOpenFeed = { navController.navigate("feed") },
+                                onOpenRelease = { navController.navigate("release/$it") },
+                            )
+                        } else if (destination == Destination.Settings) {
+                            SettingsScreen(
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                                checkUpdates = { updateViewModel.check(force = true) },
+                                updateState = updateState,
+                                latestNotes = latestNotes,
+                            )
+                        } else {
+                            PlaceholderScreen(destination.title,
+                                onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                                onOpenMenu = { firstItemFocus.requestFocus() })
+                        }
                     }
                 }
-            }
-            composable("search?query={query}") { entry ->
-                SearchScreen(onOpenRelease = { navController.navigate("release/$it") },
-                    onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                    initialQuery = entry.arguments?.getString("query").orEmpty())
-            }
-            composable("feed") {
-                FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
-                    onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
-            }
-            composable("release/{id}") { entry ->
-                ReleaseScreen(
-                    onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
-                    onTorrents = { navController.navigate("torrents/$it") },
-                    onLogin = { navController.navigate(Destination.Profile.route) },
-                    onOpenRelease = { navController.navigate("release/$it") },
-                )
-            }
-            composable("torrents/{releaseId}") { TorrentsScreen() }
-            composable("player/{id}/{episodeId}") {
-                PlayerScreen(onBack = { navController.popBackStack() }, remoteCommands = phoneRemote.commands)
+                composable("search?query={query}") { entry ->
+                    SearchScreen(onOpenRelease = { navController.navigate("release/$it") },
+                        onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                        initialQuery = entry.arguments?.getString("query").orEmpty())
+                }
+                composable("feed") {
+                    FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
+                        onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
+                }
+                composable("release/{id}") { entry ->
+                    ReleaseScreen(
+                        onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
+                        onTorrents = { navController.navigate("torrents/$it") },
+                        onLogin = { navController.navigate(Destination.Profile.route) },
+                        onOpenRelease = { navController.navigate("release/$it") },
+                    )
+                }
+                composable("torrents/{releaseId}") { TorrentsScreen() }
+                composable("player/{id}/{episodeId}") {
+                    PlayerScreen(onBack = { navController.popBackStack() }, remoteCommands = phoneRemote.commands)
+                }
             }
         }
     }

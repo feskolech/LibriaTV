@@ -1,4 +1,5 @@
 package ru.feskolech.libriatv.ui.components
+import androidx.compose.ui.focus.focusRestorer
 import androidx.tv.material3.MaterialTheme
 
 import androidx.compose.foundation.background
@@ -53,7 +54,7 @@ fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String
     Row(Modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.weight(1f)) {
         val columns = ((maxWidth - 62.dp) / 164.dp).toInt().coerceAtLeast(1)
-        LazyVerticalGrid(columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize(),
+        LazyVerticalGrid(columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize().focusRestorer(),
             contentPadding = PaddingValues(start = 48.dp, end = 14.dp, top = 8.dp, bottom = 27.dp),
             horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
             itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->

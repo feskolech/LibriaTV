@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.favorites
 
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -93,7 +94,7 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                 state.tab == null && state.selectedSorting == "TITLE_ASC" -> AlphabetGrid(state.releases,
                     badge = { it.latestFavoriteOrdinal()?.let { n -> stringResource(R.string.episode_number, n) } },
                     favoriteIds = state.ids, onOpen = onOpenRelease)
-                else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize(),
+                else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize().focusRestorer(),
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                     itemsIndexed(state.releases, key = { _, release -> release.id }) { index, release ->

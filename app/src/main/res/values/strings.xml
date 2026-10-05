@@ -47,6 +47,7 @@
     <string name="tomorrow">Выходит завтра</string>
     <string name="episode_number">Серия %1$d</string>
     <string name="hours_ago">%1$d ч назад</string>
+    <string name="less_than_hour_ago">&lt;1 ч назад</string>
     <string name="release_details">Карточка релиза</string>
     <string name="back">Назад</string>
     <string name="watch">Смотреть</string>

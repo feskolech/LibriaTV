@@ -1,5 +1,8 @@
 package ru.feskolech.libriatv.ui.search
 
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRestorer
 import android.app.Activity
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -94,12 +97,16 @@ fun SearchScreen(
         }
     }
 
-    // Nothing is preselected: focus stays on the "Search" item in the drawer until the viewer moves
-    // right and picks voice (first, if the device has it) or typing. Focusing the field pops the keyboard.
+    // Nothing is preselected: focus stays on the "Search" item in the drawer. Moving right always
+    // lands on the mic (or the field without voice search), never on a recent query below it.
+    // The field only opens the keyboard when OK is pressed on it, not when focus merely passes by.
     val micFocus = remember { FocusRequester() }
+    val firstControl = if (voiceAvailable) micFocus else fieldFocus
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
+            .focusProperties { onEnter = { if (results !is SearchResults.Content) firstControl.requestFocus() } }
+            .focusGroup()
             .padding(top = 27.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
@@ -109,8 +116,13 @@ fun SearchScreen(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (voiceAvailable) {
-                Button(onClick = { voice.launch(voiceIntent) }, modifier = Modifier.focusRequester(micFocus)) {
-                    Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.search_voice))
+                // Round and as tall as the search field, so the two read as one control row.
+                Button(onClick = { voice.launch(voiceIntent) }, modifier = Modifier.size(60.dp).focusRequester(micFocus),
+                    shape = androidx.tv.material3.ButtonDefaults.shape(androidx.compose.foundation.shape.CircleShape),
+                    contentPadding = PaddingValues(0.dp)) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.search_voice), modifier = Modifier.size(28.dp))
+                    }
                 }
             }
             SearchField(
@@ -133,7 +145,9 @@ fun SearchScreen(
         }
 
         when (val current = results) {
-            SearchResults.Idle -> RecentQueries(recent, onPick = viewModel::submit, onClear = viewModel::clearHistory)
+            // The focused "Clear" button disappears with the history; keep focus on the screen.
+            SearchResults.Idle -> RecentQueries(recent, onPick = viewModel::submit,
+                onClear = { viewModel.clearHistory(); runCatching { firstControl.requestFocus() } })
             SearchResults.Loading -> Text(stringResource(R.string.search_loading), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
             is SearchResults.Error -> Column(Modifier.padding(horizontal = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(current.message, color = Color.White)
@@ -144,7 +158,7 @@ fun SearchScreen(
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(160.dp),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().focusRestorer(),
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp),
                     verticalArrangement = Arrangement.spacedBy(22.dp),
@@ -170,15 +184,26 @@ fun SearchScreen(
 @Composable
 private fun SearchField(value: String, onChange: (String) -> Unit, onSearch: () -> Unit, modifier: Modifier) {
     var focused by remember { mutableStateOf(false) }
+    // Read-only until OK is pressed: a read-only field starts no input session, so no keyboard.
+    var editing by remember { mutableStateOf(false) }
     BasicTextField(
         value = value,
         onValueChange = onChange,
+        readOnly = !editing,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
         textStyle = TextStyle(color = Color.White, fontSize = 24.sp),
         cursorBrush = SolidColor(Color.White),
-        modifier = modifier.height(60.dp).onFocusChanged { focused = it.isFocused }
+        modifier = modifier.height(60.dp)
+            .onFocusChanged { focused = it.isFocused; if (!it.isFocused) editing = false }
+            .onPreviewKeyEvent { event ->
+                val ok = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
+                if (ok && !editing) {
+                    if (event.type == KeyEventType.KeyUp) editing = true
+                    true
+                } else false
+            }
             .border(if (focused) 3.dp else 1.dp, if (focused) Accent else Color(0xFF656565), RoundedCornerShape(30.dp))
             .background(Color(0xFF26262A), RoundedCornerShape(30.dp))
             .padding(horizontal = 22.dp, vertical = 14.dp),

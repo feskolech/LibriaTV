@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.torrents
 
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +75,7 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
                 if (current.torrents.isEmpty()) {
                     Text(stringResource(R.string.torrents_empty), color = Color.White)
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
+                    LazyColumn(Modifier.focusRestorer(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(vertical = 8.dp)) {
                         itemsIndexed(current.torrents, key = { _, t -> t.id }) { index, torrent ->
                             TorrentRow(
                                 torrent,

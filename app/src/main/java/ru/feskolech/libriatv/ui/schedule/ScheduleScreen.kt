@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.schedule
 
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,7 +83,7 @@ fun ScheduleScreen(
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(160.dp),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().focusRestorer(),
                         contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 27.dp),
                         horizontalArrangement = Arrangement.spacedBy(22.dp),
                         verticalArrangement = Arrangement.spacedBy(22.dp),

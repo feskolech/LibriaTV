@@ -335,12 +335,13 @@ private fun SelectedInfo(release: Release, episode: String?) {
     }
 }
 
-/** "5 h ago" for the last two days, "12 d ago" up to two months, then the date itself. */
+/** "<1 h ago" within the first hour, "5 h ago" for the last two days, "12 d ago" up to two months, then the date itself. */
 @Composable
 private fun freshLabel(value: String): String? {
     val time = runCatching { OffsetDateTime.parse(value) }.getOrNull() ?: return null
     val hours = ChronoUnit.HOURS.between(time, OffsetDateTime.now()).coerceAtLeast(0)
     return when {
+        hours < 1 -> stringResource(R.string.less_than_hour_ago)
         hours < 48 -> stringResource(R.string.hours_ago, hours)
         hours < 24 * 60 -> stringResource(R.string.days_ago, hours / 24)
         else -> time.format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))

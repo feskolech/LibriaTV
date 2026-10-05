@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.settings
 
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -60,7 +61,9 @@ fun SettingsScreen(
         .padding(start = 48.dp, end = 48.dp, top = 27.dp)) {
         Text(stringResource(R.string.settings), style = MaterialTheme.typography.headlineLarge, color = Color.White)
         val content = state as? SettingsUiState.Content ?: return@Column
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Coming from the side menu for the first time lands on the top setting, not on whichever row is
+        // level with the menu item; later visits return to the last focused setting.
+        LazyColumn(Modifier.focusRestorer(first), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { SettingTitle(R.string.settings_appearance) }
             item { SettingChoices(R.string.settings_theme,
                 listOf(stringResource(R.string.settings_theme_dark), stringResource(R.string.settings_theme_oled)),
