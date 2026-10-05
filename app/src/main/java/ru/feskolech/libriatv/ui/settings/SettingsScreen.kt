@@ -113,8 +113,8 @@ fun SettingsScreen(
                                 modifier = Modifier.size(130.dp).background(Color.White).padding(6.dp))
                             Column {
                                 Text(stringResource(R.string.settings_phone_remote_hint), color = Color.LightGray)
-                                Text(stringResource(R.string.settings_phone_remote_pin, url.substringAfter("pin=")), color = Color.White)
-                                Text(url, color = Color.White)
+                                content.phoneRemotePin?.let { Text(stringResource(R.string.settings_phone_remote_pin, it), color = Color.White) }
+                                Text(url.substringBefore("/?token=") + "/?pin=" + content.phoneRemotePin.orEmpty(), color = Color.White)
                             }
                         }
                     } else if (content.phoneRemoteError) {

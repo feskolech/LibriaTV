@@ -12,7 +12,7 @@
     <string name="exit">Exit</string>
     <string name="cancel">Cancel</string>
     <string name="open_menu">Open menu</string>
-    <string name="auth_eyebrow">ANILIBRIA ACCOUNT</string>
+    <string name="auth_eyebrow">ANILIBERTY ACCOUNT</string>
     <string name="auth_title">Sign in to LibriaTV</string>
     <string name="auth_code_heading">Sign in with a code</string>
     <string name="auth_code_hint">Open the link on your phone or computer and enter this code.</string>
@@ -34,7 +34,7 @@
     <string name="auth_sign_in">Sign in</string>
     <string name="auth_signing_in">Signing in…</string>
     <string name="auth_keyboard_hint">Select a field to type using the TV keyboard.</string>
-    <string name="auth_password_note">An AniLibria account is required.</string>
+    <string name="auth_password_note">An AniLiberty (formerly AniLibria) account is required.</string>
     <string name="auth_back_to_code">Back to code</string>
     <string name="auth_logout">Sign out</string>
     <string name="auth_loading_profile">Loading profile…</string>
@@ -131,7 +131,7 @@
     <string name="settings_phone_remote">Send to TV from phone</string>
     <string name="settings_phone_remote_qr">QR code to connect phone</string>
     <string name="settings_phone_remote_pin">PIN: %1$s</string>
-    <string name="settings_phone_remote_hint">Open this address on a phone on the same network. The PIN is in the address.</string>
+    <string name="settings_phone_remote_hint">Scan the QR code or enter the address with PIN manually on a phone on the same network.</string>
     <string name="settings_phone_remote_error">Could not start the server or find a local IP address. Check the network connection.</string>
     <string name="settings_about">About</string>
     <string name="settings_check_updates">Check for updates</string>
@@ -149,6 +149,7 @@
     <string name="update_later">Later</string>
     <string name="update_downloading">Downloading update: %1$d%%</string>
     <string name="update_ready">Update ready to install</string>
+    <string name="update_invalid_apk">APK rejected: package, signature, or version does not match the installed app.</string>
     <string name="update_install">Install</string>
     <string name="update_permission_hint">Allow installs from this app, then return and select Install.</string>
     <string name="settings_crash_reports">Crash reports</string>
@@ -222,5 +223,5 @@
     <string name="about_repository">Repository</string>
     <string name="about_issues">Report an issue</string>
     <string name="about_license">License: GPL-3.0</string>
-    <string name="about_disclaimer">LibriaTV is an unofficial AniLibria client.</string>
+    <string name="about_disclaimer">LibriaTV is an unofficial AniLiberty (formerly AniLibria) client, not affiliated with the AniLiberty team or the AniLibria studio.</string>
 </resources>

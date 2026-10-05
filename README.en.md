@@ -2,14 +2,19 @@
 
 [Русский](README.md) · **English**
 
-An unofficial [AniLibria](https://anilibria.top) client for Android TV and TV boxes.
-It is built on the current v1 API, so signing in works (unlike the old official TV app).
+An unofficial [AniLiberty](https://aniliberty.top) (formerly AniLibria) client for Android TV and
+TV boxes. It is built on the current v1 API, so signing in works (unlike the old AniLibria TV app).
 The whole UI is made for a remote control: arrows and OK. Content is in Russian.
 
 ![Home](docs/screenshots/home.jpg)
 
-> Not affiliated with the AniLibria team. All content belongs to its rights holders and is
-> streamed from AniLibria servers; the app itself stores and shares nothing.
+> **AniLibria → AniLiberty.** In May 2025 the project split: the fandub team, the site
+> (anilibria.top / aniliberty.top) and the whole dub archive since 2012 are now **AniLiberty**, while
+> the AniLibria name stayed with the official dubbing studio. LibriaTV uses the AniLiberty catalog —
+> every fandub release, including the old AniLibria-era dubs.
+>
+> Not affiliated with the AniLiberty team or the AniLibria studio. All content belongs to its rights
+> holders and is streamed from AniLiberty servers; the app itself stores and shares nothing.
 
 ## Features
 

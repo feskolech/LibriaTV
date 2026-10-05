@@ -12,7 +12,7 @@
     <string name="exit">Выйти</string>
     <string name="cancel">Отмена</string>
     <string name="open_menu">Открыть меню</string>
-    <string name="auth_eyebrow">АККАУНТ ANILIBRIA</string>
+    <string name="auth_eyebrow">АККАУНТ ANILIBERTY</string>
     <string name="auth_title">Вход в LibriaTV</string>
     <string name="auth_code_heading">Войти с помощью кода</string>
     <string name="auth_code_hint">Откройте ссылку на телефоне или компьютере и введите этот код.</string>
@@ -34,7 +34,7 @@
     <string name="auth_sign_in">Войти</string>
     <string name="auth_signing_in">Входим…</string>
     <string name="auth_keyboard_hint">Выберите поле и введите данные с экранной клавиатуры ТВ.</string>
-    <string name="auth_password_note">Для входа нужен аккаунт AniLibria.</string>
+    <string name="auth_password_note">Для входа нужен аккаунт AniLiberty (бывш. AniLibria).</string>
     <string name="auth_back_to_code">Вернуться к коду</string>
     <string name="auth_logout">Выйти из аккаунта</string>
     <string name="auth_loading_profile">Загружаем профиль…</string>
@@ -132,7 +132,7 @@
     <string name="settings_phone_remote">Отправить на ТВ с телефона</string>
     <string name="settings_phone_remote_qr">QR для подключения телефона</string>
     <string name="settings_phone_remote_pin">PIN: %1$s</string>
-    <string name="settings_phone_remote_hint">Откройте адрес на телефоне в той же сети. PIN указан в адресе.</string>
+    <string name="settings_phone_remote_hint">Сканируйте QR-код или введите адрес с PIN вручную на телефоне в той же сети.</string>
     <string name="settings_phone_remote_error">Не удалось запустить сервер или определить локальный IP-адрес. Проверьте подключение к сети.</string>
     <string name="settings_about">О приложении</string>
     <string name="settings_check_updates">Проверить обновления</string>
@@ -150,6 +150,7 @@
     <string name="update_later">Позже</string>
     <string name="update_downloading">Загрузка обновления: %1$d%%</string>
     <string name="update_ready">Обновление готово к установке</string>
+    <string name="update_invalid_apk">APK отклонён: пакет, подпись или версия не совпадают с установленным приложением.</string>
     <string name="update_install">Установить</string>
     <string name="update_permission_hint">Разрешите установку из этого приложения, затем вернитесь и нажмите «Установить».</string>
     <string name="settings_crash_reports">Отчёты о падениях</string>
@@ -222,5 +223,5 @@
     <string name="about_repository">Репозиторий</string>
     <string name="about_issues">Сообщить о проблеме</string>
     <string name="about_license">Лицензия: GPL-3.0</string>
-    <string name="about_disclaimer">LibriaTV — неофициальный клиент AniLibria.</string>
+    <string name="about_disclaimer">LibriaTV — неофициальный клиент AniLiberty (бывш. AniLibria). Не связан ни с командой AniLiberty, ни со студией AniLibria.</string>
 </resources>

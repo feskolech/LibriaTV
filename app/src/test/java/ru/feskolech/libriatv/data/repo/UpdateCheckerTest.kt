@@ -8,6 +8,13 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 
 class UpdateCheckerTest {
+    @Test fun apkDownloadHostsAreAllowlisted() {
+        for (url in listOf("https://github.com/o/r/app.apk", "https://objects.githubusercontent.com/file.apk"))
+            org.junit.Assert.assertTrue(url, allowedApkUrl(url))
+        for (url in listOf("http://github.com/a.apk", "https://github.com.evil.test/a.apk",
+            "https://evil.githubusercontent.com.test/a.apk", "https://api.github.com/a.apk"))
+            org.junit.Assert.assertFalse(url, allowedApkUrl(url))
+    }
     @Test fun comparesNumericVersionsWithoutTheVPrefix() {
         assertEquals(1, compareVersions("v1.10.0", "1.9.9"))
         assertEquals(-1, compareVersions("v1.2.3", "1.3.0"))
@@ -45,5 +52,12 @@ class UpdateCheckerTest {
             assertEquals(GithubReleaseResponse.NotFound,
                 fetchLatestRelease(OkHttpClient(), server.url("/releases/latest").toString()))
         }
+    }
+
+    @Test fun releaseNotesShowOnlyUiLanguageAsPlainText() {
+        val body = "Первая **версия**\n- пункт `один`\n\n---\n\nFirst **release**"
+        assertEquals("Первая версия\n• пункт один", releaseNotesForDisplay(body, "ru"))
+        assertEquals("First release", releaseNotesForDisplay(body, "en"))
+        assertEquals("Only one part", releaseNotesForDisplay("Only one part", "en"))
     }
 }

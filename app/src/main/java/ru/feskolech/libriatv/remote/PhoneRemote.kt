@@ -7,6 +7,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import fi.iki.elonen.NanoHTTPD
 import java.net.Inet4Address
 import java.security.SecureRandom
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +29,7 @@ import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.SettingsStore
 import ru.feskolech.libriatv.domain.Release
 
-data class PhoneRemoteState(val enabled: Boolean = false, val url: String? = null, val error: Boolean = false)
+data class PhoneRemoteState(val enabled: Boolean = false, val url: String? = null, val pin: String? = null, val error: Boolean = false)
 
 @Singleton
 class PhoneRemote @Inject constructor(
@@ -43,6 +46,7 @@ class PhoneRemote @Inject constructor(
     private var enabled = false
     private var pin: String? = null
     private var server: RemoteServer? = null
+    private val gate = PinGate()
 
     suspend fun foreground(value: Boolean) = mutex.withLock {
         foreground = value
@@ -68,16 +72,17 @@ class PhoneRemote @Inject constructor(
         if (server == null) {
             server = withContext(Dispatchers.IO) {
                 try {
-                    RemoteServer(8765, pin!!).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
+                    RemoteServer(8765, pin!!, newRemoteToken()).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) }
                 } catch (_: Exception) {
-                    try { RemoteServer(0, pin!!).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) } }
+                    try { RemoteServer(0, pin!!, newRemoteToken()).also { it.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false) } }
                     catch (_: Exception) { null }
                 }
             }
         }
         val ip = localAddress()
         _state.value = PhoneRemoteState(enabled = true,
-            url = if (server != null && ip != null) "http://$ip:${server!!.listeningPort}/?pin=$pin" else null,
+            url = if (server != null && ip != null) "http://$ip:${server!!.listeningPort}/?token=${server!!.token}" else null,
+            pin = pin,
             error = server == null || ip == null)
     }
 
@@ -95,12 +100,35 @@ class PhoneRemote @Inject constructor(
         return if (address == 0) null else (0..3).joinToString(".") { ((address ushr (it * 8)) and 255).toString() }
     }
 
-    private inner class RemoteServer(port: Int, private val secret: String) : NanoHTTPD(port) {
-        private val gate = PinGate()
+    private inner class RemoteServer(port: Int, private val secret: String, val token: String) : NanoHTTPD(port) {
+        init {
+            setAsyncRunner(object : AsyncRunner {
+                private val handlers = java.util.concurrent.ConcurrentHashMap.newKeySet<ClientHandler>()
+                private val pool = ThreadPoolExecutor(4, 4, 0L, TimeUnit.MILLISECONDS,
+                    ArrayBlockingQueue(16))
+                override fun exec(handler: ClientHandler) {
+                    handlers.add(handler)
+                    try { pool.execute(handler) } catch (_: java.util.concurrent.RejectedExecutionException) {
+                        handlers.remove(handler)
+                        handler.close()
+                    }
+                }
+                override fun closed(handler: ClientHandler) { handlers.remove(handler) }
+                override fun closeAll() {
+                    handlers.forEach { it.close() }
+                    pool.shutdownNow()
+                }
+            })
+        }
 
         override fun serve(session: IHTTPSession): Response {
+            if (!allowedRemoteAddress(session.remoteIpAddress) ||
+                !validRemoteHost(session.headers["host"], listeningPort)) {
+                return reply(Response.Status.FORBIDDEN, "text/plain", "Forbidden")
+            }
             val parameters = session.parameters.mapValues { it.value.firstOrNull().orEmpty() }
-            if (!gate.allow(session.remoteIpAddress ?: "unknown", secret, parameters["pin"])) {
+            if (!validRemoteToken(token, parameters["token"]) &&
+                !gate.allow(session.remoteIpAddress ?: "unknown", secret, parameters["pin"])) {
                 return reply(Response.Status.FORBIDDEN, "text/plain", "Forbidden")
             }
             val path = session.uri

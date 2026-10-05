@@ -1,6 +1,9 @@
 package ru.feskolech.libriatv.data.repo
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import java.security.MessageDigest
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -21,6 +24,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import ru.feskolech.libriatv.BuildConfig
 
 private val Context.updateDataStore by preferencesDataStore(name = "updates")
@@ -77,9 +81,52 @@ internal fun parseUpdateRelease(json: String): UpdateRelease? = runCatching {
         item.jsonObject["name"]?.jsonPrimitive?.content?.endsWith(".apk", ignoreCase = true) == true
     }?.jsonObject ?: return null
     val url = asset["browser_download_url"]?.jsonPrimitive?.content ?: return null
-    if (!url.startsWith("https://")) return null
-    UpdateRelease(tag.removePrefix("v"), root["body"]?.jsonPrimitive?.content.orEmpty(), url)
+    if (!allowedApkUrl(url)) return null
+    UpdateRelease(tag.removePrefix("v"),
+        releaseNotesForDisplay(root["body"]?.jsonPrimitive?.content.orEmpty(), java.util.Locale.getDefault().language), url)
 }.getOrNull()
+
+/**
+ * Release bodies are written as "Russian part, ---, English part" in Markdown (docs/release-notes).
+ * The TV shows plain text: only the part for the UI language, without Markdown markers.
+ */
+internal fun releaseNotesForDisplay(body: String, language: String): String {
+    val parts = body.replace("\r\n", "\n").split(Regex("\n-{3,}\n"))
+    val part = if (parts.size > 1 && language != "ru") parts.last() else parts.first()
+    return part.replace("**", "").replace("`", "")
+        .replace(Regex("""(?m)^\s*[-*] """), "• ")
+        .trim()
+}
+
+internal fun allowedApkUrl(url: String): Boolean {
+    val parsed = url.toHttpUrlOrNull() ?: return false
+    val host = parsed.host.lowercase()
+    return parsed.isHttps && (host == "github.com" || host.endsWith(".githubusercontent.com"))
+}
+
+internal fun verifyDownloadedApk(context: Context, file: File): Boolean = runCatching {
+    val manager = context.packageManager
+    @Suppress("DEPRECATION")
+    val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
+    @Suppress("DEPRECATION")
+    val archive = manager.getPackageArchiveInfo(file.absolutePath, flags) ?: return false
+    @Suppress("DEPRECATION")
+    val installed = manager.getPackageInfo(context.packageName, flags)
+    @Suppress("DEPRECATION")
+    fun code(info: android.content.pm.PackageInfo): Long =
+        if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()
+    if (archive.packageName != context.packageName || code(archive) <= code(installed)) return false
+    @Suppress("DEPRECATION")
+    fun certs(info: android.content.pm.PackageInfo): Set<String> {
+        val signatures = if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures
+        return signatures?.map { signature ->
+            MessageDigest.getInstance("SHA-256").digest(signature.toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        }?.toSet().orEmpty()
+    }
+    val own = certs(installed)
+    own.isNotEmpty() && certs(archive) == own
+}.getOrDefault(false)
 
 internal sealed interface GithubReleaseResponse {
     data class Release(val value: UpdateRelease) : GithubReleaseResponse
@@ -105,6 +152,7 @@ class UpdateChecker @Inject constructor(@ApplicationContext private val context:
     val latestNotes = context.updateDataStore.data.map { it[latestNotesKey].orEmpty() }
     // Keep GitHub requests separate from the AniLibria client: no account token may reach GitHub.
     private val client = OkHttpClient()
+    private val downloadClient = client.newBuilder().followRedirects(false).build()
 
     suspend fun check(force: Boolean = false): UpdateCheckResult = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
@@ -135,7 +183,20 @@ class UpdateChecker @Inject constructor(@ApplicationContext private val context:
         val target = File(directory, "LibriaTV-${release.version}.apk")
         val partial = File(directory, "LibriaTV-${release.version}.part")
         try {
-            client.newCall(Request.Builder().url(release.apkUrl).build()).execute().use { response ->
+            var url = release.apkUrl
+            var redirects = 0
+            while (true) {
+            if (!allowedApkUrl(url)) throw IOException("Untrusted APK URL")
+            val response = downloadClient.newCall(Request.Builder().url(url).build()).execute()
+            if (response.isRedirect) {
+                val location = response.header("Location")
+                val next = location?.let { response.request.url.resolve(it)?.toString() }
+                response.close()
+                if (++redirects > 5 || next == null) throw IOException("Invalid APK redirect")
+                url = next
+                continue
+            }
+            response.use {
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 val body = response.body ?: throw IOException("Empty download")
                 val total = body.contentLength()
@@ -153,10 +214,18 @@ class UpdateChecker @Inject constructor(@ApplicationContext private val context:
                     }
                 }
             }
+            break
+            }
             if (!partial.renameTo(target)) throw IOException("Could not save APK")
+            if (!verifyDownloadedApk(context, target)) {
+                target.delete()
+                throw InvalidApkException()
+            }
             target
         } finally {
             partial.delete()
         }
     }
 }
+
+class InvalidApkException : IOException("Invalid APK signature, package, or version")

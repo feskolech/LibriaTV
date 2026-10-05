@@ -15,9 +15,11 @@ const t=document.documentElement.lang==='en'?
  {hint:'Search for anime, open a release or episode on TV, or control playback.',search:'Search',remote:'Remote',open:'Open on TV',episodes:'Show episodes',episode:'Episode',pause:'Play / pause',back:'−10 s',forward:'+10 s',next:'Next episode',failed:'Request failed',empty:'No results'}:
  {hint:'Найдите аниме, откройте релиз или серию на ТВ либо управляйте воспроизведением.',search:'Поиск',remote:'Пульт',open:'Открыть на ТВ',episodes:'Показать серии',episode:'Серия',pause:'Пауза / продолжить',back:'−10 с',forward:'+10 с',next:'Следующая серия',failed:'Ошибка запроса',empty:'Ничего не найдено'};
 for(const [id,key] of [['hint','hint'],['searchButton','search'],['remoteTitle','remote']])document.getElementById(id).textContent=t[key];
-const pin=new URLSearchParams(location.search).get('pin');
+const credentials=new URLSearchParams(location.search);
 async function api(path,method='GET'){
- const url=new URL(path,location.origin);url.searchParams.set('pin',pin||'');
+ const url=new URL(path,location.origin);
+ if(credentials.has('token'))url.searchParams.set('token',credentials.get('token'));
+ else url.searchParams.set('pin',credentials.get('pin')||'');
  const response=await fetch(url,{method,cache:'no-store'});if(!response.ok)throw Error(t.failed+' ('+response.status+')');
  return response.json();
 }

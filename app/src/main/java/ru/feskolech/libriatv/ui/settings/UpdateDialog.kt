@@ -28,13 +28,15 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.data.repo.verifyDownloadedApk
 
 @Composable
 fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit) {
     if (state !is UpdateUiState.Available && state !is UpdateUiState.Downloading &&
-        state !is UpdateUiState.Ready && state !is UpdateUiState.Failed) return
+        state !is UpdateUiState.Ready && state !is UpdateUiState.Failed && state !is UpdateUiState.InvalidApk) return
     val context = LocalContext.current
     var permissionNeeded by remember(state) { mutableStateOf(false) }
+    var invalidApk by remember(state) { mutableStateOf(false) }
     Dialog(onDismissRequest = dismiss) {
         Surface {
             Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -54,8 +56,12 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
                     is UpdateUiState.Ready -> {
                         Text(stringResource(R.string.update_ready), style = MaterialTheme.typography.headlineSmall)
                         if (permissionNeeded) Text(stringResource(R.string.update_permission_hint))
+                        if (invalidApk) Text(stringResource(R.string.update_invalid_apk))
                         Button(onClick = {
-                            if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
+                            if (!verifyDownloadedApk(context, state.file)) {
+                                state.file.delete()
+                                invalidApk = true
+                            } else if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
                                 permissionNeeded = true
                                 context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                     Uri.parse("package:${context.packageName}")))
@@ -71,6 +77,10 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
                     }
                     UpdateUiState.Failed -> {
                         Text(stringResource(R.string.settings_download_failed))
+                        Button(onClick = dismiss) { Text(stringResource(R.string.close)) }
+                    }
+                    UpdateUiState.InvalidApk -> {
+                        Text(stringResource(R.string.update_invalid_apk))
                         Button(onClick = dismiss) { Text(stringResource(R.string.close)) }
                     }
                     else -> Unit

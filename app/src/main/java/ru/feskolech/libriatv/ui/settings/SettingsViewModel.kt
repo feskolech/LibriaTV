@@ -29,6 +29,7 @@ sealed interface SettingsUiState {
         val automaticCrashReports: Boolean,
         val phoneRemoteEnabled: Boolean,
         val phoneRemoteUrl: String?,
+        val phoneRemotePin: String?,
         val phoneRemoteError: Boolean,
         val homeVideoPreview: Boolean,
         val appearance: AppearanceSettings,
@@ -49,7 +50,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkipOpening(), playback.autoSkipEnding(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
-                crashReports.available, crashReports.automatic(), false, null, false, settings.homeVideoPreview(), settings.appearance.first())
+                crashReports.available, crashReports.automatic(), false, null, null, false, settings.homeVideoPreview(), settings.appearance.first())
             launch {
                 settings.appearance.collect { appearance ->
                     val current = _state.value as? SettingsUiState.Content ?: return@collect
@@ -58,7 +59,7 @@ class SettingsViewModel @Inject constructor(
             }
             phoneRemote.state.collect { remote ->
                 val current = _state.value as? SettingsUiState.Content ?: return@collect
-                _state.value = current.copy(phoneRemoteEnabled = remote.enabled, phoneRemoteUrl = remote.url,
+                _state.value = current.copy(phoneRemoteEnabled = remote.enabled, phoneRemoteUrl = remote.url, phoneRemotePin = remote.pin,
                     phoneRemoteError = remote.error)
             }
         }

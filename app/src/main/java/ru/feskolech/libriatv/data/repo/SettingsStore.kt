@@ -40,7 +40,7 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     suspend fun setHomeVideoPreview(enabled: Boolean) {
         context.settingsDataStore.edit { it[homeVideoPreviewKey] = enabled }
     }
-    val mirror = context.settingsDataStore.data.map { it[mirrorKey] ?: "anilibria.top" }
+    val mirror = context.settingsDataStore.data.map { it[mirrorKey] ?: "aniliberty.top" }
     suspend fun mirror(): String = mirror.first()
     suspend fun setMirror(host: String) {
         require(host == "anilibria.top" || host == "aniliberty.top")

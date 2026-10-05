@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import ru.feskolech.libriatv.data.repo.UpdateCheckResult
 import ru.feskolech.libriatv.data.repo.UpdateChecker
 import ru.feskolech.libriatv.data.repo.UpdateRelease
+import ru.feskolech.libriatv.data.repo.InvalidApkException
 
 sealed interface UpdateUiState {
     data object Idle : UpdateUiState
@@ -22,6 +23,7 @@ sealed interface UpdateUiState {
     data object NoRelease : UpdateUiState
     data object Unavailable : UpdateUiState
     data object Failed : UpdateUiState
+    data object InvalidApk : UpdateUiState
 }
 
 @HiltViewModel
@@ -58,6 +60,8 @@ class UpdateViewModel @Inject constructor(private val checker: UpdateChecker) : 
                     _state.value = UpdateUiState.Downloading(release, percent)
                 }
                 _state.value = UpdateUiState.Ready(file)
+            } catch (_: InvalidApkException) {
+                _state.value = UpdateUiState.InvalidApk
             } catch (_: Exception) {
                 _state.value = UpdateUiState.Failed
             } finally { busy = false }
