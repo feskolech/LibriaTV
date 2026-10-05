@@ -30,11 +30,14 @@ object ApiModule {
             val token = runBlocking { tokenStore.get() }
             val preferred = runBlocking { settingsStore.mirror() }
             val original = chain.request()
-            val apiRequest = if (original.url.host == "anilibria.top" || original.url.host == "aniliberty.top")
+            // The same client also fetches HLS playlists/segments from CDN hosts: the account token and
+            // the 401 logout only apply to the AniLibria API itself.
+            val isApi = original.url.host == "anilibria.top" || original.url.host == "aniliberty.top"
+            val apiRequest = if (isApi)
                 original.newBuilder().url(original.url.newBuilder().host(preferred).build()).build() else original
             val request = apiRequest.newBuilder()
                 .header("User-Agent", "LibriaTV/${BuildConfig.VERSION_NAME}")
-                .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
+                .apply { if (isApi && !token.isNullOrBlank()) header("Authorization", "Bearer $token") }
                 .build()
             val response = try {
                 chain.proceed(request)
@@ -43,7 +46,7 @@ object ApiModule {
                 val fallback = if (request.url.host == "anilibria.top") "aniliberty.top" else "anilibria.top"
                 chain.proceed(request.newBuilder().url(request.url.newBuilder().host(fallback).build()).build())
             }
-            if (response.code == 401) runBlocking { tokenStore.set(null) }
+            if (isApi && response.code == 401) runBlocking { tokenStore.set(null) }
             response
         }
         // Path + status + duration only (no query, headers or body): safe in release, used to diagnose

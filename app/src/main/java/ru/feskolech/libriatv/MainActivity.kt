@@ -174,8 +174,10 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     }
     LaunchedEffect(deepLink) {
         deepLink.collect { uri ->
+            // Any installed app may send these intents: accept only well-formed ids, so a crafted
+            // segment (e.g. "a%2Fb") cannot turn into an unknown nav route and crash the app.
             if (uri?.scheme == "libriatv" && uri.host == "play" && uri.pathSegments.size == 2 &&
-                uri.pathSegments[0].toIntOrNull() != null) {
+                uri.pathSegments[0].toIntOrNull() != null && uri.pathSegments[1].matches(Regex("[A-Za-z0-9_-]{1,80}"))) {
                 navController.navigate("player/${uri.pathSegments[0]}/${uri.pathSegments[1]}")
                 deepLink.value = null
             } else if (uri?.scheme == "libriatv" && uri.host == "release" && uri.pathSegments.firstOrNull()?.toIntOrNull() != null) {

@@ -18,14 +18,17 @@ Settings → Secrets and variables → Actions → New repository secret:
 ## Каждый релиз
 
 1. Поднять `versionCode` (+1) и `versionName` в `app/build.gradle.kts`.
-2. Закоммитить, поставить тег и запушить:
+2. Описать изменения в `docs/release-notes/<versionName>.md` (по-русски и по-английски) —
+   этот текст станет описанием GitHub Release и разделом «Что нового» в приложении.
+3. Закоммитить, поставить тег и запушить:
    ```
    git tag v0.2.0
    git push origin main v0.2.0
    ```
-3. Workflow `Release` проверит, что тег совпадает с `versionName`, прогонит тесты, соберёт
-   подписанный APK `LibriaTV-0.2.0.apk` и опубликует GitHub Release с автоматическими заметками.
-4. Приложения у пользователей увидят новую версию при следующем запуске (проверка не чаще раза в 6 ч).
+4. Workflow `Release` проверит, что тег совпадает с `versionName`, прогонит тесты, соберёт
+   подписанный APK `LibriaTV-0.2.0.apk` и опубликует GitHub Release с текстом из файла заметок
+   (если файла нет — с автоматическим списком изменений).
+5. Приложения у пользователей увидят новую версию при следующем запуске (проверка не чаще раза в 6 ч).
 
 ## Локальная подписанная сборка
 
@@ -48,14 +51,14 @@ Settings → Secrets and variables → Actions → New repository secret:
 Для сборки с отчётами задайте HTTPS URL приёмника и, при необходимости, Basic-auth через
 локальные Gradle-свойства (не сохраняйте их в репозитории):
 
-```powershell
-$env:JAVA_HOME='C:\Program Files\Java\jdk-21'
-$env:GRADLE_USER_HOME='F:\gradle-home'
-$env:TEMP='F:\tmp'; $env:TMP='F:\tmp'
-.\gradlew.bat :app:assembleRelease -PcrashReportUrl=https://example.org/crash `
-  -PcrashReportLogin=LOGIN -PcrashReportPassword=PASSWORD `
-  -PsigningProperties=F:\private\signing.properties
 ```
+./gradlew :app:assembleRelease -PcrashReportUrl=https://example.org/crash \
+  -PcrashReportLogin=LOGIN -PcrashReportPassword=PASSWORD \
+  -PsigningProperties=/путь/к/signing.properties
+```
+
+Логин и пароль попадают в APK (BuildConfig) и легко извлекаются из него: Basic-auth защищает
+приёмник только от случайных ботов, а не от целенаправленного мусора.
 
 Приёмник должен принимать POST с `Content-Type: application/json` и отвечать кодом 2xx.
 Отчёт содержит версию приложения, модель устройства, Android, время и стек падения.

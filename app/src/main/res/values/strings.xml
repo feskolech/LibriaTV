@@ -54,6 +54,7 @@
     <string name="continue_watching">Продолжить просмотр</string>
     <string name="add_favorite">В избранное</string>
     <string name="remove_favorite">Убрать из избранного</string>
+    <string name="in_favorites">В избранном ✓</string>
     <string name="favorites_login_hint">Войдите, чтобы видеть избранное.</string>
     <string name="favorites_empty">В избранном пока нет релизов.</string>
     <string name="favorite_new_episodes">Вышло в избранном</string>

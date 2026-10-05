@@ -1,7 +1,11 @@
 package ru.feskolech.libriatv.ui.release
-import androidx.tv.material3.MaterialTheme
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.text.style.TextAlign
+import androidx.tv.material3.MaterialTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -107,32 +111,27 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                         }
                                     }
                                 }) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Button(onClick = { first?.let { onPlay(it.id) } }, enabled = first != null,
-                                        modifier = Modifier.focusRequester(focus)) {
-                                        Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
-                                            else stringResource(R.string.watch))
-                                    }
-                                    Button(onClick = { viewModel.toggleFavorite(onLogin) }) {
-                                        Text(stringResource(if (current.favorite) R.string.remove_favorite else R.string.add_favorite))
-                                    }
+                                Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HeaderButton(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
+                                        else stringResource(R.string.watch), onClick = { first?.let { onPlay(it.id) } },
+                                        enabled = first != null, modifier = Modifier.focusRequester(focus))
+                                    HeaderButton(stringResource(if (current.favorite) R.string.in_favorites else R.string.add_favorite),
+                                        onClick = { viewModel.toggleFavorite(onLogin) })
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
+                                Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    HeaderButton(stringResource(R.string.torrents), onClick = { onTorrents(release.id) })
                                     if (description.isNotEmpty()) {
-                                        Button(onClick = { showDescription = true }) { Text(stringResource(R.string.description_more)) }
-                                    }
+                                        HeaderButton(stringResource(R.string.description_more), onClick = { showDescription = true })
+                                    } else Spacer(Modifier.weight(1f))
                                 }
                             }
                             if (showDescription) DescriptionDialog(release.title, description) { showDescription = false }
                             // Second row: account lists and own rating (sign-in prompt for guests).
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(onClick = { showLists = true }) {
-                                    Text(current.list?.let { stringResource(it.label()) } ?: stringResource(R.string.list_add))
-                                }
-                                Button(onClick = { showRating = true }) {
-                                    Text(current.rating?.let { stringResource(R.string.rating_own, it) } ?: stringResource(R.string.rating_rate))
-                                }
+                            Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                HeaderButton(current.list?.let { stringResource(it.label()) } ?: stringResource(R.string.list_add),
+                                    onClick = { showLists = true })
+                                HeaderButton(current.rating?.let { stringResource(R.string.rating_own, it) } ?: stringResource(R.string.rating_rate),
+                                    onClick = { showRating = true })
                             }
                             if (showLists) ChoiceDialog(stringResource(R.string.list_title),
                                 UserList.entries.map { stringResource(it.label()) } + stringResource(R.string.list_remove),
@@ -186,6 +185,16 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                 }
             }
         }
+    }
+}
+
+/** Header buttons share one width (two per row), whatever their labels, so the block reads as a grid. */
+private val HeaderButtonRow = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+
+@Composable
+private fun RowScope.HeaderButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Button(onClick = onClick, modifier = modifier.weight(1f), enabled = enabled) {
+        Text(text, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

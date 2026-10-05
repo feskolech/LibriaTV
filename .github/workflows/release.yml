@@ -42,7 +42,14 @@ jobs:
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/LibriaTV-${GITHUB_REF_NAME#v}.apk"
 
+      - name: Pick release notes
+        run: |
+          notes="docs/release-notes/${GITHUB_REF_NAME#v}.md"
+          if [ -f "$notes" ]; then echo "NOTES=$notes" >> "$GITHUB_ENV"; fi
+
       - uses: softprops/action-gh-release@v2
         with:
+          name: LibriaTV ${{ github.ref_name }}
           files: dist/*.apk
-          generate_release_notes: true
+          body_path: ${{ env.NOTES }}
+          generate_release_notes: ${{ env.NOTES == '' }}

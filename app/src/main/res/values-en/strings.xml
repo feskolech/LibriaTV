@@ -53,6 +53,7 @@
     <string name="continue_episode">Resume episode %1$d</string>
     <string name="add_favorite">Add to favorites</string>
     <string name="remove_favorite">Remove from favorites</string>
+    <string name="in_favorites">In favorites ✓</string>
     <string name="favorites_login_hint">Sign in to see your favorites.</string>
     <string name="favorites_empty">No favorite releases yet.</string>
     <string name="favorite_new_episodes">New in favorites</string>

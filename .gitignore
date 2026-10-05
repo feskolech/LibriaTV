@@ -9,3 +9,9 @@ local.properties
 .cxx/
 captures/
 .kotlin/
+
+# Internal notes for development (kept locally, not published)
+AGENTS.md
+docs/SPEC.md
+docs/ROADMAP.md
+docs/api/

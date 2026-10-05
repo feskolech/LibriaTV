@@ -39,7 +39,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.0-beta.1"
         // GitHub repo checked for app updates ("owner/name"); forks can override with -PupdateRepo=.
         buildConfigField("String", "UPDATE_REPO", "\"${findProperty("updateRepo") ?: "feskolech/anilibria-androidtv"}\"")
         fun escapedProperty(name: String) = (findProperty(name) as String?).orEmpty()
