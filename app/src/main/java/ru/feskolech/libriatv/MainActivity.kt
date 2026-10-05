@@ -175,6 +175,9 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                 uri.pathSegments[0].toIntOrNull() != null) {
                 navController.navigate("player/${uri.pathSegments[0]}/${uri.pathSegments[1]}")
                 deepLink.value = null
+            } else if (uri?.scheme == "libriatv" && uri.host == "release" && uri.pathSegments.firstOrNull()?.toIntOrNull() != null) {
+                navController.navigate("release/${uri.pathSegments[0]}")
+                deepLink.value = null
             }
         }
     }

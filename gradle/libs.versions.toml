@@ -15,6 +15,7 @@ coroutines = "1.10.2"
 coil = "3.3.0"
 media3 = "1.8.0"
 tvprovider = "1.0.0"
+work = "2.10.1"
 datastore = "1.1.7"
 room = "2.8.3"
 junit = "4.13.2"
@@ -49,6 +50,7 @@ media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = 
 media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "media3" }
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
+work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
 room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }

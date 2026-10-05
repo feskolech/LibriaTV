@@ -51,6 +51,7 @@ class HomeViewModel @Inject constructor(
     private val favoritesRepository: FavoritesRepository,
     private val episodeStore: FavoriteEpisodeStore,
     private val settings: SettingsStore,
+    private val newEpisodesChannel: ru.feskolech.libriatv.data.repo.NewEpisodesChannel,
 ) : ViewModel() {
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state
@@ -120,6 +121,8 @@ class HomeViewModel @Inject constructor(
         val favorites = favoritesRepository.allReleases() as? ApiResult.Success ?: return
         val newEpisodes = compareFavoriteEpisodes(episodeStore.previous(userId), favorites.value)
         episodeStore.save(userId, favorites.value)
+        // The baseline just moved: everything is "seen", so the home-screen channel is emptied.
+        newEpisodesChannel.publish(emptyList())
         checkedUserId = userId
         val current = _state.value as? HomeUiState.Content ?: return
         _state.value = current.copy(favoriteIds = favoritesRepository.ids.value, newEpisodes = newEpisodes,

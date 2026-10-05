@@ -44,6 +44,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="libriatv" android:host="play" />
+                <data android:scheme="libriatv" android:host="release" />
+                <data android:scheme="libriatv" android:host="home" />
             </intent-filter>
         </activity>
     </application>

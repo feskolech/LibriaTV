@@ -193,4 +193,6 @@
     <string name="rating_remove">Remove rating</string>
     <string name="seasons">Seasons</string>
     <string name="season_current">Now</string>
+    <string name="channel_new_episodes">LibriaTV: new in favorites</string>
+    <string name="episodes_range">Episodes %1$d–%2$d</string>
 </resources>

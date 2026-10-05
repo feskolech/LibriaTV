@@ -10,6 +10,7 @@ import org.acra.config.CoreConfigurationBuilder
 class LibriaTvApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        ru.feskolech.libriatv.data.repo.NewEpisodesWorker.schedule(this)
         if (BuildConfig.CRASH_REPORT_URL.isBlank()) return
         ACRA.init(this, CoreConfigurationBuilder()
             .withReportContent(
