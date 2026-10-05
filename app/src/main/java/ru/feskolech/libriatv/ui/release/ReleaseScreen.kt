@@ -79,6 +79,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             val resume = ordered.firstOrNull { current.progress[it.id]?.let { progress -> progress.positionMs > 0 && !progress.watched } == true }
             val first = resume ?: ordered.firstOrNull()
             val listState = rememberLazyListState()
+            val firstSimilar = remember { FocusRequester() }
             val headerScope = rememberCoroutineScope()
             var showDescription by remember { mutableStateOf(false) }
             var showLists by remember { mutableStateOf(false) }
@@ -191,9 +192,12 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec) {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                                    modifier = Modifier.focusRestorer()) {
+                                    // First visit (coming down from the episodes) starts at the first card;
+                                    // later visits return to the card that was selected.
+                                    modifier = Modifier.focusRestorer(firstSimilar)) {
                                     items(current.similar, key = { it.id }) { similar ->
-                                        PosterCard(similar, badge = null, onFocus = {}, onClick = { onOpenRelease(similar.id) })
+                                        PosterCard(similar, badge = null, onFocus = {}, onClick = { onOpenRelease(similar.id) },
+                                            modifier = if (similar.id == current.similar.first().id) Modifier.focusRequester(firstSimilar) else Modifier)
                                     }
                                 }
                             }
