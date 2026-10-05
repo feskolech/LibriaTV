@@ -18,6 +18,7 @@ import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.PlaybackStore
 import ru.feskolech.libriatv.data.repo.TokenStore
+import ru.feskolech.libriatv.data.repo.WatchNextPublisher
 import ru.feskolech.libriatv.domain.Episode
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.Skip
@@ -47,6 +48,7 @@ class PlayerViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val store: PlaybackStore,
     private val tokenStore: TokenStore,
+    private val watchNext: WatchNextPublisher,
 ) : ViewModel() {
     private val releaseId: String = checkNotNull(savedState["id"])
     private val initialEpisodeId: String = checkNotNull(savedState["episodeId"])
@@ -228,13 +230,19 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun pauseAndSave() { player.pause(); viewModelScope.launch { saveProgress() } }
-    fun close(onSaved: () -> Unit) = viewModelScope.launch { saveProgress(); onSaved() }
+    fun close(onSaved: () -> Unit) = viewModelScope.launch {
+        saveProgress()
+        (_state.value as? PlayerUiState.Content)?.value?.let { current ->
+            watchNext.update(current.release, current.episode, store.progress(current.episode.id))
+        }
+        onSaved()
+    }
 
     private suspend fun saveProgress() {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         val position = player.currentPosition.coerceAtLeast(0)
         val duration = player.duration.coerceAtLeast(0)
-        store.save(current.episode.id, position, duration)
+        store.save(current.episode.id, position, duration, current.release.id)
         if (!tokenStore.get().isNullOrBlank()) {
             repository.saveTimecode(current.episode.id, position / 1000.0,
                 duration > 0 && position >= duration * 0.9)

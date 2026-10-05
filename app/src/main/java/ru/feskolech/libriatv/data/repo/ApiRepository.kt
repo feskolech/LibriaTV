@@ -4,11 +4,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import ru.feskolech.libriatv.data.api.ApiErrorDto
 import retrofit2.HttpException
 import ru.feskolech.libriatv.data.api.AniLibriaApi
 import ru.feskolech.libriatv.data.api.ReferenceDto
 import ru.feskolech.libriatv.data.api.TimecodeUpdateDto
+import ru.feskolech.libriatv.data.api.EpisodeDto
 import ru.feskolech.libriatv.domain.*
 import javax.inject.Inject
 
@@ -54,6 +58,7 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     suspend fun episode(id: String): ApiResult<Episode> = request {
         api.episode(id).toDomain() ?: error("Episode has no id")
     }
+    suspend fun episodeDetails(id: String): ApiResult<EpisodeDto> = request { api.episode(id) }
     suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30): ApiResult<ReleasePage> = request {
         val response = api.catalog(
             page = page, limit = limit,
@@ -109,5 +114,13 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     suspend fun saveTimecode(episodeId: String, seconds: Double, watched: Boolean): ApiResult<Unit> = request {
         val response = api.updateTimecodes(listOf(TimecodeUpdateDto(seconds, watched, episodeId)))
         if (!response.isSuccessful) throw HttpException(response)
+    }
+    suspend fun timecodes(): ApiResult<List<ServerTimecode>> = request {
+        api.timecodes().mapNotNull { row ->
+            if (row.size != 3) return@mapNotNull null
+            val seconds = row[1].jsonPrimitive.doubleOrNull ?: return@mapNotNull null
+            val watched = row[2].jsonPrimitive.booleanOrNull ?: return@mapNotNull null
+            ServerTimecode(row[0].jsonPrimitive.content, (seconds * 1000).toLong().coerceAtLeast(0), watched)
+        }
     }
 }

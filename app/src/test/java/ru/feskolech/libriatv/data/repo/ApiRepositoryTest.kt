@@ -149,4 +149,15 @@ class ApiRepositoryTest {
         server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
         assertEquals(401, (repo.saveTimecode("id", 0.0, false) as ApiResult.Failure).status)
     }
+    @Test fun timecodeGetReadsTriplesAndSurfacesError() = runBlocking {
+        enqueue("timecodes")
+        val rows = (repo.timecodes() as ApiResult.Success).value
+        assertEquals(2, rows.size)
+        assertEquals(73500L, rows[0].positionMs)
+        assertFalse(rows[0].watched)
+        assertTrue(rows[1].watched)
+        assertEquals("/api/v1/accounts/users/me/views/timecodes", server.takeRequest().path)
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        assertEquals(401, (repo.timecodes() as ApiResult.Failure).status)
+    }
 }

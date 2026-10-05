@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -12,9 +13,11 @@ import kotlinx.coroutines.flow.first
 
 private val Context.playbackDataStore by preferencesDataStore(name = "playback")
 
-data class PlaybackProgress(val positionMs: Long, val durationMs: Long) {
-    val watched: Boolean get() = durationMs > 0 && positionMs >= durationMs * 0.9
+data class PlaybackProgress(val positionMs: Long, val durationMs: Long, val serverWatched: Boolean? = null) {
+    val watched: Boolean get() = serverWatched ?: (durationMs > 0 && positionMs >= durationMs * 0.9)
 }
+
+data class PlaybackEntry(val episodeId: String, val releaseId: Int?, val progress: PlaybackProgress)
 
 @Singleton
 class PlaybackStore @Inject constructor(@ApplicationContext private val context: Context) {
@@ -48,10 +51,28 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
         return PlaybackProgress(position, prefs[longPreferencesKey("duration_$episodeId")] ?: 0)
     }
 
-    suspend fun save(episodeId: String, positionMs: Long, durationMs: Long) {
+    suspend fun entries(): List<PlaybackEntry> {
+        val prefs = context.playbackDataStore.data.first()
+        val indexed = prefs[stringPreferencesKey("episode_ids")].orEmpty().split(',').filter { it.isNotBlank() }
+        val legacy = prefs.asMap().keys.mapNotNull { key -> key.name.removePrefix("position_").takeIf { key.name.startsWith("position_") } }
+        return (indexed + legacy).distinct().mapNotNull { id ->
+            val releaseId = prefs[intPreferencesKey("release_$id")]
+            val position = prefs[longPreferencesKey("position_$id")] ?: return@mapNotNull null
+            PlaybackEntry(id, releaseId, PlaybackProgress(position, prefs[longPreferencesKey("duration_$id")] ?: 0))
+        }
+    }
+
+    suspend fun save(episodeId: String, positionMs: Long, durationMs: Long, releaseId: Int? = null) {
         context.playbackDataStore.edit {
             it[longPreferencesKey("position_$episodeId")] = positionMs.coerceAtLeast(0)
             it[longPreferencesKey("duration_$episodeId")] = durationMs.coerceAtLeast(0)
+            if (releaseId != null) {
+                it[intPreferencesKey("release_$episodeId")] = releaseId
+                val key = stringPreferencesKey("episode_ids")
+                val ids = it[key].orEmpty().split(',').filter { value -> value.isNotBlank() }.toMutableSet()
+                ids.add(episodeId)
+                it[key] = ids.joinToString(",")
+            }
         }
     }
 }

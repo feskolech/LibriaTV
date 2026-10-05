@@ -1,6 +1,7 @@
 package ru.feskolech.libriatv
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -80,13 +81,20 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject lateinit var phoneRemote: PhoneRemote
+    private val deepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        deepLink.value = intent?.data
         setContent {
             LibriaTvTheme {
-                AppNavigation(phoneRemote, onExit = { finish() })
+                AppNavigation(phoneRemote, deepLink, onExit = { finish() })
             }
         }
+    }
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLink.value = intent.data
     }
     override fun onResume() { super.onResume(); lifecycleScope.launch { phoneRemote.foreground(true) } }
     override fun onPause() { lifecycleScope.launch { phoneRemote.foreground(false) }; super.onPause() }
@@ -103,13 +111,22 @@ private enum class Destination(val route: String, val title: Int, val icon: Imag
 }
 
 @Composable
-private fun AppNavigation(phoneRemote: PhoneRemote, onExit: () -> Unit) {
+private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>, onExit: () -> Unit) {
     val crashViewModel: CrashReportViewModel = hiltViewModel()
     val crashPrompt by crashViewModel.prompt.collectAsState()
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.state.collectAsState()
     LaunchedEffect(Unit) { updateViewModel.check() }
     val navController = rememberNavController()
+    LaunchedEffect(deepLink) {
+        deepLink.collect { uri ->
+            if (uri?.scheme == "libriatv" && uri.host == "play" && uri.pathSegments.size == 2 &&
+                uri.pathSegments[0].toIntOrNull() != null) {
+                navController.navigate("player/${uri.pathSegments[0]}/${uri.pathSegments[1]}")
+                deepLink.value = null
+            }
+        }
+    }
     LaunchedEffect(phoneRemote) {
         phoneRemote.commands.collect { command ->
             when (command) {
@@ -210,6 +227,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, onExit: () -> Unit) {
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenFeed = { navController.navigate("feed") },
                             onOpenRelease = { navController.navigate("release/$it") },
+                            onPlay = { releaseId, episodeId -> navController.navigate("player/$releaseId/$episodeId") },
                         )
                     } else if (destination == Destination.Settings) {
                         SettingsScreen(

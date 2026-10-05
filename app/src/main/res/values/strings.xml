@@ -51,6 +51,7 @@
     <string name="back">Назад</string>
     <string name="watch">Смотреть</string>
     <string name="continue_episode">Продолжить с %1$d серии</string>
+    <string name="continue_watching">Продолжить просмотр</string>
     <string name="add_favorite">В избранное</string>
     <string name="torrents">Торренты</string>
     <string name="episodes">Серии</string>

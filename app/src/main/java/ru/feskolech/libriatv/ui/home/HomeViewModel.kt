@@ -14,6 +14,8 @@ import ru.feskolech.libriatv.data.repo.AuthRepository
 import ru.feskolech.libriatv.data.repo.AuthState
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
+import ru.feskolech.libriatv.data.repo.ProgressRepository
+import ru.feskolech.libriatv.data.repo.ContinueItem
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
@@ -25,6 +27,7 @@ sealed interface HomeUiState {
         val favoriteIds: Set<Int>,
         val isAuthorized: Boolean,
         val recommended: List<Release> = emptyList(),
+        val continueItems: List<ContinueItem> = emptyList(),
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -33,6 +36,7 @@ sealed interface HomeUiState {
 class HomeViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val auth: AuthRepository,
+    private val progress: ProgressRepository,
 ) : ViewModel() {
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state
@@ -59,6 +63,7 @@ class HomeViewModel @Inject constructor(
             val schedule = async { repository.currentSchedule() }
             // Optional row: a failure here must not break the whole home screen.
             val recommended = async { (repository.recommended() as? ApiResult.Success)?.value.orEmpty() }
+            val continueItems = async { progress.continueItems() }
             val latestResult = latest.await()
             val scheduleResult = schedule.await()
             if (latestResult is ApiResult.Success && scheduleResult is ApiResult.Success) {
@@ -70,6 +75,7 @@ class HomeViewModel @Inject constructor(
                     scheduleResult.value.today, scheduleResult.value.tomorrow,
                     favoriteList, favoriteList.mapTo(mutableSetOf()) { it.id }, authorized,
                     recommended = recommended.await(),
+                    continueItems = continueItems.await(),
                 )
                 lastRefresh = System.currentTimeMillis()
             } else {

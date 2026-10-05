@@ -6,6 +6,7 @@ import android.graphics.Shader
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -55,16 +58,18 @@ import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
 import ru.feskolech.libriatv.ui.components.PosterCard
+import ru.feskolech.libriatv.data.repo.ContinueItem
 
 @Composable
 fun HomeScreen(
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
+    onPlay: (Int, String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(Unit) { viewModel.refresh(force = true) }
     when (val content = state) {
         HomeUiState.Loading -> Box(Modifier.fillMaxSize().padding(48.dp)) {
             Text(stringResource(R.string.home_loading))
@@ -74,7 +79,7 @@ fun HomeScreen(
             Text(content.message)
             Button(onClick = { viewModel.refresh(force = true) }) { Text(stringResource(R.string.retry)) }
         }
-        is HomeUiState.Content -> HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease)
+        is HomeUiState.Content -> HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, onPlay)
     }
 }
 
@@ -84,8 +89,9 @@ private fun HomeContent(
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
+    onPlay: (Int, String) -> Unit,
 ) {
-    var focusedRelease by remember(content) { mutableStateOf(content.latest.firstOrNull()) }
+    var focusedRelease by remember(content) { mutableStateOf(content.continueItems.firstOrNull()?.release ?: content.latest.firstOrNull()) }
     var backgroundRelease by remember(content) { mutableStateOf(focusedRelease) }
     val firstPoster = remember { FocusRequester() }
     val rowsState = rememberLazyListState()
@@ -127,6 +133,10 @@ private fun HomeContent(
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 440.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
+            if (content.continueItems.isNotEmpty()) item {
+                ContinueRow(content.continueItems, firstPoster,
+                    onFocus = { focusRow(0, it) }, onPlay = onPlay)
+            }
             item {
                 PosterRow(
                     title = stringResource(R.string.new_episodes),
@@ -135,28 +145,66 @@ private fun HomeContent(
                     timeBadge = { it.freshAt?.let { value -> relativeHours(value)?.let { hours -> stringResource(R.string.hours_ago, hours) } } },
                     favoriteIds = content.favoriteIds,
                     onTitleClick = onOpenFeed,
-                    firstPoster = firstPoster,
-                    onFocus = { focusRow(0, it) }, onClick = onOpenRelease,
+                    firstPoster = if (content.continueItems.isEmpty()) firstPoster else null,
+                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 0 else 1, it) }, onClick = onOpenRelease,
                 )
             }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
-                    { focusRow(1, it) }, onOpenRelease)
+                    { focusRow(if (content.continueItems.isEmpty()) 1 else 2, it) }, onOpenRelease)
             }
             item {
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
-                    { focusRow(2, it) }, onOpenRelease)
+                    { focusRow(if (content.continueItems.isEmpty()) 2 else 3, it) }, onOpenRelease)
             }
             if (content.isAuthorized) item {
                 PosterRow(stringResource(R.string.favorites), content.favorites,
                     badge = { null }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(3, it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 3 else 4, it) }, onClick = onOpenRelease)
             }
             if (content.recommended.isNotEmpty()) item {
                 PosterRow(stringResource(R.string.recommended), content.recommended,
                     badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(if (content.isAuthorized) 4 else 3, it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow((if (content.isAuthorized) 4 else 3) + (if (content.continueItems.isEmpty()) 0 else 1), it) }, onClick = onOpenRelease)
             }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
+    onFocus: (Release) -> Unit, onPlay: (Int, String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.continue_watching), Modifier.padding(start = 48.dp),
+            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 48.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            items(items, key = { it.episode.id }) { item ->
+                var focused by remember { mutableStateOf(false) }
+                Column(Modifier.width(260.dp)
+                    .then(if (item == items.first()) Modifier.focusRequester(firstPoster) else Modifier)
+                    .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocus(item.release) }
+                    .graphicsLayer { scaleX = if (focused) 1.04f else 1f; scaleY = scaleX }
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF202020))
+                    .border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
+                    .clickable { onPlay(item.release.id, item.episode.id) }) {
+                        Box(Modifier.fillMaxWidth().height(146.dp)) {
+                            AsyncImage(item.episode.previewUrl ?: item.release.posterUrl, null,
+                                Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            Box(Modifier.fillMaxWidth().height(5.dp).background(Color.DarkGray)
+                                .align(androidx.compose.ui.Alignment.BottomStart))
+                            Box(Modifier.fillMaxWidth((item.progress.positionMs.toFloat() /
+                                item.progress.durationMs.coerceAtLeast(1)).coerceIn(0f, 1f))
+                                .height(5.dp).background(Color(0xFFB32121))
+                                .align(androidx.compose.ui.Alignment.BottomStart))
+                        }
+                        Text(item.release.title, Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(stringResource(R.string.episode_number, item.episode.ordinal?.toInt() ?: 1),
+                            Modifier.padding(start = 8.dp, bottom = 6.dp), color = Color.LightGray)
+                }
             }
         }
     }

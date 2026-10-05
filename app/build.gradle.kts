@@ -106,6 +106,7 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.ui)
+    implementation(libs.tvprovider)
     implementation(libs.datastore.preferences)
     implementation(libs.zxing.core)
     implementation(libs.acra.core)
