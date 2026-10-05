@@ -8,13 +8,19 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ButtonScale
 import androidx.tv.material3.MaterialTheme
 
+/**
+ * Pills do not grow on focus: a scaled focused pill looks like a bigger button than its
+ * neighbours. The accent fill alone marks focus.
+ */
+val PillButtonScale: ButtonScale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 0.97f)
+
 /** Common TV button whose focus follows the selected accent. */
 @Composable
 fun AccentButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    scale: ButtonScale = ButtonDefaults.scale(),
+    scale: ButtonScale = PillButtonScale,
     content: @Composable RowScope.() -> Unit,
 ) {
     Button(onClick = onClick, modifier = modifier, enabled = enabled, scale = scale,

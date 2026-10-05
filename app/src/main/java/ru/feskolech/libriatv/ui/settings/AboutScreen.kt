@@ -6,6 +6,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
@@ -56,8 +60,11 @@ fun AboutScreen(notes: String, checkUpdates: () -> Unit, updateState: UpdateUiSt
                 Image(qr.asImageBitmap(), contentDescription = stringResource(R.string.settings_github),
                     modifier = Modifier.size(130.dp).background(Color.White).padding(6.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { open(repo) }) { Text(stringResource(R.string.about_repository)) }
-                    Button(onClick = { open("$repo/issues") }) { Text(stringResource(R.string.about_issues)) }
+                    // Both link buttons share the width of the longer one.
+                    Column(Modifier.width(IntrinsicSize.Max), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { open(repo) }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.about_repository), Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+                        Button(onClick = { open("$repo/issues") }, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.about_issues), Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
+                    }
                     Text(repo, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
