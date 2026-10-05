@@ -16,12 +16,17 @@ import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.data.repo.FavoritesRepository
 import ru.feskolech.libriatv.data.repo.AuthRepository
 import ru.feskolech.libriatv.data.repo.AuthState
+import ru.feskolech.libriatv.data.repo.LibraryRepository
+import ru.feskolech.libriatv.domain.UserList
+import kotlinx.coroutines.async
 
 sealed interface ReleaseUiState {
     data object Loading : ReleaseUiState
     data class Content(val release: Release, val progress: Map<String, PlaybackProgress>,
         val favorite: Boolean, val authorized: Boolean, val favoriteError: String? = null,
-        val similar: List<Release> = emptyList()) : ReleaseUiState
+        val similar: List<Release> = emptyList(),
+        val seasons: List<Release> = emptyList(),
+        val list: UserList? = null, val rating: Int? = null) : ReleaseUiState
     data class Error(val message: String) : ReleaseUiState
 }
 
@@ -32,6 +37,7 @@ class ReleaseViewModel @Inject constructor(
     private val progressRepository: ProgressRepository,
     private val favorites: FavoritesRepository,
     private val auth: AuthRepository,
+    private val library: LibraryRepository,
 ) : ViewModel() {
     private val id: String = checkNotNull(savedState["id"])
     private val _state = MutableStateFlow<ReleaseUiState>(ReleaseUiState.Loading)
@@ -56,10 +62,15 @@ class ReleaseViewModel @Inject constructor(
                 _state.value = ReleaseUiState.Content(result.value,
                     progressRepository.releaseProgress(result.value),
                     result.value.id in favorites.ids.value, authorized)
-                val similar = (repository.recommended(releaseId = result.value.id) as? ApiResult.Success)?.value.orEmpty()
-                    .filter { it.id != result.value.id }
+                val release = result.value
+                val seasons = async { library.seasons(release) }
+                val list = async { if (authorized) library.listOf(release.id) else null }
+                val rating = async { if (authorized) library.ownRating(release.id) else null }
+                val similar = (repository.recommended(releaseId = release.id) as? ApiResult.Success)?.value.orEmpty()
+                    .filter { it.id != release.id }
                 val current = _state.value as? ReleaseUiState.Content
-                if (current?.release?.id == result.value.id) _state.value = current.copy(similar = similar)
+                if (current?.release?.id == release.id) _state.value = current.copy(similar = similar,
+                    seasons = seasons.await(), list = list.await(), rating = rating.await())
             }
         }
     }
@@ -72,6 +83,30 @@ class ReleaseViewModel @Inject constructor(
             if (result is ApiResult.Failure) {
                 val latest = _state.value as? ReleaseUiState.Content ?: return@launch
                 _state.value = latest.copy(favoriteError = result.message)
+            }
+        }
+    }
+
+    fun setList(list: UserList?, onLogin: () -> Unit) {
+        val content = _state.value as? ReleaseUiState.Content ?: return
+        if (!content.authorized) { onLogin(); return }
+        val previous = content.list
+        _state.value = content.copy(list = list)
+        viewModelScope.launch {
+            if (!library.setList(content.release.id, list)) {
+                (_state.value as? ReleaseUiState.Content)?.let { _state.value = it.copy(list = previous) }
+            }
+        }
+    }
+
+    fun rate(score: Int?, onLogin: () -> Unit) {
+        val content = _state.value as? ReleaseUiState.Content ?: return
+        if (!content.authorized) { onLogin(); return }
+        val previous = content.rating
+        _state.value = content.copy(rating = score)
+        viewModelScope.launch {
+            if (!library.rate(content.release.id, score)) {
+                (_state.value as? ReleaseUiState.Content)?.let { _state.value = it.copy(rating = previous) }
             }
         }
     }

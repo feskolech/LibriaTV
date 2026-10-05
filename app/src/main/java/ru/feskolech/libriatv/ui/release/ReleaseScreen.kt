@@ -46,6 +46,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.domain.UserList
 import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.Episode
 import ru.feskolech.libriatv.ui.components.PosterCard
@@ -69,6 +70,8 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             val listState = rememberLazyListState()
             val headerScope = rememberCoroutineScope()
             var showDescription by remember { mutableStateOf(false) }
+            var showLists by remember { mutableStateOf(false) }
+            var showRating by remember { mutableStateOf(false) }
             LaunchedEffect(release.id) { focus.requestFocus(); kotlinx.coroutines.delay(100); listState.scrollToItem(0) }
             LazyColumn(
                 state = listState,
@@ -80,9 +83,12 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                     Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                         AsyncImage(release.posterUrl, null, Modifier.width(185.dp).height(278.dp), contentScale = ContentScale.Crop)
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(release.title, style = androidx.tv.material3.MaterialTheme.typography.headlineLarge, color = Color.White)
-                            Text(listOfNotNull(release.year?.toString(), release.season, release.type, release.publishDay).joinToString(" • "), color = Color.White)
-                            Text(release.genres.joinToString(" • "), color = Color.White)
+                            // Compact, fixed-height header: title ≤ 2 lines and all metadata on one ellipsized line,
+                            // so the header always fits the screen and moving between buttons never scrolls it.
+                            Text(release.title, style = androidx.tv.material3.MaterialTheme.typography.headlineMedium,
+                                color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text((listOfNotNull(release.year?.toString(), release.season, release.type, release.publishDay) + release.genres)
+                                .joinToString(" • "), color = Color(0xFFD8D8D8), maxLines = 1, overflow = TextOverflow.Ellipsis)
                             // Short teaser keeps the header height stable (a long text made it jitter while moving
                             // between the buttons); the full text is one button away.
                             val description = release.description.orEmpty().replace(Regex("<[^>]*>"), "").trim()
@@ -114,9 +120,43 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                 }
                             }
                             if (showDescription) DescriptionDialog(release.title, description) { showDescription = false }
+                            // Second row: account lists and own rating (sign-in prompt for guests).
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = { showLists = true }) {
+                                    Text(current.list?.let { stringResource(it.label()) } ?: stringResource(R.string.list_add))
+                                }
+                                Button(onClick = { showRating = true }) {
+                                    Text(current.rating?.let { stringResource(R.string.rating_own, it) } ?: stringResource(R.string.rating_rate))
+                                }
+                            }
+                            if (showLists) ChoiceDialog(stringResource(R.string.list_title),
+                                UserList.entries.map { stringResource(it.label()) } + stringResource(R.string.list_remove),
+                                selected = current.list?.ordinal,
+                                onPick = { i -> viewModel.setList(UserList.entries.getOrNull(i), onLogin); showLists = false },
+                                onDismiss = { showLists = false })
+                            if (showRating) ChoiceDialog(stringResource(R.string.rating_title),
+                                (10 downTo 1).map { "★ $it" } + stringResource(R.string.rating_remove),
+                                selected = current.rating?.let { 10 - it },
+                                onPick = { i -> viewModel.rate(if (i < 10) 10 - i else null, onLogin); showRating = false },
+                                onDismiss = { showRating = false })
                             if (current.favoriteError != null) {
                                 Text(current.favoriteError, color = Color(0xFFFF8888))
                                 Button(onClick = { viewModel.toggleFavorite(onLogin) }) { Text(stringResource(R.string.retry)) }
+                            }
+                        }
+                    }
+                }
+                if (current.seasons.size > 1) {
+                    item { Text(stringResource(R.string.seasons), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                            modifier = Modifier.focusRestorer()) {
+                            items(current.seasons, key = { it.id }) { season ->
+                                val here = season.id == release.id
+                                PosterCard(season,
+                                    badge = if (here) stringResource(R.string.season_current) else listOfNotNull(season.year?.toString(), season.type).joinToString(" "),
+                                    onFocus = {}, onClick = { if (!here) onOpenRelease(season.id) })
                             }
                         }
                     }
@@ -179,6 +219,36 @@ private fun DescriptionDialog(title: String, text: String, onDismiss: () -> Unit
                         else -> false
                     }
                 }) { Text(stringResource(R.string.close)) }
+            }
+        }
+    }
+    LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { focus.requestFocus() } }
+}
+
+private fun UserList.label(): Int = when (this) {
+    UserList.WATCHING -> R.string.list_watching
+    UserList.PLANNED -> R.string.list_planned
+    UserList.WATCHED -> R.string.list_watched
+    UserList.POSTPONED -> R.string.list_postponed
+    UserList.ABANDONED -> R.string.list_abandoned
+}
+
+/** Simple vertical choice list for the remote; focus starts on the current value. */
+@Composable
+private fun ChoiceDialog(title: String, options: List<String>, selected: Int?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    val focus = remember { FocusRequester() }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        androidx.tv.material3.Surface {
+            Column(Modifier.width(420.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(title, style = androidx.tv.material3.MaterialTheme.typography.headlineSmall)
+                LazyColumn(Modifier.height(420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items(options.size) { i ->
+                        Button(onClick = { onPick(i) }, scale = ru.feskolech.libriatv.ui.components.WideButtonScale,
+                            modifier = Modifier.fillMaxWidth().then(if (i == (selected ?: 0)) Modifier.focusRequester(focus) else Modifier)) {
+                            Text((if (i == selected) "✓  " else "     ") + options[i])
+                        }
+                    }
+                }
             }
         }
     }

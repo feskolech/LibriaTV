@@ -43,6 +43,18 @@ interface AniLibriaApi {
     @POST("accounts/users/auth/logout") suspend fun logout(): TokenDto
     @GET("accounts/users/me/profile") suspend fun profile(): UserDto
     @GET("accounts/users/me/favorites/ids") suspend fun favoriteIds(): List<Int>
+    @GET("anime/franchises/release/{releaseId}") suspend fun franchises(@Path("releaseId") releaseId: Int): List<FranchiseDto>
+    /** Pairs of [releaseId, "WATCHING" | "PLANNED" | ...]. */
+    @GET("accounts/users/me/collections/ids") suspend fun collectionIds(): List<JsonArray>
+    @POST("accounts/users/me/collections") suspend fun addToCollection(@Body items: List<CollectionUpdateDto>): okhttp3.ResponseBody
+    @HTTP(method = "DELETE", path = "accounts/users/me/collections", hasBody = true)
+    suspend fun removeFromCollection(@Body items: List<FavoriteUpdateDto>): okhttp3.ResponseBody
+    @GET("accounts/users/me/collections/releases") suspend fun collectionReleases(
+        @Query("type_of_collection") type: String, @Query("page") page: Int, @Query("limit") limit: Int = 30,
+    ): FavoritesDto
+    @GET("anime/releases/{releaseId}/rating") suspend fun ownRating(@Path("releaseId") releaseId: Int): OwnRatingDto
+    @POST("anime/releases/{releaseId}/rating") suspend fun rate(@Path("releaseId") releaseId: Int, @Body body: RatingRequestDto): OwnRatingDto
+    @DELETE("anime/releases/{releaseId}/rating") suspend fun unrate(@Path("releaseId") releaseId: Int): okhttp3.ResponseBody
     @GET("accounts/users/me/favorites/releases") suspend fun favoriteReleases(@Query("page") page: Int = 1, @Query("limit") limit: Int = 15, @Query("f[sorting]") sorting: String? = null): FavoritesDto
     @GET("accounts/users/me/favorites/references/sorting") suspend fun favoriteSorting(): List<ReferenceDto>
     @POST("accounts/users/me/favorites") suspend fun addFavorites(@Body releases: List<FavoriteUpdateDto>): List<Int>

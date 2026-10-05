@@ -179,4 +179,18 @@
     <string name="days_ago">%1$d дн. назад</string>
     <string name="night_mode_hint">Взрывы тише, диалоги громче — чтобы не будить соседей</string>
     <string name="description_more">Описание</string>
+    <string name="list_add">В список</string>
+    <string name="list_title">Мой список</string>
+    <string name="list_watching">Смотрю</string>
+    <string name="list_planned">Запланировано</string>
+    <string name="list_watched">Просмотрено</string>
+    <string name="list_postponed">Отложено</string>
+    <string name="list_abandoned">Брошено</string>
+    <string name="list_remove">Убрать из списка</string>
+    <string name="rating_rate">Оценить</string>
+    <string name="rating_own">★ %1$d</string>
+    <string name="rating_title">Ваша оценка</string>
+    <string name="rating_remove">Убрать оценку</string>
+    <string name="seasons">Сезоны</string>
+    <string name="season_current">Сейчас</string>
 </resources>

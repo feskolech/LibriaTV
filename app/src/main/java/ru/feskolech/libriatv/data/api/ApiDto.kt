@@ -98,3 +98,19 @@ import kotlinx.serialization.Serializable
 @Serializable data class FavoriteUpdateDto(@SerialName("release_id") val releaseId: Int)
 @Serializable data class TimecodeUpdateDto(val time: Double, @SerialName("is_watched") val isWatched: Boolean, @SerialName("release_episode_id") val releaseEpisodeId: String)
 @Serializable data class ApiErrorDto(val message: String? = null, val errors: Map<String, List<String>>? = null)
+
+@Serializable data class FranchiseReleaseDto(
+    @SerialName("sort_order") val sortOrder: Int? = null,
+    @SerialName("release_id") val releaseId: Int? = null,
+    val release: ReleaseDto? = null,
+)
+@Serializable data class FranchiseDto(
+    val id: String? = null, val name: String? = null,
+    @SerialName("franchise_releases") val releases: List<FranchiseReleaseDto> = emptyList(),
+)
+@Serializable data class CollectionUpdateDto(
+    @SerialName("release_id") val releaseId: Int,
+    @SerialName("type_of_collection") val type: String,
+)
+@Serializable data class RatingRequestDto(val score: Int)
+@Serializable data class OwnRatingDto(@SerialName("release_id") val releaseId: Int? = null, val score: Double? = null)

@@ -179,4 +179,18 @@
     <string name="days_ago">%1$d d ago</string>
     <string name="night_mode_hint">Quieter explosions, louder dialogue — for late-night watching</string>
     <string name="description_more">Description</string>
+    <string name="list_add">Add to list</string>
+    <string name="list_title">My list</string>
+    <string name="list_watching">Watching</string>
+    <string name="list_planned">Planned</string>
+    <string name="list_watched">Watched</string>
+    <string name="list_postponed">On hold</string>
+    <string name="list_abandoned">Dropped</string>
+    <string name="list_remove">Remove from list</string>
+    <string name="rating_rate">Rate</string>
+    <string name="rating_own">★ %1$d</string>
+    <string name="rating_title">Your rating</string>
+    <string name="rating_remove">Remove rating</string>
+    <string name="seasons">Seasons</string>
+    <string name="season_current">Now</string>
 </resources>

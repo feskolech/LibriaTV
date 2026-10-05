@@ -44,3 +44,8 @@ data class CatalogFilter(
 }
 
 data class ReleasePage(val releases: List<Release>, val page: Int, val totalPages: Int)
+
+/** User lists ("collections") of the AniLibria account. [apiValue] is what the API expects. */
+enum class UserList(val apiValue: String) { WATCHING("WATCHING"), PLANNED("PLANNED"), WATCHED("WATCHED"), POSTPONED("POSTPONED"), ABANDONED("ABANDONED");
+    companion object { fun of(value: String?) = entries.firstOrNull { it.apiValue == value } }
+}

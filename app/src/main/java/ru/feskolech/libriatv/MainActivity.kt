@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -354,11 +355,20 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
 
     if (confirmExit) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { confirmExit = false }) {
-            androidx.tv.material3.Surface {
-                Column(Modifier.padding(32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            // Rounded card, both buttons on one line and of equal width.
+            androidx.tv.material3.Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp)) {
+                Column(Modifier.width(460.dp).padding(32.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                     Text(stringResource(R.string.exit_question), style = MaterialTheme.typography.headlineSmall)
-                    Button(onClick = onExit) { Text(stringResource(R.string.exit)) }
-                    Button(onClick = { confirmExit = false }) { Text(stringResource(R.string.cancel)) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(onClick = onExit, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.exit), modifier = Modifier.fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        }
+                        Button(onClick = { confirmExit = false }, modifier = Modifier.weight(1f)) {
+                            Text(stringResource(R.string.cancel), modifier = Modifier.fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        }
+                    }
                 }
             }
         }
