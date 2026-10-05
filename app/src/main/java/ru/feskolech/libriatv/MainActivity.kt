@@ -205,18 +205,22 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     NavigationDrawer(
         drawerState = drawerState,
         drawerContent = { drawerValue ->
+            val drawerColor by androidx.compose.animation.animateColorAsState(
+                if (drawerValue == DrawerValue.Open) Color(0xFF181818) else Color(0xFF101010), label = "drawer")
             Column(
                 modifier = Modifier
                     .then(
                         when {
                             currentRoute.startsWith("player/") -> Modifier.width(0.dp)
                             drawerValue == DrawerValue.Open -> Modifier.width(280.dp)
-                            // Collapsed: wrap the icon items so the background covers the whole drawer slot.
-                            else -> Modifier.width(IntrinsicSize.Max)
+                            // Fixed collapsed width: measuring intrinsics on every animation frame stuttered on TV boxes.
+                            else -> Modifier.width(88.dp)
                         }
                     )
                     .fillMaxHeight()
-                    .background(Color(0xFF181818))
+                    // Same colour as the screens when collapsed, so no lighter strip shows while it animates;
+                    // only the open drawer stands out a little.
+                    .background(drawerColor)
                     .padding(horizontal = 8.dp, vertical = 27.dp)
                     .selectableGroup()
                     // Entering the drawer from content lands on the current section, not on the nearest row.

@@ -94,7 +94,13 @@ fun SearchScreen(
         }
     }
 
-    LaunchedEffect(Unit) { withFrameNanos { }; runCatching { fieldFocus.requestFocus() } }
+    // Don't start in the text field: focusing it pops the on-screen keyboard right away. Start on the
+    // mic so the viewer chooses: OK = voice, Left = type.
+    val micFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        if (!voiceAvailable || runCatching { micFocus.requestFocus() }.isFailure) runCatching { fieldFocus.requestFocus() }
+    }
 
     Column(
         Modifier.fillMaxSize().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }
@@ -124,7 +130,7 @@ fun SearchScreen(
                 },
             )
             if (voiceAvailable) {
-                Button(onClick = { voice.launch(voiceIntent) }) {
+                Button(onClick = { voice.launch(voiceIntent) }, modifier = Modifier.focusRequester(micFocus)) {
                     Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.search_voice))
                 }
             }

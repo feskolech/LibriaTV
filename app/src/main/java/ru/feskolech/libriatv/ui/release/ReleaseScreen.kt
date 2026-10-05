@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.key
@@ -127,7 +128,11 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                 if (current.similar.isNotEmpty()) {
                     item { Text(stringResource(R.string.similar), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
                     item {
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                        // Room for the focused card's scale on the left; focusRestorer brings Up/Down back to the
+                        // card that was selected instead of whichever one is geometrically closest.
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                            modifier = Modifier.focusRestorer()) {
                             items(current.similar, key = { it.id }) { similar ->
                                 PosterCard(similar, badge = null, onFocus = {}, onClick = { onOpenRelease(similar.id) })
                             }
