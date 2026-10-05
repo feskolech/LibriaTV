@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -249,7 +250,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             .then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
                             .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
                     ) {
-                        if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title))
+                        if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title), fontSize = 20.sp)
                     }
                 }
             }

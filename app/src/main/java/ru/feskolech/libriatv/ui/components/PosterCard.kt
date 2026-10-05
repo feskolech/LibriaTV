@@ -94,8 +94,13 @@ fun PosterCard(
             if (isFavorite) Text("♥", modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
                 color = Color(0xFFFF5555), fontSize = 20.sp)
         }
-        Text(release.title, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), color = Color.White,
-            fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // Focused card shows the full title (2 lines, larger). The title area has a fixed height for
+        // two large lines so focusing a card never changes the row height (no jumping).
+        Box(Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp)) {
+            Text(release.title, color = Color.White,
+                fontSize = if (focused) 16.sp else 14.sp, lineHeight = if (focused) 19.sp else 17.sp,
+                maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
+        }
         if (timeBadge != null) Text(timeBadge, color = Color(0xFFBDBDBD), fontSize = 11.sp)
     }
 }
