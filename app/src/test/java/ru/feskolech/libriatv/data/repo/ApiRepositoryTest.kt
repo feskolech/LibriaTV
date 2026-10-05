@@ -149,6 +149,14 @@ class ApiRepositoryTest {
         server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
         assertEquals(401, (repo.saveTimecode("id", 0.0, false) as ApiResult.Failure).status)
     }
+
+    @Test fun recommendedForReleaseSendsIdAndMapsPoster() = runBlocking {
+        enqueue("recommended")
+        val releases = (repo.recommended(limit = 14, releaseId = 10306) as ApiResult.Success).value
+        assertEquals(104, releases.single().id)
+        assertEquals("https://anilibria.top/storage/recommended.jpg", releases.single().posterUrl)
+        assertEquals("/api/v1/anime/releases/recommended?limit=14&release_id=10306", server.takeRequest().path)
+    }
     @Test fun timecodeGetReadsTriplesAndSurfacesError() = runBlocking {
         enqueue("timecodes")
         val rows = (repo.timecodes() as ApiResult.Success).value

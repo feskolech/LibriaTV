@@ -13,6 +13,7 @@ import ru.feskolech.libriatv.data.repo.AuthState
 import ru.feskolech.libriatv.data.repo.FavoritesRepository
 import ru.feskolech.libriatv.domain.FilterOption
 import ru.feskolech.libriatv.domain.Release
+import ru.feskolech.libriatv.domain.sortedByTitle
 
 data class FavoritesUiState(
     val authorized: Boolean = false,
@@ -34,6 +35,7 @@ class FavoritesViewModel @Inject constructor(
     private val _state = MutableStateFlow(FavoritesUiState())
     val state: StateFlow<FavoritesUiState> = _state
     private var loading = false
+    private var loadJob: kotlinx.coroutines.Job? = null
 
     init {
         viewModelScope.launch {
@@ -54,8 +56,10 @@ class FavoritesViewModel @Inject constructor(
     }
 
     fun reload() {
-        if (loading || auth.state.value !is AuthState.Authorized) return
-        viewModelScope.launch {
+        if (auth.state.value !is AuthState.Authorized) return
+        loadJob?.cancel()
+        loading = false
+        loadJob = viewModelScope.launch {
             if (_state.value.sorting.isEmpty()) {
                 val options = repository.sorting()
                 // Without an explicit choice show the API's default (its first option) instead of "Any".
@@ -73,11 +77,16 @@ class FavoritesViewModel @Inject constructor(
 
     fun loadMore() {
         val current = _state.value
-        if (!loading && current.page < current.totalPages) viewModelScope.launch { load(current.page + 1) }
+        if (!loading && current.selectedSorting != "TITLE_ASC" && current.page < current.totalPages)
+            loadJob = viewModelScope.launch { load(current.page + 1) }
     }
 
     private suspend fun load(page: Int) {
         if (loading) return
+        if (_state.value.selectedSorting == "TITLE_ASC") {
+            loadAllByTitle()
+            return
+        }
         loading = true
         _state.value = _state.value.copy(loading = true, error = null)
         val result = repository.releases(page, _state.value.selectedSorting)
@@ -90,6 +99,30 @@ class FavoritesViewModel @Inject constructor(
             }
             is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
         }
+        loading = false
+    }
+
+    private suspend fun loadAllByTitle() {
+        loading = true
+        _state.value = _state.value.copy(loading = true, releases = emptyList(), page = 0)
+        var page = 1
+        var last = 1
+        val collected = mutableListOf<Release>()
+        do {
+            when (val result = repository.releases(page)) {
+                is ApiResult.Success -> {
+                    collected += result.value.releases
+                    last = result.value.totalPages
+                    _state.value = _state.value.copy(releases = collected.distinctBy { it.id }.sortedByTitle(),
+                        page = page, totalPages = last, loading = page < last)
+                }
+                is ApiResult.Failure -> {
+                    _state.value = _state.value.copy(loading = false, error = result.message)
+                    break
+                }
+            }
+            page++
+        } while (page <= last)
         loading = false
     }
 }

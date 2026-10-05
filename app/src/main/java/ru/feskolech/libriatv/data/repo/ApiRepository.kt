@@ -59,7 +59,8 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
         api.episode(id).toDomain() ?: error("Episode has no id")
     }
     suspend fun episodeDetails(id: String): ApiResult<EpisodeDto> = request { api.episode(id) }
-    suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30): ApiResult<ReleasePage> = request {
+    /** [compact] asks the API only for what a poster grid needs (~8x smaller pages). */
+    suspend fun catalog(filter: CatalogFilter, page: Int, limit: Int = 30, compact: Boolean = false): ApiResult<ReleasePage> = request {
         val response = api.catalog(
             page = page, limit = limit,
             genres = filter.genres.takeIf { it.isNotEmpty() }?.joinToString(","),
@@ -68,6 +69,7 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
             fromYear = filter.fromYear, toYear = filter.toYear,
             publishStatuses = filter.statuses.toList().takeIf { it.isNotEmpty() },
             sorting = filter.sorting,
+            include = if (compact) "id,name,poster,year,type" else null,
         )
         val pagination = response.meta?.pagination
         ReleasePage(response.data.mapNotNull { it.toDomain() }, pagination?.currentPage ?: page, pagination?.totalPages ?: page)
@@ -97,8 +99,8 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     }
 
     // The API rejects limit > 14 with 422.
-    suspend fun recommended(limit: Int = 14): ApiResult<List<Release>> = request {
-        api.recommended(limit).mapNotNull { it.toDomain() }
+    suspend fun recommended(limit: Int = 14, releaseId: Int? = null): ApiResult<List<Release>> = request {
+        api.recommended(limit.coerceIn(1, 14), releaseId).mapNotNull { it.toDomain() }
     }
 
     suspend fun randomRelease(): ApiResult<Release> = request {

@@ -1,6 +1,7 @@
 package ru.feskolech.libriatv.data.repo
 
 import android.content.Context
+import android.app.ActivityManager
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -18,6 +19,16 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val mirrorKey = stringPreferencesKey("api_mirror")
     private val automaticCrashReportsKey = booleanPreferencesKey("automatic_crash_reports")
     private val phoneRemoteKey = booleanPreferencesKey("phone_remote_enabled")
+    private val homeVideoPreviewKey = booleanPreferencesKey("home_video_preview")
+    private val previewDefault: Boolean get() {
+        val memory = ActivityManager.MemoryInfo()
+        (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(memory)
+        return memory.totalMem >= 2L * 1024 * 1024 * 1024
+    }
+    suspend fun homeVideoPreview(): Boolean = context.settingsDataStore.data.first()[homeVideoPreviewKey] ?: previewDefault
+    suspend fun setHomeVideoPreview(enabled: Boolean) {
+        context.settingsDataStore.edit { it[homeVideoPreviewKey] = enabled }
+    }
     val mirror = context.settingsDataStore.data.map { it[mirrorKey] ?: "anilibria.top" }
     suspend fun mirror(): String = mirror.first()
     suspend fun setMirror(host: String) {

@@ -162,4 +162,7 @@
     <string name="auto_skip_ending">Автопропуск эндинга</string>
     <string name="settings_auto_skip_opening">Пропускать опенинг автоматически</string>
     <string name="settings_auto_skip_ending">Пропускать эндинг автоматически</string>
+    <string name="similar">Похожее</string>
+    <string name="settings_home_video_preview">Видео-превью на главной</string>
+    <string name="sort_title">По названию</string>
 </resources>

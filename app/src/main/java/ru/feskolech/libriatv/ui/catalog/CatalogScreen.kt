@@ -43,6 +43,7 @@ import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.FilterOption
 import ru.feskolech.libriatv.ui.components.PosterCard
+import ru.feskolech.libriatv.ui.components.AlphabetGrid
 
 private enum class FilterKind { Genres, Types, Seasons, Years, Statuses, Sorting }
 
@@ -89,7 +90,8 @@ fun CatalogScreen(
                 }
                 item { FilterButton(stringResource(R.string.filter_status), filter.statuses.size) { dialog = FilterKind.Statuses } }
                 item {
-                    val sortTitle = refs.sorting.firstOrNull { it.id == filter.sorting }?.title
+                    val sortTitle = if (state.titleSorted) stringResource(R.string.sort_title)
+                        else refs.sorting.firstOrNull { it.id == filter.sorting }?.title
                     Button(onClick = { dialog = FilterKind.Sorting }) {
                         Text(listOfNotNull(stringResource(R.string.filter_sorting), sortTitle).joinToString(": "))
                     }
@@ -110,6 +112,8 @@ fun CatalogScreen(
             }
             state.releases.isEmpty() ->
                 Text(stringResource(R.string.catalog_empty), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
+            state.titleSorted -> AlphabetGrid(state.releases, badge = { it.year?.toString() },
+                onOpen = onOpenRelease)
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(160.dp),
                 modifier = Modifier.fillMaxSize(),
@@ -146,8 +150,10 @@ fun CatalogScreen(
         FilterKind.Statuses -> MultiSelectDialog(stringResource(R.string.filter_status), refs.statuses, filter.statuses, close) {
             viewModel.applyFilter(filter.copy(statuses = it))
         }
-        FilterKind.Sorting -> SingleSelectDialog(stringResource(R.string.filter_sorting), refs.sorting, filter.sorting, close) {
-            viewModel.applyFilter(filter.copy(sorting = it))
+        FilterKind.Sorting -> SingleSelectDialog(stringResource(R.string.filter_sorting),
+            refs.sorting + FilterOption("TITLE_ASC", stringResource(R.string.sort_title)),
+            if (state.titleSorted) "TITLE_ASC" else filter.sorting, close) {
+            if (it == "TITLE_ASC") viewModel.sortByTitle() else viewModel.sortByApi(it)
         }
         FilterKind.Years -> YearsDialog(refs.years, filter, close) { from, to ->
             viewModel.applyFilter(filter.copy(fromYear = from, toYear = to))

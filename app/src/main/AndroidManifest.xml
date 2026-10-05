@@ -8,6 +8,9 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
         <package android:name="ru.yourok.torrserve" />
         <intent>
             <action android:name="android.intent.action.VIEW" />

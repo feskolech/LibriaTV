@@ -66,6 +66,7 @@ import ru.feskolech.libriatv.data.repo.ContinueItem
 
 @Composable
 fun HomeScreen(
+    active: Boolean,
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
@@ -83,7 +84,7 @@ fun HomeScreen(
             Button(onClick = { viewModel.refresh(force = true) }) { Text(stringResource(R.string.retry)) }
         }
         is HomeUiState.Content -> {
-            HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, viewModel::dismissEpisodeDialog)
+            HomeContent(content, active, onContentFocus, onOpenFeed, onOpenRelease, viewModel::dismissEpisodeDialog)
         }
     }
 }
@@ -91,6 +92,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     content: HomeUiState.Content,
+    active: Boolean,
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
@@ -116,20 +118,7 @@ private fun HomeContent(
     }
     // clipToBounds: the blur render effect otherwise bleeds left under the drawer as a light strip.
     Box(Modifier.fillMaxSize().clipToBounds().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }) {
-        Crossfade(backgroundRelease?.posterUrl, label = "poster background") { url ->
-            if (url != null) {
-                AsyncImage(
-                    model = url, contentDescription = null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer {
-                        if (Build.VERSION.SDK_INT >= 31) {
-                            renderEffect = RenderEffect.createBlurEffect(34f, 34f, Shader.TileMode.CLAMP).asComposeRenderEffect()
-                        }
-                        alpha = 0.36f
-                    },
-                )
-            }
-        }
-        Box(Modifier.fillMaxSize().background(Color(0xB5101010)))
+        HomeBackdrop(backgroundRelease, content.videoPreviewEnabled && active)
         Column(Modifier.fillMaxSize()) {
             SelectedRelease(focusedRelease)
             if (content.newEpisodes.isNotEmpty()) {

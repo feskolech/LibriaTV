@@ -70,9 +70,11 @@ private val Accent = Color(0xFFB32121)
 fun SearchScreen(
     onOpenRelease: (Int) -> Unit,
     onContentFocus: () -> Unit,
+    initialQuery: String = "",
     viewModel: SearchViewModel = hiltViewModel(),
 ) {
     val query by viewModel.query.collectAsState()
+    LaunchedEffect(initialQuery) { if (initialQuery.isNotBlank()) viewModel.submit(initialQuery) }
     val results by viewModel.results.collectAsState()
     val recent by viewModel.recent.collectAsState()
     val context = LocalContext.current

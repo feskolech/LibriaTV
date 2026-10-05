@@ -28,6 +28,7 @@ sealed interface SettingsUiState {
         val phoneRemoteEnabled: Boolean,
         val phoneRemoteUrl: String?,
         val phoneRemoteError: Boolean,
+        val homeVideoPreview: Boolean,
     ) : SettingsUiState
 }
 
@@ -45,7 +46,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkipOpening(), playback.autoSkipEnding(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
-                crashReports.available, crashReports.automatic(), false, null, false)
+                crashReports.available, crashReports.automatic(), false, null, false, settings.homeVideoPreview())
             phoneRemote.state.collect { remote ->
                 val current = _state.value as? SettingsUiState.Content ?: return@collect
                 _state.value = current.copy(phoneRemoteEnabled = remote.enabled, phoneRemoteUrl = remote.url,
@@ -76,4 +77,8 @@ class SettingsViewModel @Inject constructor(
         val current = _state.value as? SettingsUiState.Content ?: return@launch
         phoneRemote.setEnabled(!current.phoneRemoteEnabled)
     }
+    fun homeVideoPreview() = change(
+        { settings.setHomeVideoPreview(it.homeVideoPreview) },
+        { it.copy(homeVideoPreview = !it.homeVideoPreview) },
+    )
 }

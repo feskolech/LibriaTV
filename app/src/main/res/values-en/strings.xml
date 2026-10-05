@@ -162,4 +162,7 @@
     <string name="auto_skip_ending">Auto-skip ending</string>
     <string name="settings_auto_skip_opening">Skip opening automatically</string>
     <string name="settings_auto_skip_ending">Skip ending automatically</string>
+    <string name="similar">Similar</string>
+    <string name="settings_home_video_preview">Video preview on home</string>
+    <string name="sort_title">By title</string>
 </resources>

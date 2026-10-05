@@ -172,6 +172,7 @@ class PlayerViewModel @Inject constructor(
         val position = if (resume) store.progress(episode.id)?.positionMs ?: 0 else 0
         player.seekTo(position)
         player.playWhenReady = true
+        android.util.Log.i("EpisodePlayer", "playing: episode=${episode.id}")
     }
 
     fun playEpisode(id: String) {
@@ -347,7 +348,10 @@ class PlayerViewModel @Inject constructor(
     private fun mediaItem(episode: Episode, url: String): MediaItem = MediaItem.Builder()
         .setMediaId(episode.id).setUri(url).build()
 
-    override fun onCleared() { nightAudio.release(); player.release(); preloadManager.release(); super.onCleared() }
+    override fun onCleared() {
+        android.util.Log.i("EpisodePlayer", "released")
+        nightAudio.release(); player.release(); preloadManager.release(); super.onCleared()
+    }
 
     private companion object {
         val SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.75f)

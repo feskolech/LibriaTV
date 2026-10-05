@@ -20,6 +20,7 @@ import ru.feskolech.libriatv.data.repo.FavoritesRepository
 import ru.feskolech.libriatv.data.repo.FavoriteEpisodeStore
 import ru.feskolech.libriatv.data.repo.NewFavoriteEpisode
 import ru.feskolech.libriatv.data.repo.compareFavoriteEpisodes
+import ru.feskolech.libriatv.data.repo.SettingsStore
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
@@ -34,6 +35,7 @@ sealed interface HomeUiState {
         val continueItems: List<ContinueItem> = emptyList(),
         val newEpisodes: List<NewFavoriteEpisode> = emptyList(),
         val showEpisodeDialog: Boolean = false,
+        val videoPreviewEnabled: Boolean = false,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -45,6 +47,7 @@ class HomeViewModel @Inject constructor(
     private val progress: ProgressRepository,
     private val favoritesRepository: FavoritesRepository,
     private val episodeStore: FavoriteEpisodeStore,
+    private val settings: SettingsStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state
@@ -73,6 +76,7 @@ class HomeViewModel @Inject constructor(
             // Optional row: a failure here must not break the whole home screen.
             val recommended = async { (repository.recommended() as? ApiResult.Success)?.value.orEmpty() }
             val continueItems = async { progress.continueItems() }
+            val videoPreviewEnabled = async { settings.homeVideoPreview() }
             val latestResult = latest.await()
             val scheduleResult = schedule.await()
             if (latestResult is ApiResult.Success && scheduleResult is ApiResult.Success) {
@@ -96,6 +100,7 @@ class HomeViewModel @Inject constructor(
                     scheduleResult.value.today, scheduleResult.value.tomorrow,
                     favoriteList, favoritesRepository.ids.value, authorized,
                     recommended = recommended.await(),
+                    videoPreviewEnabled = videoPreviewEnabled.await(),
                     continueItems = continueItems.await(),
                     newEpisodes = newEpisodes, showEpisodeDialog = showDialog,
                 )

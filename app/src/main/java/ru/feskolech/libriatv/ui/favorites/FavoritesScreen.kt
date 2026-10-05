@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -34,6 +37,7 @@ import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.PosterCard
 import ru.feskolech.libriatv.data.repo.latestFavoriteOrdinal
+import ru.feskolech.libriatv.ui.components.AlphabetGrid
 
 @Composable
 fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
@@ -58,7 +62,8 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
             Button(onClick = { sortingOpen = true },
                 modifier = Modifier.padding(horizontal = 48.dp).focusRequester(first)) {
                 Text(stringResource(R.string.filter_sorting) + ": " +
-                    (state.sorting.firstOrNull { it.id == state.selectedSorting }?.title
+                    (if (state.selectedSorting == "TITLE_ASC") stringResource(R.string.sort_title)
+                        else state.sorting.firstOrNull { it.id == state.selectedSorting }?.title
                         ?: stringResource(R.string.filter_any)))
             }
             when {
@@ -70,6 +75,9 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                 }
                 state.releases.isEmpty() ->
                     Text(stringResource(R.string.favorites_empty), Modifier.padding(horizontal = 48.dp), color = Color.White)
+                state.selectedSorting == "TITLE_ASC" -> AlphabetGrid(state.releases,
+                    badge = { it.latestFavoriteOrdinal()?.let { n -> stringResource(R.string.episode_number, n) } },
+                    favoriteIds = state.ids, onOpen = onOpenRelease)
                 else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -89,14 +97,22 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
             Surface {
                 Column(Modifier.width(480.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.filter_sorting), style = MaterialTheme.typography.headlineSmall)
-                    Button(onClick = { viewModel.sort(null); sortingOpen = false },
-                        modifier = Modifier.focusRequester(dialogFocus)) {
-                        Text(stringResource(R.string.filter_any))
-                    }
-                    state.sorting.forEach { option ->
-                        Button(onClick = { viewModel.sort(option.id); sortingOpen = false },
-                            modifier = Modifier) {
-                            Text(option.title)
+                    LazyColumn(Modifier.height(510.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        item {
+                            Button(onClick = { viewModel.sort(null); sortingOpen = false },
+                                modifier = Modifier.focusRequester(dialogFocus)) {
+                                Text(stringResource(R.string.filter_any))
+                            }
+                        }
+                        items(state.sorting) { option ->
+                            Button(onClick = { viewModel.sort(option.id); sortingOpen = false }) {
+                                Text(option.title)
+                            }
+                        }
+                        item {
+                            Button(onClick = { viewModel.sort("TITLE_ASC"); sortingOpen = false }) {
+                                Text(stringResource(R.string.sort_title))
+                            }
                         }
                     }
                 }

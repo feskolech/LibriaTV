@@ -2,6 +2,11 @@ package ru.feskolech.libriatv
 
 import android.os.Bundle
 import android.content.Intent
+import android.app.Activity
+import android.speech.RecognizerIntent
+import android.view.KeyEvent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Mic
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -85,12 +90,25 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject lateinit var phoneRemote: PhoneRemote
     private val deepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
+    private val voiceQuery = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { voiceQuery.tryEmit(it) }
+        }
+    }
+    private fun startVoiceSearch() {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.search_voice_prompt))
+        if (intent.resolveActivity(packageManager) != null) voiceLauncher.launch(intent)
+        else voiceQuery.tryEmit("")
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         deepLink.value = intent?.data
         setContent {
             LibriaTvTheme {
-                AppNavigation(phoneRemote, deepLink, onExit = { finishAndRemoveTask() })
+                AppNavigation(phoneRemote, deepLink, voiceQuery, ::startVoiceSearch, onExit = { finishAndRemoveTask() })
             }
         }
     }
@@ -99,6 +117,11 @@ class MainActivity : ComponentActivity() {
      * D-pad moves and OK. playSoundEffect honours the system "touch sounds" setting.
      */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+            (event.keyCode == KeyEvent.KEYCODE_SEARCH || event.keyCode == KeyEvent.KEYCODE_VOICE_ASSIST)) {
+            startVoiceSearch()
+            return true
+        }
         if (event.action == android.view.KeyEvent.ACTION_DOWN && UiSounds.enabled) {
             val effect = when (event.keyCode) {
                 android.view.KeyEvent.KEYCODE_DPAD_UP -> android.view.SoundEffectConstants.NAVIGATION_UP
@@ -134,13 +157,17 @@ private enum class Destination(val route: String, val title: Int, val icon: Imag
 }
 
 @Composable
-private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>, onExit: () -> Unit) {
+private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>,
+    voiceQuery: kotlinx.coroutines.flow.SharedFlow<String>, startVoiceSearch: () -> Unit, onExit: () -> Unit) {
     val crashViewModel: CrashReportViewModel = hiltViewModel()
     val crashPrompt by crashViewModel.prompt.collectAsState()
     val updateViewModel: UpdateViewModel = hiltViewModel()
     val updateState by updateViewModel.state.collectAsState()
     LaunchedEffect(Unit) { updateViewModel.check() }
     val navController = rememberNavController()
+    LaunchedEffect(voiceQuery) {
+        voiceQuery.collect { query -> navController.navigate("search?query=${android.net.Uri.encode(query)}") }
+    }
     LaunchedEffect(deepLink) {
         deepLink.collect { uri ->
             if (uri?.scheme == "libriatv" && uri.host == "play" && uri.pathSegments.size == 2 &&
@@ -164,7 +191,8 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val firstItemFocus = remember { FocusRequester() }
     val itemFocus = remember { Destination.entries.associateWith { FocusRequester() } }
-    val selectedDestination = Destination.entries.firstOrNull { it.route == currentRoute } ?: Destination.Home
+    val selectedDestination = Destination.entries.firstOrNull { it.route == currentRoute }
+        ?: if (currentRoute.startsWith("search?")) Destination.Search else Destination.Home
     var confirmExit by remember { mutableStateOf(false) }
 
     BackHandler(confirmExit || drawerState.currentValue == DrawerValue.Open || currentRoute == Destination.Home.route) {
@@ -198,8 +226,17 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Destination.entries.forEachIndexed { index, destination ->
+                    if (destination == Destination.Search) {
+                        NavigationDrawerItem(selected = false, onClick = startVoiceSearch,
+                            leadingContent = { Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(24.dp)) },
+                            modifier = Modifier.then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
+                                .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) }) {
+                            if (drawerValue == DrawerValue.Open) Text(stringResource(R.string.search_voice))
+                        }
+                    }
                     NavigationDrawerItem(
-                        selected = currentRoute == destination.route,
+                        selected = currentRoute == destination.route ||
+                            (destination == Destination.Search && currentRoute.startsWith("search?")),
                         onClick = {
                             if (currentRoute != destination.route) {
                                 navController.navigate(destination.route) {
@@ -254,6 +291,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                         )
                     } else if (destination == Destination.Home) {
                         HomeScreen(
+                            active = currentRoute == Destination.Home.route,
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenFeed = { navController.navigate("feed") },
                             onOpenRelease = { navController.navigate("release/$it") },
@@ -271,6 +309,11 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                     }
                 }
             }
+            composable("search?query={query}") { entry ->
+                SearchScreen(onOpenRelease = { navController.navigate("release/$it") },
+                    onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                    initialQuery = entry.arguments?.getString("query").orEmpty())
+            }
             composable("feed") {
                 FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
                     onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
@@ -280,6 +323,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                     onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
                     onTorrents = { navController.navigate("torrents/$it") },
                     onLogin = { navController.navigate(Destination.Profile.route) },
+                    onOpenRelease = { navController.navigate("release/$it") },
                 )
             }
             composable("torrents/{releaseId}") { TorrentsScreen() }

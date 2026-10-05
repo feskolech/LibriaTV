@@ -13,7 +13,7 @@ interface AniLibriaApi {
     @GET("anime/schedule/now") suspend fun scheduleNow(): ScheduleNowDto
     @GET("anime/schedule/week") suspend fun scheduleWeek(): List<ScheduleItemDto>
     @GET("anime/releases/latest") suspend fun latest(@Query("limit") limit: Int = 30): List<ReleaseDto>
-    @GET("anime/releases/recommended") suspend fun recommended(@Query("limit") limit: Int = 14): List<ReleaseDto>
+    @GET("anime/releases/recommended") suspend fun recommended(@Query("limit") limit: Int = 14, @Query("release_id") releaseId: Int? = null): List<ReleaseDto>
     @GET("anime/releases/random") suspend fun random(@Query("limit") limit: Int = 1): List<ReleaseDto>
     @GET("anime/releases/{idOrAlias}") suspend fun release(@Path("idOrAlias") idOrAlias: String): ReleaseDto
     @GET("anime/releases/episodes/{releaseEpisodeId}") suspend fun episode(@Path("releaseEpisodeId") id: String): EpisodeDto
@@ -27,6 +27,7 @@ interface AniLibriaApi {
         @Query("f[years][to_year]") toYear: Int? = null,
         @Query("f[publish_statuses][]") publishStatuses: List<String>? = null,
         @Query("f[sorting]") sorting: String? = null,
+        @Query("include") include: String? = null,
     ): FavoritesDto
     @GET("anime/catalog/references/genres") suspend fun catalogGenres(): List<GenreDto>
     @GET("anime/catalog/references/types") suspend fun catalogTypes(): List<ReferenceDto>

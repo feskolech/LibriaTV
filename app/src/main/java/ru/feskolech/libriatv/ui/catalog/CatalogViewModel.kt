@@ -8,11 +8,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
 import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.CatalogReferences
 import ru.feskolech.libriatv.domain.Release
+import ru.feskolech.libriatv.domain.sortedByTitle
 
 data class CatalogUiState(
     val references: CatalogReferences? = null,
@@ -22,6 +25,7 @@ data class CatalogUiState(
     val totalPages: Int = 1,
     val loading: Boolean = false,
     val error: String? = null,
+    val titleSorted: Boolean = false,
 ) {
     val canLoadMore: Boolean get() = !loading && page < totalPages
 }
@@ -53,12 +57,55 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
         reload()
     }
 
+    fun sortByTitle() {
+        _state.value = _state.value.copy(titleSorted = true, filter = _state.value.filter.copy(sorting = null))
+        reload()
+    }
+    fun sortByApi(id: String) {
+        _state.value = _state.value.copy(titleSorted = false, filter = _state.value.filter.copy(sorting = id))
+        reload()
+    }
+
     fun resetFilter() = applyFilter(CatalogFilter(sorting = _state.value.filter.sorting))
 
     fun reload() {
         pageJob?.cancel()
         _state.value = _state.value.copy(releases = emptyList(), page = 0, totalPages = 1, loading = false, error = null)
-        loadMore()
+        if (_state.value.titleSorted) loadAllByTitle() else loadMore()
+    }
+
+    /** Title-sorted result per filter for this session: the API cannot sort by title itself. */
+    private val titleCache = mutableMapOf<CatalogFilter, List<Release>>()
+
+    /**
+     * The API has no title sorting, so the whole (filtered) catalog is fetched as compact pages of 50,
+     * four at a time, and shown once complete — a grid that re-sorts while loading jumps under focus.
+     */
+    private fun loadAllByTitle() {
+        val filter = _state.value.filter
+        titleCache[filter]?.let { cached ->
+            _state.value = _state.value.copy(releases = cached, page = 1, totalPages = 1, loading = false)
+            return
+        }
+        _state.value = _state.value.copy(loading = true)
+        pageJob = viewModelScope.launch {
+            val first = repository.catalog(filter, 1, TITLE_PAGE, compact = true)
+            if (first is ApiResult.Failure) {
+                _state.value = _state.value.copy(loading = false, error = first.message); return@launch
+            }
+            first as ApiResult.Success
+            val pages = (2..first.value.totalPages).chunked(4).flatMap { chunk ->
+                chunk.map { page -> async { repository.catalog(filter, page, TITLE_PAGE, compact = true) } }.awaitAll()
+            }
+            val failure = pages.filterIsInstance<ApiResult.Failure>().firstOrNull()
+            if (failure != null) {
+                _state.value = _state.value.copy(loading = false, error = failure.message); return@launch
+            }
+            val all = (listOf(first) + pages).flatMap { (it as ApiResult.Success).value.releases }
+                .distinctBy { it.id }.sortedByTitle()
+            titleCache[filter] = all
+            _state.value = _state.value.copy(releases = all, page = 1, totalPages = 1, loading = false)
+        }
     }
 
     /** "I'm feeling lucky": a random release id, or null when the API fails. */
@@ -68,7 +115,7 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
 
     fun loadMore() {
         val current = _state.value
-        if (!current.canLoadMore) return
+        if (current.titleSorted || !current.canLoadMore) return
         _state.value = current.copy(loading = true, error = null)
         pageJob = viewModelScope.launch {
             val next = current.page + 1
@@ -81,5 +128,9 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
                 is ApiResult.Failure -> _state.value = _state.value.copy(loading = false, error = result.message)
             }
         }
+    }
+
+    private companion object {
+        const val TITLE_PAGE = 50 // API maximum
     }
 }

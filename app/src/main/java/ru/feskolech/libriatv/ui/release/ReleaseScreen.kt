@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
@@ -33,9 +34,11 @@ import coil3.compose.AsyncImage
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.Episode
+import ru.feskolech.libriatv.ui.components.PosterCard
 
 @Composable
-fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: () -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
+fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: () -> Unit,
+    onOpenRelease: (Int) -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val focus = remember { FocusRequester() }
     when (val current = state) {
@@ -86,6 +89,16 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                 item { Text(stringResource(R.string.episodes), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
                 items(ordered, key = { it.id }) { episode ->
                     EpisodeRow(episode, current.progress[episode.id], onPlay)
+                }
+                if (current.similar.isNotEmpty()) {
+                    item { Text(stringResource(R.string.similar), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+                            items(current.similar, key = { it.id }) { similar ->
+                                PosterCard(similar, badge = null, onFocus = {}, onClick = { onOpenRelease(similar.id) })
+                            }
+                        }
+                    }
                 }
             }
         }
