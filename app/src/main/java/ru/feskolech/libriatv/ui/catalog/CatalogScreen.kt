@@ -39,6 +39,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.FilterOption
 import ru.feskolech.libriatv.ui.components.PosterCard
@@ -189,6 +190,7 @@ private fun MultiSelectDialog(
             items(options, key = { it.id }) { option ->
                 val on = option.id in picked
                 Button(
+                    scale = WideButtonScale,
                     onClick = { picked = if (on) picked - option.id else picked + option.id },
                     modifier = Modifier.fillMaxWidth().then(if (option == options.first()) Modifier.focusRequester(focus) else Modifier),
                 ) {
@@ -219,6 +221,7 @@ private fun SingleSelectDialog(
             items(options, key = { it.id }) { option ->
                 val on = option.id == selected
                 Button(
+                    scale = WideButtonScale,
                     onClick = { onApply(option.id); onDismiss() },
                     modifier = Modifier.fillMaxWidth().then(
                         if (on || (selected == null && option == options.first())) Modifier.focusRequester(focus) else Modifier,

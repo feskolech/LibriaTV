@@ -28,7 +28,7 @@ import androidx.compose.runtime.remember
 import ru.feskolech.libriatv.ui.components.PosterCard
 
 @Composable
-fun FeedScreen(onOpenRelease: (Int) -> Unit, onPlay: (Int, String) -> Unit, onContentFocus: () -> Unit,
+fun FeedScreen(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit,
     viewModel: FeedViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val gridState = rememberLazyGridState()
@@ -51,7 +51,7 @@ fun FeedScreen(onOpenRelease: (Int) -> Unit, onPlay: (Int, String) -> Unit, onCo
                 PosterCard(release, release.latestEpisode?.ordinal?.toInt()?.let { stringResource(R.string.episode_number, it) },
                     modifier = if (release.id == state.releases.first().id) Modifier.focusRequester(firstPoster) else Modifier,
                     onFocus = onContentFocus,
-                    onClick = { release.latestEpisode?.let { onPlay(release.id, it.id) } ?: onOpenRelease(release.id) },
+                    onClick = { onOpenRelease(release.id) },
                     onLongClick = { onOpenRelease(release.id) })
             }
         }

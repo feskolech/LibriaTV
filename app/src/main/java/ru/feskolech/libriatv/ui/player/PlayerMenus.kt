@@ -38,6 +38,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.WideButtonScale
 
 private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
@@ -124,7 +125,7 @@ internal fun PlayerSettingsMenu(
 
 @Composable
 private fun MenuRow(title: String, value: String, modifier: Modifier = Modifier, arrow: Boolean = false, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+    Button(onClick = onClick, modifier = modifier.fillMaxWidth(), scale = WideButtonScale) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(title)
             Spacer(Modifier.weight(1f))

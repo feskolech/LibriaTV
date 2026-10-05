@@ -31,6 +31,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.BuildConfig
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.ui.components.makeQr
 
 private val githubUrl = "https://github.com/${BuildConfig.UPDATE_REPO}"
@@ -134,7 +135,7 @@ private fun SettingTitle(title: Int) {
 
 @Composable
 private fun SettingToggle(title: Int, enabled: Boolean, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth(), scale = WideButtonScale) {
         Text(stringResource(title) + "  " + stringResource(if (enabled) R.string.settings_on else R.string.settings_off))
     }
 }

@@ -36,6 +36,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.Torrent
 import ru.feskolech.libriatv.ui.components.makeQr
 
@@ -86,7 +87,7 @@ fun TorrentsScreen(viewModel: TorrentsViewModel = hiltViewModel()) {
 
 @Composable
 private fun TorrentRow(torrent: Torrent, modifier: Modifier, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = modifier.fillMaxWidth()) {
+    Button(onClick = onClick, modifier = modifier.fillMaxWidth(), scale = WideButtonScale) {
         Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 val episodes = torrent.episodes?.let { stringResource(R.string.torrent_episodes, it) }

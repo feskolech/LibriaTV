@@ -31,6 +31,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.WideButtonScale
 import ru.feskolech.libriatv.domain.Episode
 
 @Composable
@@ -93,7 +94,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
 
 @Composable
 private fun EpisodeRow(episode: Episode, progress: ru.feskolech.libriatv.data.repo.PlaybackProgress?, onPlay: (String) -> Unit) {
-    Button(onClick = { onPlay(episode.id) }, modifier = Modifier.fillMaxWidth()) {
+    Button(onClick = { onPlay(episode.id) }, modifier = Modifier.fillMaxWidth(), scale = WideButtonScale) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AsyncImage(episode.previewUrl, null, Modifier.size(width = 110.dp, height = 64.dp), contentScale = ContentScale.Crop)
             Column {

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -74,6 +75,7 @@ import ru.feskolech.libriatv.ui.settings.UpdateUiState
 import ru.feskolech.libriatv.ui.settings.UpdateViewModel
 import ru.feskolech.libriatv.crash.CrashReportViewModel
 import ru.feskolech.libriatv.remote.PhoneRemote
+import ru.feskolech.libriatv.ui.components.UiSounds
 import ru.feskolech.libriatv.remote.RemoteCommand
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -88,10 +90,30 @@ class MainActivity : ComponentActivity() {
         deepLink.value = intent?.data
         setContent {
             LibriaTvTheme {
-                AppNavigation(phoneRemote, deepLink, onExit = { finish() })
+                AppNavigation(phoneRemote, deepLink, onExit = { finishAndRemoveTask() })
             }
         }
     }
+    /**
+     * Compose does not play the system navigation clicks that View-based TV apps have; add them for
+     * D-pad moves and OK. playSoundEffect honours the system "touch sounds" setting.
+     */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN && UiSounds.enabled) {
+            val effect = when (event.keyCode) {
+                android.view.KeyEvent.KEYCODE_DPAD_UP -> android.view.SoundEffectConstants.NAVIGATION_UP
+                android.view.KeyEvent.KEYCODE_DPAD_DOWN -> android.view.SoundEffectConstants.NAVIGATION_DOWN
+                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> android.view.SoundEffectConstants.NAVIGATION_LEFT
+                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> android.view.SoundEffectConstants.NAVIGATION_RIGHT
+                android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER,
+                android.view.KeyEvent.KEYCODE_NUMPAD_ENTER -> android.view.SoundEffectConstants.CLICK
+                else -> null
+            }
+            if (effect != null && event.repeatCount == 0) window.decorView.playSoundEffect(effect)
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -161,7 +183,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                     .then(
                         when {
                             currentRoute.startsWith("player/") -> Modifier.width(0.dp)
-                            drawerValue == DrawerValue.Open -> Modifier.width(230.dp)
+                            drawerValue == DrawerValue.Open -> Modifier.width(280.dp)
                             // Collapsed: wrap the icon items so the background covers the whole drawer slot.
                             else -> Modifier.width(IntrinsicSize.Max)
                         }
@@ -191,7 +213,8 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                         leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                         modifier = (if (index == 0) Modifier.focusRequester(firstItemFocus) else Modifier)
                             .focusRequester(itemFocus.getValue(destination))
-                            .then(if (drawerValue == DrawerValue.Open) Modifier else Modifier.width(72.dp))
+                            // Open: items fill the drawer exactly, otherwise their default width overflows and the focus pill is clipped.
+                            .then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
                             .onFocusChanged { if (it.isFocused) drawerState.setValue(DrawerValue.Open) },
                     ) {
                         if (drawerValue == DrawerValue.Open) Text(stringResource(destination.title))
@@ -234,7 +257,6 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             onOpenFeed = { navController.navigate("feed") },
                             onOpenRelease = { navController.navigate("release/$it") },
-                            onPlay = { releaseId, episodeId -> navController.navigate("player/$releaseId/$episodeId") },
                         )
                     } else if (destination == Destination.Settings) {
                         SettingsScreen(
@@ -251,7 +273,6 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
             }
             composable("feed") {
                 FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
-                    onPlay = { releaseId, episodeId -> navController.navigate("player/$releaseId/$episodeId") },
                     onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
             }
             composable("release/{id}") { entry ->

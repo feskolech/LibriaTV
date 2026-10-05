@@ -46,6 +46,7 @@ import androidx.media3.ui.PlayerView
 import androidx.tv.material3.Button
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
+import ru.feskolech.libriatv.ui.components.UiSounds
 import ru.feskolech.libriatv.remote.RemoteCommand
 import kotlinx.coroutines.flow.Flow
 
@@ -63,6 +64,10 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
         }
     }
     val state by viewModel.state.collectAsState()
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        UiSounds.enabled = false
+        onDispose { UiSounds.enabled = true }
+    }
     val rootFocus = remember { FocusRequester() }
     val skipFocus = remember { FocusRequester() }
     val panelFocus = remember { FocusRequester() }

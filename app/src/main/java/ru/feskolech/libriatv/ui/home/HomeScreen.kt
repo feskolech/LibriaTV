@@ -69,7 +69,6 @@ fun HomeScreen(
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
-    onPlay: (Int, String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
@@ -84,7 +83,7 @@ fun HomeScreen(
             Button(onClick = { viewModel.refresh(force = true) }) { Text(stringResource(R.string.retry)) }
         }
         is HomeUiState.Content -> {
-            HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, onPlay, viewModel::dismissEpisodeDialog)
+            HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, viewModel::dismissEpisodeDialog)
         }
     }
 }
@@ -95,7 +94,6 @@ private fun HomeContent(
     onContentFocus: () -> Unit,
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
-    onPlay: (Int, String) -> Unit,
     dismissEpisodeDialog: () -> Unit,
 ) {
     var focusedRelease by remember(content) { mutableStateOf(content.continueItems.firstOrNull()?.release ?: content.latest.firstOrNull()) }
@@ -159,14 +157,14 @@ private fun HomeContent(
                     onTitleClick = onOpenFeed,
                     firstPoster = firstPoster,
                     onFocus = { focusRow(0, it) },
-                    onClick = { id -> content.latest.firstOrNull { it.id == id }?.latestEpisode
-                        ?.let { onPlay(id, it.id) } ?: onOpenRelease(id) },
+                    // Users asked for the release card on OK (with a TV remote a direct start is too easy to trigger).
+                    onClick = onOpenRelease,
                     onLongClick = { onOpenRelease(it.id) },
                 )
             }
             if (c == 1) item {
                 ContinueRow(content.continueItems, remember { FocusRequester() },
-                    onFocus = { focusRow(1, it) }, onPlay = onPlay)
+                    onFocus = { focusRow(1, it) }, onOpen = onOpenRelease)
             }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
@@ -208,7 +206,7 @@ private fun HomeContent(
 
 @Composable
 private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
-    onFocus: (Release) -> Unit, onPlay: (Int, String) -> Unit) {
+    onFocus: (Release) -> Unit, onOpen: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.continue_watching), Modifier.padding(start = 48.dp),
             fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
@@ -223,7 +221,7 @@ private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF202020))
                     .border(2.dp, if (focused) Color.White else Color.Transparent, RoundedCornerShape(12.dp))
-                    .clickable { onPlay(item.release.id, item.episode.id) }) {
+                    .clickable { onOpen(item.release.id) }) {
                         Box(Modifier.fillMaxWidth().height(146.dp)) {
                             AsyncImage(item.episode.previewUrl ?: item.release.posterUrl, null,
                                 Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
