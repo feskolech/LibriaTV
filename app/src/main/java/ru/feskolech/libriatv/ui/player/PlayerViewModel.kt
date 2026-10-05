@@ -1,6 +1,8 @@
 package ru.feskolech.libriatv.ui.player
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.os.SystemClock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,9 +16,12 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import okhttp3.OkHttpClient
 import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.PlaybackStore
@@ -27,6 +32,7 @@ import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.Skip
 
 enum class PlayerPanel { Hidden, Controls, Episodes, Settings }
+enum class SleepTimer { Off, Minutes15, Minutes30, Minutes60, AfterEpisode }
 data class PlayerContent(
     val release: Release, val episode: Episode, val quality: Int,
     val positionMs: Long = 0, val durationMs: Long = 0, val playing: Boolean = false,
@@ -37,6 +43,9 @@ data class PlayerContent(
     /** Frame rate of the playing video, or null if the stream does not declare it. */
     val frameRate: Float? = null, val frameRateMatch: Boolean = true, val nightMode: Boolean = false,
     val autoNext: Boolean = true,
+    val sleepTimer: SleepTimer = SleepTimer.Off, val sleepWarning: Boolean = false,
+    val seekTargetMs: Long? = null, val seekFrame: Bitmap? = null,
+    val qualityHint: Int? = null,
 )
 sealed interface PlayerUiState {
     data object Loading : PlayerUiState
@@ -52,7 +61,15 @@ class PlayerViewModel @Inject constructor(
     private val store: PlaybackStore,
     private val tokenStore: TokenStore,
     private val watchNext: WatchNextPublisher,
+    client: OkHttpClient,
 ) : ViewModel() {
+    private val frameLoader = SeekFrameLoader(context, client.newBuilder().build())
+    private val bufferingHint = BufferingHint()
+    private var retryCount = 0
+    private var sleepDeadline = 0L
+    private var seekJob: Job? = null
+    private var seekHideJob: Job? = null
+    private var ignoreBufferUntil = 0L
     private val releaseId: String = checkNotNull(savedState["id"])
     private val initialEpisodeId: String = checkNotNull(savedState["episodeId"])
     private val preloadBuilder = DefaultPreloadManager.Builder(context,
@@ -82,9 +99,22 @@ class PlayerViewModel @Inject constructor(
             }
         })
         player.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) { update { it.copy(playing = isPlaying) } }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) retryCount = 0
+                update { it.copy(playing = isPlaying) }
+            }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE) }
+                val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+                val now = SystemClock.elapsedRealtime()
+                if (playbackState == Player.STATE_BUFFERING && player.playWhenReady && now >= ignoreBufferUntil)
+                    bufferingHint.start(now)
+                else if (playbackState == Player.STATE_READY) {
+                    val lower = lowerQuality(current)
+                    if (bufferingHint.finish(now, current.quality, lower != null))
+                        update { it.copy(qualityHint = lower) }
+                } else bufferingHint.interrupt()
+                if (playbackState == Player.STATE_ENDED && current.sleepTimer == SleepTimer.AfterEpisode) triggerSleep()
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                 val rate = player.videoFormat?.frameRate?.takeIf { it > 0f }
@@ -95,7 +125,21 @@ class PlayerViewModel @Inject constructor(
                 nightAudio.apply(audioSessionId, night)
             }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                update { it.copy(error = error.message ?: "Playback error", panel = PlayerPanel.Controls) }
+                // Network hiccups are common on TV boxes: retry silently (2, 4, 8 s) from the same
+                // position before bothering the viewer with an error.
+                if (retryCount < RETRY_DELAYS_MS.size) {
+                    val delayMs = RETRY_DELAYS_MS[retryCount++]
+                    val position = player.currentPosition
+                    update { it.copy(buffering = true) }
+                    viewModelScope.launch {
+                        delay(delayMs)
+                        player.prepare()
+                        player.seekTo(position)
+                        player.playWhenReady = true
+                    }
+                } else {
+                    update { it.copy(error = PLAYBACK_FAILED, buffering = false, panel = PlayerPanel.Controls) }
+                }
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val current = (_state.value as? PlayerUiState.Content)?.value ?: return
@@ -106,12 +150,14 @@ class PlayerViewModel @Inject constructor(
                 }
                 progressSavedForTransition = false
                 autoSkipped.clear()
+                bufferingHint.clear()
+                clearSeekPreview()
                 lastSync = 0
                 queuedItem = null
                 update { it.copy(episode = next, quality = streamFor(next, it.quality)?.first ?: it.quality,
                     positionMs = 0, durationMs = 0,
                     skip = null, skipOpening = false, nextCountdown = null, error = null,
-                    panel = PlayerPanel.Hidden) }
+                    panel = PlayerPanel.Hidden, qualityHint = null) }
                 viewModelScope.launch {
                     delay(5_000)
                     if (player.currentMediaItemIndex > 0 && player.currentMediaItem?.mediaId == next.id) {
@@ -164,6 +210,9 @@ class PlayerViewModel @Inject constructor(
             ?: run { update { it.copy(error = "No video stream") }; return }
         update { it.copy(episode = episode, quality = quality, positionMs = 0, durationMs = 0, skip = null, nextCountdown = null, error = null) }
         autoSkipped.clear()
+        bufferingHint.clear()
+        ignoreBufferUntil = SystemClock.elapsedRealtime() + 3_000
+        clearSeekPreview()
         progressSavedForTransition = false
         queuedItem = null
         player.setMediaItem(mediaItem(episode, url!!))
@@ -177,6 +226,7 @@ class PlayerViewModel @Inject constructor(
 
     fun playEpisode(id: String) {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        if (id != current.episode.id && current.sleepTimer == SleepTimer.AfterEpisode) setSleepTimer(SleepTimer.Off)
         if (player.hasNextMediaItem() && player.getMediaItemAt(player.currentMediaItemIndex + 1).mediaId == id) {
             val position = player.currentPosition.coerceAtLeast(0)
             val duration = player.duration.coerceAtLeast(0)
@@ -192,14 +242,27 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /** "Retry" on the error panel: start over from the same position with a fresh retry budget. */
+    fun retryPlayback() {
+        retryCount = 0
+        val position = player.currentPosition
+        update { it.copy(error = null, buffering = true, panel = PlayerPanel.Hidden) }
+        player.prepare()
+        player.seekTo(position)
+        player.playWhenReady = true
+    }
+
     fun changeQuality(quality: Int) = viewModelScope.launch {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
         if (current.quality == quality) return@launch
         val position = player.currentPosition
+        retryCount = 0
+        update { it.copy(error = null) }
         store.setQuality(quality)
         update { it.copy(quality = quality) }
         prepare(current.episode, resume = false)
         player.seekTo(position)
+        update { it.copy(qualityHint = null) }
     }
 
     fun toggleAutoSkipOpening() = viewModelScope.launch {
@@ -251,8 +314,73 @@ class PlayerViewModel @Inject constructor(
     }
     fun seek(direction: Int, repeat: Int = 0) {
         val seconds = when { repeat >= 8 -> 60; repeat >= 3 -> 30; else -> 10 }
-        player.seekTo((player.currentPosition + direction * seconds * 1000L).coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE))
-        update { it.copy(panel = PlayerPanel.Hidden, nextCountdown = null) }
+        val base = (_state.value as? PlayerUiState.Content)?.value?.seekTargetMs ?: player.currentPosition
+        val target = (base + direction * seconds * 1000L)
+            .coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)
+        bufferingHint.interrupt()
+        ignoreBufferUntil = SystemClock.elapsedRealtime() + 3_000
+        player.seekTo(target)
+        update { it.copy(panel = PlayerPanel.Hidden, nextCountdown = null,
+            seekTargetMs = if (repeat > 0) target else null, seekFrame = null) }
+        seekJob?.cancel()
+        seekHideJob?.cancel()
+        if (repeat > 0) {
+            val episode = (_state.value as? PlayerUiState.Content)?.value?.episode ?: return
+            seekJob = viewModelScope.launch {
+                delay(250)
+                val url = episode.hls480 ?: return@launch
+                val bitmap = withTimeoutOrNull(1_000) { frameLoader.frame(episode.id, url, target) }
+                if (bitmap != null) update { it.copy(seekFrame = bitmap) }
+            }
+            seekHideJob = viewModelScope.launch { delay(1_500); clearSeekPreview() }
+        }
+    }
+    private fun clearSeekPreview() {
+        seekJob?.cancel(); seekHideJob?.cancel()
+        update { it.copy(seekTargetMs = null, seekFrame = null) }
+    }
+
+    fun setSleepTimer(timer: SleepTimer) {
+        sleepDeadline = when (timer) {
+            SleepTimer.Minutes15 -> SystemClock.elapsedRealtime() + 15 * 60_000L
+            SleepTimer.Minutes30 -> SystemClock.elapsedRealtime() + 30 * 60_000L
+            SleepTimer.Minutes60 -> SystemClock.elapsedRealtime() + 60 * 60_000L
+            else -> 0L
+        }
+        update { it.copy(sleepTimer = timer, sleepWarning = false) }
+        if (timer == SleepTimer.AfterEpisode) {
+            if (player.hasNextMediaItem()) player.removeMediaItems(player.currentMediaItemIndex + 1, player.mediaItemCount)
+            queuedItem = null
+            preloadManager.reset()
+        }
+        player.setPauseAtEndOfMediaItems(timer == SleepTimer.AfterEpisode ||
+            !((_state.value as? PlayerUiState.Content)?.value?.autoNext ?: true))
+    }
+
+    fun cancelSleepWarning() = setSleepTimer(SleepTimer.Off)
+
+    private fun triggerSleep() {
+        sleepDeadline = 0L
+        player.pause()
+        update { it.copy(sleepTimer = SleepTimer.Off, sleepWarning = false, nextCountdown = null) }
+        viewModelScope.launch { saveProgress() }
+    }
+
+    fun dismissQualityHint() {
+        bufferingHint.dismiss()
+        update { it.copy(qualityHint = null) }
+    }
+
+    fun acceptQualityHint() {
+        val quality = (_state.value as? PlayerUiState.Content)?.value?.qualityHint ?: return
+        dismissQualityHint()
+        changeQuality(quality)
+    }
+
+    private fun lowerQuality(current: PlayerContent): Int? = when (current.quality) {
+        1080 -> if (!current.episode.hls720.isNullOrBlank()) 720 else null
+        720 -> if (!current.episode.hls480.isNullOrBlank()) 480 else null
+        else -> null
     }
     fun showPanel(panel: PlayerPanel) { update { it.copy(panel = panel) } }
     fun hidePanel(): Boolean {
@@ -270,6 +398,11 @@ class PlayerViewModel @Inject constructor(
 
     private fun tick() {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        if (sleepDeadline > 0) {
+            val left = sleepDeadline - SystemClock.elapsedRealtime()
+            if (left <= 0) { triggerSleep(); return }
+            if (left <= 30_000 && !current.sleepWarning) update { it.copy(sleepWarning = true) }
+        }
         val position = player.currentPosition.coerceAtLeast(0)
         val duration = player.duration.coerceAtLeast(0)
         val seconds = position / 1000.0
@@ -281,8 +414,10 @@ class PlayerViewModel @Inject constructor(
             player.seekTo((skip.stop!! * 1000).toLong())
         }
         val remaining = if (duration > 0) (duration - position) / 1000 else Long.MAX_VALUE
+        if (current.sleepTimer == SleepTimer.AfterEpisode && remaining in 1..30 && !current.sleepWarning)
+            update { it.copy(sleepWarning = true) }
         val next = nextEpisode(current)
-        if (remaining in 1..60 && next != null && queuedItem == null &&
+        if (current.sleepTimer != SleepTimer.AfterEpisode && remaining in 1..60 && next != null && queuedItem == null &&
             player.currentMediaItemIndex == player.mediaItemCount - 1 &&
             player.currentMediaItem?.mediaId == current.episode.id) {
             streamFor(next, current.quality)?.let { (_, url) ->
@@ -295,10 +430,13 @@ class PlayerViewModel @Inject constructor(
                 preloadManager.invalidate()
             }
         }
-        val countdown = if (current.autoNext && remaining in 1..8 && next != null) remaining.toInt() else null
+        if (current.sleepTimer == SleepTimer.AfterEpisode && duration > 0 && remaining <= 0) {
+            triggerSleep(); return
+        }
+        val countdown = if (current.autoNext && current.sleepTimer != SleepTimer.AfterEpisode && remaining in 1..8 && next != null) remaining.toInt() else null
         update { it.copy(positionMs = position, durationMs = duration, skip = if (autoSkip) null else skip,
             skipOpening = opening != null, nextCountdown = countdown) }
-        if (current.autoNext && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
+        if (current.autoNext && current.sleepTimer != SleepTimer.AfterEpisode && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {
             lastSync = position
             viewModelScope.launch { saveProgress() }
@@ -317,6 +455,7 @@ class PlayerViewModel @Inject constructor(
 
     fun pauseAndSave() { player.pause(); viewModelScope.launch { saveProgress() } }
     fun close(onSaved: () -> Unit) = viewModelScope.launch {
+        setSleepTimer(SleepTimer.Off)
         saveProgress()
         (_state.value as? PlayerUiState.Content)?.value?.let { current ->
             watchNext.update(current.release, current.episode, store.progress(current.episode.id))
@@ -349,11 +488,16 @@ class PlayerViewModel @Inject constructor(
         .setMediaId(episode.id).setUri(url).build()
 
     override fun onCleared() {
+        sleepDeadline = 0L
+        seekJob?.cancel(); seekHideJob?.cancel()
         android.util.Log.i("EpisodePlayer", "released")
         nightAudio.release(); player.release(); preloadManager.release(); super.onCleared()
     }
 
-    private companion object {
+    companion object {
+        val RETRY_DELAYS_MS = longArrayOf(2_000, 4_000, 8_000)
+        /** Marker understood by the screen: show the localized network message with actions. */
+        const val PLAYBACK_FAILED = "playback_failed"
         val SPEEDS = listOf(1f, 1.25f, 1.5f, 2f, 0.75f)
     }
 }

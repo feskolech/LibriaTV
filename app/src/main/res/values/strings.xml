@@ -156,6 +156,14 @@
     <string name="player_settings">Настройки</string>
     <string name="player_quality">Качество</string>
     <string name="player_speed">Скорость</string>
+    <string name="sleep_timer">Таймер сна</string>
+    <string name="sleep_off">Выкл</string>
+    <string name="sleep_15">15 мин</string>
+    <string name="sleep_30">30 мин</string>
+    <string name="sleep_60">60 мин</string>
+    <string name="sleep_after_episode">После этой серии</string>
+    <string name="sleep_warning">Пауза через 30 с</string>
+    <string name="quality_hint">Видео подгружается медленно. Переключить на %1$dp?</string>
     <string name="setting_on">Вкл</string>
     <string name="setting_off">Выкл</string>
     <string name="auto_skip_opening">Автопропуск опенинга</string>
@@ -165,4 +173,6 @@
     <string name="similar">Похожее</string>
     <string name="settings_home_video_preview">Видео-превью на главной</string>
     <string name="sort_title">По названию</string>
+    <string name="player_network_error">Не удаётся загрузить видео. Проверьте подключение к интернету.</string>
+    <string name="player_switch_quality">Включить %1$dp</string>
 </resources>

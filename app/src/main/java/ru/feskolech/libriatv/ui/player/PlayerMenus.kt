@@ -50,7 +50,7 @@ internal fun ControlButton(icon: ImageVector, @StringRes label: Int, onClick: ()
     }
 }
 
-private enum class SettingsPage { Root, Quality, Speed }
+private enum class SettingsPage { Root, Quality, Speed, Sleep }
 
 /**
  * Side sheet with every player setting (quality, speed, opening skip, night mode).
@@ -65,6 +65,7 @@ internal fun PlayerSettingsMenu(
     onAutoSkipOpening: () -> Unit,
     onAutoSkipEnding: () -> Unit,
     onNightMode: () -> Unit,
+    onSleepTimer: (SleepTimer) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var page by remember { mutableStateOf(SettingsPage.Root) }
@@ -92,6 +93,7 @@ internal fun PlayerSettingsMenu(
             SettingsPage.Root -> R.string.player_settings
             SettingsPage.Quality -> R.string.player_quality
             SettingsPage.Speed -> R.string.player_speed
+            SettingsPage.Sleep -> R.string.sleep_timer
         }
         Text(stringResource(title), style = MaterialTheme.typography.headlineSmall, color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp))
@@ -101,6 +103,9 @@ internal fun PlayerSettingsMenu(
                     page = SettingsPage.Quality
                 }
                 MenuRow(stringResource(R.string.player_speed), formatSpeedLabel(content.speed), arrow = true) { page = SettingsPage.Speed }
+                MenuRow(stringResource(R.string.sleep_timer), stringResource(sleepTimerLabel(content.sleepTimer)), arrow = true) {
+                    page = SettingsPage.Sleep
+                }
                 MenuRow(stringResource(R.string.auto_skip_opening), onOff(content.autoSkipOpening), onClick = onAutoSkipOpening)
                 MenuRow(stringResource(R.string.auto_skip_ending), onOff(content.autoSkipEnding), onClick = onAutoSkipEnding)
                 MenuRow(stringResource(R.string.night_mode), onOff(content.nightMode), onClick = onNightMode)
@@ -119,8 +124,24 @@ internal fun PlayerSettingsMenu(
                     page = SettingsPage.Root
                 }
             }
+            SettingsPage.Sleep -> SleepTimer.entries.forEachIndexed { index, timer ->
+                MenuRow(stringResource(sleepTimerLabel(timer)), if (timer == content.sleepTimer) "✓" else "",
+                    if (timer == content.sleepTimer || index == 0) Modifier.focusRequester(firstFocus) else Modifier) {
+                    onSleepTimer(timer)
+                    page = SettingsPage.Root
+                }
+            }
         }
     }
+}
+
+@StringRes
+internal fun sleepTimerLabel(timer: SleepTimer): Int = when (timer) {
+    SleepTimer.Off -> R.string.sleep_off
+    SleepTimer.Minutes15 -> R.string.sleep_15
+    SleepTimer.Minutes30 -> R.string.sleep_30
+    SleepTimer.Minutes60 -> R.string.sleep_60
+    SleepTimer.AfterEpisode -> R.string.sleep_after_episode
 }
 
 @Composable

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +37,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -89,7 +93,8 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
         }
     }
     BackHandler {
-        if (!viewModel.hidePanel()) viewModel.close(onBack)
+        if (current?.qualityHint != null) viewModel.dismissQualityHint()
+        else if (!viewModel.hidePanel()) viewModel.close(onBack)
     }
     FrameRateMatchEffect(current?.frameRate.takeIf { current?.frameRateMatch == true })
     // OK is resolved on key-up so that a long press can open the quick menu instead of pausing.
@@ -99,6 +104,14 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             val native = event.nativeKeyEvent
             val hidden = current?.panel == PlayerPanel.Hidden
             val code = native.keyCode
+            if (current?.sleepWarning == true && native.action == KeyEvent.ACTION_UP &&
+                (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+                viewModel.cancelSleepWarning(); return@onPreviewKeyEvent true
+            }
+            if (current?.qualityHint != null && native.action == KeyEvent.ACTION_UP &&
+                (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+                viewModel.acceptQualityHint(); return@onPreviewKeyEvent true
+            }
             if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
                 if (!hidden || current?.skip != null) return@onPreviewKeyEvent false
                 when {
@@ -139,6 +152,29 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             if (current.buffering && current.error == null) {
                 BufferingIndicator(Modifier.align(Alignment.Center))
             }
+            current.seekTargetMs?.let { target ->
+                Column(Modifier.align(Alignment.BottomCenter).padding(bottom = 110.dp)
+                    .background(Color(0xE6101010)).padding(8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+                    current.seekFrame?.let { bitmap ->
+                        Image(bitmap.asImageBitmap(), contentDescription = null,
+                            modifier = Modifier.width(320.dp).height(180.dp), contentScale = ContentScale.Fit)
+                    }
+                    Text(formatTime(target), color = Color.White)
+                }
+            }
+            if (current.sleepWarning) {
+                Button(onClick = viewModel::cancelSleepWarning,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 27.dp)) {
+                    Text(stringResource(R.string.sleep_warning))
+                }
+            }
+            current.qualityHint?.let { quality ->
+                Button(onClick = viewModel::acceptQualityHint,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 85.dp)) {
+                    Text(stringResource(R.string.quality_hint, quality))
+                }
+            }
             if (current.skip != null) {
                 Button(onClick = viewModel::skip,
                     modifier = Modifier.align(Alignment.TopEnd).padding(horizontal = 48.dp, vertical = 27.dp)
@@ -155,6 +191,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     onAutoSkipOpening = viewModel::toggleAutoSkipOpening,
                     onAutoSkipEnding = viewModel::toggleAutoSkipEnding,
                     onNightMode = viewModel::toggleNightMode,
+                    onSleepTimer = viewModel::setSleepTimer,
                     modifier = Modifier.align(Alignment.CenterEnd),
                 )
             } else if (current.panel != PlayerPanel.Hidden) {
@@ -166,7 +203,22 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                         Box(Modifier.fillMaxWidth(if (current.durationMs > 0) (current.positionMs.toFloat() / current.durationMs).coerceIn(0f, 1f) else 0f)
                             .fillMaxHeight().background(Color(0xFFB32121)))
                     }
-                    current.error?.let { Text(it, color = Color.White) }
+                    current.error?.let { error ->
+                        if (error == PlayerViewModel.PLAYBACK_FAILED) {
+                            Text(stringResource(R.string.player_network_error), color = Color.White)
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(onClick = viewModel::retryPlayback, modifier = Modifier.focusRequester(panelFocus)) {
+                                    Text(stringResource(R.string.retry))
+                                }
+                                val lower = listOf(1080, 720, 480).filter { it < current.quality }.firstOrNull { q ->
+                                    when (q) { 720 -> current.episode.hls720; else -> current.episode.hls480 } != null
+                                }
+                                if (lower != null) Button(onClick = { viewModel.changeQuality(lower) }) {
+                                    Text(stringResource(R.string.player_switch_quality, lower))
+                                }
+                            }
+                        } else Text(error, color = Color.White)
+                    }
                     if (current.panel == PlayerPanel.Controls) {
                         // Playback only; everything that is a setting lives behind the gear.
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -174,7 +226,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1) })
                             ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
-                                Modifier.focusRequester(panelFocus))
+                                if (current.error == null) Modifier.focusRequester(panelFocus) else Modifier)
                             ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1) })
                             ControlButton(Icons.Filled.SkipNext, R.string.next_episode, viewModel::nextEpisode)
                             Spacer(Modifier.weight(1f))
