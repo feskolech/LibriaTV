@@ -20,6 +20,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -53,6 +56,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             val resume = ordered.firstOrNull { current.progress[it.id]?.let { progress -> progress.positionMs > 0 && !progress.watched } == true }
             val first = resume ?: ordered.firstOrNull()
             val listState = rememberLazyListState()
+            val headerScope = rememberCoroutineScope()
             LaunchedEffect(release.id) { focus.requestFocus(); kotlinx.coroutines.delay(100); listState.scrollToItem(0) }
             LazyColumn(
                 state = listState,
@@ -68,7 +72,10 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             Text(listOfNotNull(release.year?.toString(), release.season, release.type, release.publishDay).joinToString(" • "), color = Color.White)
                             Text(release.genres.joinToString(" • "), color = Color.White)
                             Text(release.description.orEmpty().replace(Regex("<[^>]*>"), ""), maxLines = 4, overflow = TextOverflow.Ellipsis, color = Color.White)
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
+                            // visible and leaves the title cut off when coming back up from the episodes.
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.onFocusChanged { if (it.hasFocus) headerScope.launch { listState.animateScrollToItem(0) } }) {
                                 Button(onClick = { first?.let { onPlay(it.id) } }, enabled = first != null,
                                     modifier = Modifier.focusRequester(focus)) {
                                     Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
