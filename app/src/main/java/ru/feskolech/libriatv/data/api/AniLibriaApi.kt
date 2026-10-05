@@ -42,7 +42,8 @@ interface AniLibriaApi {
     @POST("accounts/users/auth/logout") suspend fun logout(): TokenDto
     @GET("accounts/users/me/profile") suspend fun profile(): UserDto
     @GET("accounts/users/me/favorites/ids") suspend fun favoriteIds(): List<Int>
-    @GET("accounts/users/me/favorites/releases") suspend fun favoriteReleases(@Query("page") page: Int = 1, @Query("limit") limit: Int = 15): FavoritesDto
+    @GET("accounts/users/me/favorites/releases") suspend fun favoriteReleases(@Query("page") page: Int = 1, @Query("limit") limit: Int = 15, @Query("f[sorting]") sorting: String? = null): FavoritesDto
+    @GET("accounts/users/me/favorites/references/sorting") suspend fun favoriteSorting(): List<ReferenceDto>
     @POST("accounts/users/me/favorites") suspend fun addFavorites(@Body releases: List<FavoriteUpdateDto>): List<Int>
     @HTTP(method = "DELETE", path = "accounts/users/me/favorites", hasBody = true)
     suspend fun deleteFavorites(@Body releases: List<FavoriteUpdateDto>): List<Int>

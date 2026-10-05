@@ -27,8 +27,13 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
 
     suspend fun quality(): Int = context.playbackDataStore.data.first()[qualityKey] ?: 1080
     suspend fun setQuality(value: Int) { context.playbackDataStore.edit { it[qualityKey] = value } }
-    suspend fun autoSkip(): Boolean = context.playbackDataStore.data.first()[autoSkipKey] ?: false
-    suspend fun setAutoSkip(value: Boolean) { context.playbackDataStore.edit { it[autoSkipKey] = value } }
+    private val autoSkipEndingKey = androidx.datastore.preferences.core.booleanPreferencesKey("auto_skip_ending")
+
+    /** Opening auto-skip keeps the original "auto_skip" key so earlier choices survive the split. */
+    suspend fun autoSkipOpening(): Boolean = context.playbackDataStore.data.first()[autoSkipKey] ?: false
+    suspend fun setAutoSkipOpening(value: Boolean) { context.playbackDataStore.edit { it[autoSkipKey] = value } }
+    suspend fun autoSkipEnding(): Boolean = context.playbackDataStore.data.first()[autoSkipEndingKey] ?: false
+    suspend fun setAutoSkipEnding(value: Boolean) { context.playbackDataStore.edit { it[autoSkipEndingKey] = value } }
     suspend fun autoNext(): Boolean = context.playbackDataStore.data.first()[autoNextKey] ?: true
     suspend fun setAutoNext(value: Boolean) { context.playbackDataStore.edit { it[autoNextKey] = value } }
 

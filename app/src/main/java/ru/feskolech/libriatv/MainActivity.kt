@@ -66,6 +66,7 @@ import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 import ru.feskolech.libriatv.ui.search.SearchScreen
 import ru.feskolech.libriatv.ui.schedule.ScheduleScreen
 import ru.feskolech.libriatv.ui.catalog.CatalogScreen
+import ru.feskolech.libriatv.ui.favorites.FavoritesScreen
 import ru.feskolech.libriatv.ui.player.PlayerScreen
 import ru.feskolech.libriatv.ui.settings.SettingsScreen
 import ru.feskolech.libriatv.ui.settings.UpdateDialog
@@ -212,6 +213,12 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             onOpenRelease = { navController.navigate("release/$it") },
                             onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                         )
+                    } else if (destination == Destination.Favorites) {
+                        FavoritesScreen(
+                            onOpenRelease = { navController.navigate("release/$it") },
+                            onLogin = { navController.navigate(Destination.Profile.route) },
+                            onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
+                        )
                     } else if (destination == Destination.Schedule) {
                         ScheduleScreen(
                             onOpenRelease = { navController.navigate("release/$it") },
@@ -251,6 +258,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                 ReleaseScreen(
                     onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
                     onTorrents = { navController.navigate("torrents/$it") },
+                    onLogin = { navController.navigate(Destination.Profile.route) },
                 )
             }
             composable("torrents/{releaseId}") { TorrentsScreen() }

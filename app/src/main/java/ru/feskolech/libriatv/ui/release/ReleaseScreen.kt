@@ -34,7 +34,7 @@ import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Episode
 
 @Composable
-fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
+fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: () -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsState()
     val focus = remember { FocusRequester() }
     when (val current = state) {
@@ -70,8 +70,14 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, viewModel
                                     Text(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
                                         else stringResource(R.string.watch))
                                 }
-                                Button(onClick = {}, enabled = false) { Text(stringResource(R.string.add_favorite)) }
+                                Button(onClick = { viewModel.toggleFavorite(onLogin) }) {
+                                    Text(stringResource(if (current.favorite) R.string.remove_favorite else R.string.add_favorite))
+                                }
                                 Button(onClick = { onTorrents(release.id) }) { Text(stringResource(R.string.torrents)) }
+                            }
+                            if (current.favoriteError != null) {
+                                Text(current.favoriteError, color = Color(0xFFFF8888))
+                                Button(onClick = { viewModel.toggleFavorite(onLogin) }) { Text(stringResource(R.string.retry)) }
                             }
                         }
                     }

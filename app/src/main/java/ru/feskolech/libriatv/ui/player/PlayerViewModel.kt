@@ -26,13 +26,13 @@ import ru.feskolech.libriatv.domain.Episode
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.Skip
 
-enum class PlayerPanel { Hidden, Controls, Episodes }
+enum class PlayerPanel { Hidden, Controls, Episodes, Settings }
 data class PlayerContent(
     val release: Release, val episode: Episode, val quality: Int,
     val positionMs: Long = 0, val durationMs: Long = 0, val playing: Boolean = false,
     val panel: PlayerPanel = PlayerPanel.Hidden, val skip: Skip? = null,
     val skipOpening: Boolean = false, val nextCountdown: Int? = null,
-    val autoSkip: Boolean = false, val error: String? = null,
+    val autoSkipOpening: Boolean = false, val autoSkipEnding: Boolean = false, val error: String? = null,
     val buffering: Boolean = true, val speed: Float = 1f,
     /** Frame rate of the playing video, or null if the stream does not declare it. */
     val frameRate: Float? = null, val frameRateMatch: Boolean = true, val nightMode: Boolean = false,
@@ -140,7 +140,7 @@ class PlayerViewModel @Inject constructor(
                     val speed = store.speed()
                     val night = store.nightMode()
                     val autoNext = store.autoNext()
-                    _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkip = store.autoSkip(),
+                    _state.value = PlayerUiState.Content(PlayerContent(result.value, episode, store.quality(), autoSkipOpening = store.autoSkipOpening(), autoSkipEnding = store.autoSkipEnding(),
                         speed = speed, frameRateMatch = store.frameRateMatch(), nightMode = night, autoNext = autoNext))
                     player.setPauseAtEndOfMediaItems(!autoNext)
                     player.setPlaybackSpeed(speed)
@@ -199,13 +199,18 @@ class PlayerViewModel @Inject constructor(
         update { it.copy(quality = quality) }
         prepare(current.episode, resume = false)
         player.seekTo(position)
-        update { it.copy(panel = PlayerPanel.Controls) }
     }
 
-    fun toggleAutoSkip() = viewModelScope.launch {
+    fun toggleAutoSkipOpening() = viewModelScope.launch {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
-        store.setAutoSkip(!current.autoSkip)
-        update { it.copy(autoSkip = !current.autoSkip) }
+        store.setAutoSkipOpening(!current.autoSkipOpening)
+        update { it.copy(autoSkipOpening = !current.autoSkipOpening) }
+    }
+
+    fun toggleAutoSkipEnding() = viewModelScope.launch {
+        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        store.setAutoSkipEnding(!current.autoSkipEnding)
+        update { it.copy(autoSkipEnding = !current.autoSkipEnding) }
     }
 
     fun togglePause() { if (player.isPlaying) player.pause() else player.play() }
@@ -216,6 +221,12 @@ class PlayerViewModel @Inject constructor(
         player.setPlaybackSpeed(next)
         store.setSpeed(next)
         update { it.copy(speed = next) }
+    }
+
+    fun setSpeed(value: Float) = viewModelScope.launch {
+        player.setPlaybackSpeed(value)
+        store.setSpeed(value)
+        update { it.copy(speed = value) }
     }
 
     fun toggleNightMode() = viewModelScope.launch {
@@ -246,7 +257,8 @@ class PlayerViewModel @Inject constructor(
     fun hidePanel(): Boolean {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return false
         if (current.panel == PlayerPanel.Hidden) return false
-        update { it.copy(panel = PlayerPanel.Hidden) }
+        // Back from the settings menu returns to the controls it was opened from.
+        update { it.copy(panel = if (current.panel == PlayerPanel.Settings) PlayerPanel.Controls else PlayerPanel.Hidden) }
         return true
     }
     fun skip() {
@@ -263,7 +275,8 @@ class PlayerViewModel @Inject constructor(
         val opening = current.episode.opening?.takeIf { it.start != null && it.stop != null && seconds >= it.start && seconds < it.stop }
         val ending = current.episode.ending?.takeIf { it.start != null && it.stop != null && seconds >= it.start && seconds < it.stop }
         val skip = opening ?: ending
-        if (skip != null && current.autoSkip && autoSkipped.add(skip)) {
+        val autoSkip = if (opening != null) current.autoSkipOpening else current.autoSkipEnding
+        if (skip != null && autoSkip && autoSkipped.add(skip)) {
             player.seekTo((skip.stop!! * 1000).toLong())
         }
         val remaining = if (duration > 0) (duration - position) / 1000 else Long.MAX_VALUE
@@ -282,7 +295,7 @@ class PlayerViewModel @Inject constructor(
             }
         }
         val countdown = if (current.autoNext && remaining in 1..8 && next != null) remaining.toInt() else null
-        update { it.copy(positionMs = position, durationMs = duration, skip = if (current.autoSkip) null else skip,
+        update { it.copy(positionMs = position, durationMs = duration, skip = if (autoSkip) null else skip,
             skipOpening = opening != null, nextCountdown = countdown) }
         if (current.autoNext && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {

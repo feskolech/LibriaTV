@@ -22,6 +22,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Forward10
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay10
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -90,7 +100,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     native.action == KeyEvent.ACTION_DOWN && native.repeatCount == 0 -> okLongPressed[0] = false
                     native.action == KeyEvent.ACTION_DOWN && !okLongPressed[0] -> {
                         okLongPressed[0] = true
-                        viewModel.showPanel(PlayerPanel.Controls)
+                        viewModel.showPanel(PlayerPanel.Settings)
                     }
                     native.action == KeyEvent.ACTION_UP && !okLongPressed[0] -> viewModel.togglePause()
                 }
@@ -108,7 +118,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                 KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_CHANNEL_DOWN -> { viewModel.previousEpisode(); true }
                 KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { viewModel.seek(1, native.repeatCount); true }
                 KeyEvent.KEYCODE_MEDIA_REWIND -> { viewModel.seek(-1, native.repeatCount); true }
-                KeyEvent.KEYCODE_MENU -> { viewModel.showPanel(PlayerPanel.Controls); true }
+                KeyEvent.KEYCODE_MENU -> { viewModel.showPanel(PlayerPanel.Settings); true }
                 in KeyEvent.KEYCODE_1..KeyEvent.KEYCODE_9 -> { viewModel.playEpisodeNumber(code - KeyEvent.KEYCODE_0); true }
                 else -> false
             }
@@ -131,7 +141,18 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     Text(stringResource(if (current.skipOpening) R.string.skip_opening else R.string.skip_ending))
                 }
             }
-            if (current.panel != PlayerPanel.Hidden) {
+            if (current.panel == PlayerPanel.Settings) {
+                PlayerSettingsMenu(
+                    content = current,
+                    firstFocus = panelFocus,
+                    onQuality = viewModel::changeQuality,
+                    onSpeed = viewModel::setSpeed,
+                    onAutoSkipOpening = viewModel::toggleAutoSkipOpening,
+                    onAutoSkipEnding = viewModel::toggleAutoSkipEnding,
+                    onNightMode = viewModel::toggleNightMode,
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                )
+            } else if (current.panel != PlayerPanel.Hidden) {
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xE6101010))
                     .padding(horizontal = 48.dp, vertical = 27.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(current.release.title + " • " + stringResource(R.string.episode_number, current.episode.ordinal?.toInt() ?: 0), color = Color.White)
@@ -142,28 +163,18 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     }
                     current.error?.let { Text(it, color = Color.White) }
                     if (current.panel == PlayerPanel.Controls) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = viewModel::togglePause, modifier = Modifier.focusRequester(panelFocus)) { Text(stringResource(if (current.playing) R.string.pause else R.string.play)) }
-                            Button(onClick = { viewModel.seek(-1) }) { Text(stringResource(R.string.seek_back)) }
-                            Button(onClick = { viewModel.seek(1) }) { Text(stringResource(R.string.seek_forward)) }
-                            Button(onClick = viewModel::nextEpisode) { Text(stringResource(R.string.next_episode)) }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            listOf(480, 720, 1080).filter { quality ->
-                                when (quality) { 480 -> current.episode.hls480; 720 -> current.episode.hls720; else -> current.episode.hls1080 } != null
-                            }.forEach { quality ->
-                                Button(onClick = { viewModel.changeQuality(quality) }) { Text("${quality}p" + if (quality == current.quality) " ✓" else "") }
-                            }
-                            Button(onClick = viewModel::toggleAutoSkip) {
-                                Text(stringResource(R.string.auto_skip) + if (current.autoSkip) " ✓" else "")
-                            }
-                            Button(onClick = viewModel::cycleSpeed) {
-                                Text(stringResource(R.string.speed, formatSpeed(current.speed)))
-                            }
-                            Button(onClick = viewModel::toggleNightMode) {
-                                Text(stringResource(R.string.night_mode) + if (current.nightMode) " ✓" else "")
-                            }
-                            Button(onClick = { viewModel.showPanel(PlayerPanel.Episodes) }) { Text(stringResource(R.string.episodes)) }
+                        // Playback only; everything that is a setting lives behind the gear.
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, viewModel::previousEpisode)
+                            ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1) })
+                            ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
+                                Modifier.focusRequester(panelFocus))
+                            ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1) })
+                            ControlButton(Icons.Filled.SkipNext, R.string.next_episode, viewModel::nextEpisode)
+                            Spacer(Modifier.weight(1f))
+                            ControlButton(Icons.AutoMirrored.Filled.List, R.string.episodes, { viewModel.showPanel(PlayerPanel.Episodes) })
+                            ControlButton(Icons.Filled.Settings, R.string.player_settings, { viewModel.showPanel(PlayerPanel.Settings) })
                         }
                     } else {
                         val ordered = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }

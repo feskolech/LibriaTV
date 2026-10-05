@@ -59,6 +59,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Local emulator verification can replace an installed release without clearing its account.
+            if (releaseSigning != null) signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

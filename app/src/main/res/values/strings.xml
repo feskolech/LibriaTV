@@ -53,6 +53,11 @@
     <string name="continue_episode">Продолжить с %1$d серии</string>
     <string name="continue_watching">Продолжить просмотр</string>
     <string name="add_favorite">В избранное</string>
+    <string name="remove_favorite">Убрать из избранного</string>
+    <string name="favorites_login_hint">Войдите, чтобы видеть избранное.</string>
+    <string name="favorites_empty">В избранном пока нет релизов.</string>
+    <string name="favorite_new_episodes">Вышло в избранном</string>
+    <string name="favorite_episode_range">серии %1$d–%2$d</string>
     <string name="torrents">Торренты</string>
     <string name="episodes">Серии</string>
     <string name="watched">Просмотрено</string>
@@ -64,7 +69,6 @@
     <string name="next_episode">Следующая серия</string>
     <string name="skip_opening">Пропустить опенинг</string>
     <string name="skip_ending">Пропустить эндинг</string>
-    <string name="auto_skip">Пропускать автоматически</string>
     <string name="next_in">Следующая серия через %1$d сек</string>
     <string name="torrents_hint">Раздача откроется в TorrServe — смотреть можно сразу, без полной загрузки.</string>
     <string name="torrents_empty">Для этого релиза раздач пока нет.</string>
@@ -113,7 +117,6 @@
     <string name="night_mode">Ночной режим</string>
     <string name="settings_playback">Воспроизведение</string>
     <string name="settings_quality">Качество по умолчанию</string>
-    <string name="settings_auto_skip">Пропускать опенинг автоматически</string>
     <string name="settings_auto_next">Автопереход к следующей серии</string>
     <string name="settings_frame_rate">Синхронизация частоты кадров</string>
     <string name="settings_speed">Скорость по умолчанию</string>
@@ -149,4 +152,14 @@
     <string name="crash_report_send">Отправить</string>
     <string name="crash_report_decline">Не отправлять</string>
     <string name="crash_report_always">Всегда отправлять</string>
+    <string name="previous_episode">Предыдущая серия</string>
+    <string name="player_settings">Настройки</string>
+    <string name="player_quality">Качество</string>
+    <string name="player_speed">Скорость</string>
+    <string name="setting_on">Вкл</string>
+    <string name="setting_off">Выкл</string>
+    <string name="auto_skip_opening">Автопропуск опенинга</string>
+    <string name="auto_skip_ending">Автопропуск эндинга</string>
+    <string name="settings_auto_skip_opening">Пропускать опенинг автоматически</string>
+    <string name="settings_auto_skip_ending">Пропускать эндинг автоматически</string>
 </resources>

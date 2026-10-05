@@ -16,7 +16,8 @@ sealed interface SettingsUiState {
     data object Loading : SettingsUiState
     data class Content(
         val quality: Int,
-        val autoSkip: Boolean,
+        val autoSkipOpening: Boolean,
+        val autoSkipEnding: Boolean,
         val autoNext: Boolean,
         val frameRateMatch: Boolean,
         val nightMode: Boolean,
@@ -42,7 +43,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkip(),
+            _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkipOpening(), playback.autoSkipEnding(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
                 crashReports.available, crashReports.automatic(), false, null, false)
             phoneRemote.state.collect { remote ->
@@ -60,7 +61,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun quality(value: Int) = change({ playback.setQuality(it.quality) }, { it.copy(quality = value) })
-    fun autoSkip() = change({ playback.setAutoSkip(it.autoSkip) }, { it.copy(autoSkip = !it.autoSkip) })
+    fun autoSkipOpening() = change({ playback.setAutoSkipOpening(it.autoSkipOpening) }, { it.copy(autoSkipOpening = !it.autoSkipOpening) })
+    fun autoSkipEnding() = change({ playback.setAutoSkipEnding(it.autoSkipEnding) }, { it.copy(autoSkipEnding = !it.autoSkipEnding) })
     fun autoNext() = change({ playback.setAutoNext(it.autoNext) }, { it.copy(autoNext = !it.autoNext) })
     fun frameRateMatch() = change({ playback.setFrameRateMatch(it.frameRateMatch) }, { it.copy(frameRateMatch = !it.frameRateMatch) })
     fun nightMode() = change({ playback.setNightMode(it.nightMode) }, { it.copy(nightMode = !it.nightMode) })

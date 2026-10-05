@@ -11,7 +11,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private val Context.libriaDataStore by preferencesDataStore(name = "libria_settings")
+internal val Context.libriaDataStore by preferencesDataStore(name = "libria_settings")
 
 @Singleton class TokenStore @Inject constructor(@ApplicationContext private val context: Context) {
     private val key = stringPreferencesKey("token")

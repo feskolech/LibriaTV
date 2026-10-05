@@ -57,7 +57,8 @@ fun SettingsScreen(
             item { SettingChoices(R.string.settings_quality, listOf("480p", "720p", "1080p"),
                 listOf(480, 720, 1080).indexOf(content.quality), viewModel::quality,
                 listOf(480, 720, 1080), Modifier.focusRequester(first)) }
-            item { SettingToggle(R.string.settings_auto_skip, content.autoSkip, viewModel::autoSkip) }
+            item { SettingToggle(R.string.settings_auto_skip_opening, content.autoSkipOpening, viewModel::autoSkipOpening) }
+            item { SettingToggle(R.string.settings_auto_skip_ending, content.autoSkipEnding, viewModel::autoSkipEnding) }
             item { SettingToggle(R.string.settings_auto_next, content.autoNext, viewModel::autoNext) }
             item { SettingToggle(R.string.settings_frame_rate, content.frameRateMatch, viewModel::frameRateMatch) }
             item { SettingToggle(R.string.night_mode, content.nightMode, viewModel::nightMode) }

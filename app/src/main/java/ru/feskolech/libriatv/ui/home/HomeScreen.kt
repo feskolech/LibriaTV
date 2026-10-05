@@ -54,6 +54,10 @@ import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.window.Dialog
+import androidx.tv.material3.Surface
+import androidx.tv.material3.MaterialTheme
+import ru.feskolech.libriatv.data.repo.NewFavoriteEpisode
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
@@ -79,7 +83,9 @@ fun HomeScreen(
             Text(content.message)
             Button(onClick = { viewModel.refresh(force = true) }) { Text(stringResource(R.string.retry)) }
         }
-        is HomeUiState.Content -> HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, onPlay)
+        is HomeUiState.Content -> {
+            HomeContent(content, onContentFocus, onOpenFeed, onOpenRelease, onPlay, viewModel::dismissEpisodeDialog)
+        }
     }
 }
 
@@ -90,6 +96,7 @@ private fun HomeContent(
     onOpenFeed: () -> Unit,
     onOpenRelease: (Int) -> Unit,
     onPlay: (Int, String) -> Unit,
+    dismissEpisodeDialog: () -> Unit,
 ) {
     var focusedRelease by remember(content) { mutableStateOf(content.continueItems.firstOrNull()?.release ?: content.latest.firstOrNull()) }
     var backgroundRelease by remember(content) { mutableStateOf(focusedRelease) }
@@ -127,16 +134,21 @@ private fun HomeContent(
         Box(Modifier.fillMaxSize().background(Color(0xB5101010)))
         Column(Modifier.fillMaxSize()) {
             SelectedRelease(focusedRelease)
+            if (content.newEpisodes.isNotEmpty()) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 8.dp)
+                    .background(Color(0xFF402020), RoundedCornerShape(8.dp)).padding(12.dp)) {
+                    Text(stringResource(R.string.favorite_new_episodes), color = Color.White, fontWeight = FontWeight.Bold)
+                    content.newEpisodes.forEach { Text(newEpisodeText(it), color = Color.White) }
+                }
+            }
             LazyColumn(
                 state = rowsState,
                 modifier = Modifier.weight(1f).graphicsLayer { clip = true },
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 20.dp, bottom = 440.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-            if (content.continueItems.isNotEmpty()) item {
-                ContinueRow(content.continueItems, firstPoster,
-                    onFocus = { focusRow(0, it) }, onPlay = onPlay)
-            }
+            // Row order agreed with users: new episodes first, then continue watching.
+            val c = if (content.continueItems.isNotEmpty()) 1 else 0
             item {
                 PosterRow(
                     title = stringResource(R.string.new_episodes),
@@ -145,33 +157,52 @@ private fun HomeContent(
                     timeBadge = { it.freshAt?.let { value -> relativeHours(value)?.let { hours -> stringResource(R.string.hours_ago, hours) } } },
                     favoriteIds = content.favoriteIds,
                     onTitleClick = onOpenFeed,
-                    firstPoster = if (content.continueItems.isEmpty()) firstPoster else null,
-                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 0 else 1, it) },
+                    firstPoster = firstPoster,
+                    onFocus = { focusRow(0, it) },
                     onClick = { id -> content.latest.firstOrNull { it.id == id }?.latestEpisode
                         ?.let { onPlay(id, it.id) } ?: onOpenRelease(id) },
                     onLongClick = { onOpenRelease(it.id) },
                 )
             }
+            if (c == 1) item {
+                ContinueRow(content.continueItems, remember { FocusRequester() },
+                    onFocus = { focusRow(1, it) }, onPlay = onPlay)
+            }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
-                    { focusRow(if (content.continueItems.isEmpty()) 1 else 2, it) }, onOpenRelease)
+                    { focusRow(1 + c, it) }, onOpenRelease)
             }
             item {
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
-                    { focusRow(if (content.continueItems.isEmpty()) 2 else 3, it) }, onOpenRelease)
+                    { focusRow(2 + c, it) }, onOpenRelease)
             }
             if (content.isAuthorized) item {
                 PosterRow(stringResource(R.string.favorites), content.favorites,
                     badge = { null }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(if (content.continueItems.isEmpty()) 3 else 4, it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease)
             }
             if (content.recommended.isNotEmpty()) item {
                 PosterRow(stringResource(R.string.recommended), content.recommended,
                     badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow((if (content.isAuthorized) 4 else 3) + (if (content.continueItems.isEmpty()) 0 else 1), it) }, onClick = onOpenRelease)
+                    onFocus = { focusRow((if (content.isAuthorized) 4 else 3) + c, it) }, onClick = onOpenRelease)
             }
             }
         }
+    }
+    if (content.showEpisodeDialog) {
+        val closeFocus = remember { FocusRequester() }
+        Dialog(onDismissRequest = dismissEpisodeDialog) {
+            Surface {
+                Column(Modifier.width(560.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(stringResource(R.string.favorite_new_episodes), style = MaterialTheme.typography.headlineSmall)
+                    content.newEpisodes.forEach { Text(newEpisodeText(it)) }
+                    Button(onClick = dismissEpisodeDialog, modifier = Modifier.focusRequester(closeFocus)) {
+                        Text(stringResource(R.string.close))
+                    }
+                }
+            }
+        }
+        LaunchedEffect(Unit) { withFrameNanos { }; closeFocus.requestFocus() }
     }
 }
 
@@ -212,6 +243,11 @@ private fun ContinueRow(items: List<ContinueItem>, firstPoster: FocusRequester,
         }
     }
 }
+
+@Composable
+private fun newEpisodeText(item: NewFavoriteEpisode): String = item.release.title + " — " +
+    if (item.from == item.to) stringResource(R.string.episode_number, item.to)
+    else stringResource(R.string.favorite_episode_range, item.from, item.to)
 
 @Composable
 private fun SelectedRelease(release: Release?) {

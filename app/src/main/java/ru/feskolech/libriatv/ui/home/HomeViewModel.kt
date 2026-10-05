@@ -16,6 +16,10 @@ import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
 import ru.feskolech.libriatv.data.repo.ProgressRepository
 import ru.feskolech.libriatv.data.repo.ContinueItem
+import ru.feskolech.libriatv.data.repo.FavoritesRepository
+import ru.feskolech.libriatv.data.repo.FavoriteEpisodeStore
+import ru.feskolech.libriatv.data.repo.NewFavoriteEpisode
+import ru.feskolech.libriatv.data.repo.compareFavoriteEpisodes
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
@@ -28,6 +32,8 @@ sealed interface HomeUiState {
         val isAuthorized: Boolean,
         val recommended: List<Release> = emptyList(),
         val continueItems: List<ContinueItem> = emptyList(),
+        val newEpisodes: List<NewFavoriteEpisode> = emptyList(),
+        val showEpisodeDialog: Boolean = false,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -37,11 +43,14 @@ class HomeViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val auth: AuthRepository,
     private val progress: ProgressRepository,
+    private val favoritesRepository: FavoritesRepository,
+    private val episodeStore: FavoriteEpisodeStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val state: StateFlow<HomeUiState> = _state
     private var lastRefresh = 0L
     private var loading = false
+    private var checkedUserId: Int? = null
 
     init {
         refresh(force = true)
@@ -68,14 +77,27 @@ class HomeViewModel @Inject constructor(
             val scheduleResult = schedule.await()
             if (latestResult is ApiResult.Success && scheduleResult is ApiResult.Success) {
                 val authorized = auth.state.value is AuthState.Authorized
-                val favorites = if (authorized) repository.favoriteReleases() else ApiResult.Success(emptyList())
+                val favorites = if (authorized) favoritesRepository.allReleases() else ApiResult.Success(emptyList())
                 val favoriteList = (favorites as? ApiResult.Success)?.value.orEmpty()
+                if (authorized) favoritesRepository.refreshIds()
+                val previous = _state.value as? HomeUiState.Content
+                var newEpisodes = previous?.newEpisodes.orEmpty()
+                var showDialog = previous?.showEpisodeDialog ?: false
+                val userId = (auth.state.value as? AuthState.Authorized)?.user?.id
+                if (checkedUserId != userId && userId != null && favorites is ApiResult.Success) {
+                    newEpisodes = compareFavoriteEpisodes(episodeStore.previous(userId), favoriteList)
+                    episodeStore.save(userId, favoriteList)
+                    showDialog = newEpisodes.isNotEmpty()
+                    checkedUserId = userId
+                }
+                if (userId == null) checkedUserId = null
                 _state.value = HomeUiState.Content(
                     latestResult.value.sortedByDescending { it.freshAt },
                     scheduleResult.value.today, scheduleResult.value.tomorrow,
-                    favoriteList, favoriteList.mapTo(mutableSetOf()) { it.id }, authorized,
+                    favoriteList, favoritesRepository.ids.value, authorized,
                     recommended = recommended.await(),
                     continueItems = continueItems.await(),
+                    newEpisodes = newEpisodes, showEpisodeDialog = showDialog,
                 )
                 lastRefresh = System.currentTimeMillis()
             } else {
@@ -85,5 +107,10 @@ class HomeViewModel @Inject constructor(
             }
             loading = false
         }
+    }
+
+    fun dismissEpisodeDialog() {
+        val content = _state.value as? HomeUiState.Content ?: return
+        _state.value = content.copy(showEpisodeDialog = false)
     }
 }
