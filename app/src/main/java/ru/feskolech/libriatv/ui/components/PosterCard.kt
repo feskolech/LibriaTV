@@ -44,6 +44,8 @@ fun PosterCard(
     onFocus: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit = onClick,
+    /** Home rows show the title/info below the row instead (like the official app). */
+    showTitle: Boolean = true,
 ) {
     var focused by remember { mutableStateOf(false) }
     var longPressed by remember { mutableStateOf(false) }
@@ -96,11 +98,11 @@ fun PosterCard(
         }
         // Focused card shows the full title (2 lines, larger). The title area has a fixed height for
         // two large lines so focusing a card never changes the row height (no jumping).
-        Box(Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp)) {
+        if (showTitle) Box(Modifier.fillMaxWidth().height(50.dp).padding(top = 8.dp)) {
             Text(release.title, color = Color.White,
                 fontSize = if (focused) 16.sp else 14.sp, lineHeight = if (focused) 19.sp else 17.sp,
                 maxLines = if (focused) 2 else 1, overflow = TextOverflow.Ellipsis)
         }
-        if (timeBadge != null) Text(timeBadge, color = Color(0xFFBDBDBD), fontSize = 11.sp)
+        if (showTitle && timeBadge != null) Text(timeBadge, color = Color(0xFFBDBDBD), fontSize = 11.sp)
     }
 }

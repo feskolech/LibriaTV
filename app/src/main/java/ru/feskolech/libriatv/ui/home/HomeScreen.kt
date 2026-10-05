@@ -142,7 +142,6 @@ private fun HomeContent(
         .focusRestorer()) {
         HomeBackdrop(backgroundRelease, content.videoPreviewEnabled && active)
         Column(Modifier.fillMaxSize()) {
-            SelectedRelease(focusedRelease)
             if (content.newEpisodes.isNotEmpty()) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 8.dp)
                     .background(Color(0xFF402020), RoundedCornerShape(8.dp)).padding(12.dp)) {
@@ -158,6 +157,7 @@ private fun HomeContent(
             ) {
             // Row order agreed with users: new episodes first, then continue watching.
             val c = if (content.continueItems.isNotEmpty()) 1 else 0
+            fun sel(row: Int) = if (focusedRow == row) focusedRelease else null
             item {
                 PosterRow(
                     title = stringResource(R.string.new_episodes),
@@ -172,6 +172,8 @@ private fun HomeContent(
                     onClick = onOpenRelease,
                     onLongClick = { onOpenRelease(it.id) },
                     onNearEnd = onLoadMoreLatest,
+                    selected = sel(0),
+                    episodeLabel = { it.latestEpisode?.ordinal?.let { n -> stringResource(R.string.episode_number, n.toInt()) } },
                 )
             }
             if (c == 1) item {
@@ -180,16 +182,17 @@ private fun HomeContent(
             }
             item {
                 ScheduleRow(stringResource(R.string.today), content.today, content.favoriteIds,
-                    { focusRow(1 + c, it) }, onOpenRelease, { restoreFor(1 + c, it.id) })
+                    { focusRow(1 + c, it) }, onOpenRelease, { restoreFor(1 + c, it.id) }, sel(1 + c))
             }
             item {
                 ScheduleRow(stringResource(R.string.tomorrow), content.tomorrow, content.favoriteIds,
-                    { focusRow(2 + c, it) }, onOpenRelease, { restoreFor(2 + c, it.id) })
+                    { focusRow(2 + c, it) }, onOpenRelease, { restoreFor(2 + c, it.id) }, sel(2 + c))
             }
             if (content.recommended.isNotEmpty()) item {
                 PosterRow(stringResource(R.string.recommended), content.recommended,
                     badge = { it.year?.toString() }, favoriteIds = content.favoriteIds,
-                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease, cardModifier = { restoreFor(3 + c, it.id) })
+                    onFocus = { focusRow(3 + c, it) }, onClick = onOpenRelease, cardModifier = { restoreFor(3 + c, it.id) },
+                    selected = sel(3 + c))
             }
             }
         }
@@ -255,21 +258,6 @@ private fun newEpisodeText(item: NewFavoriteEpisode): String = item.release.titl
     else stringResource(R.string.favorite_episode_range, item.from, item.to)
 
 @Composable
-private fun SelectedRelease(release: Release?) {
-    Column(Modifier.fillMaxWidth().height(155.dp).padding(start = 48.dp, end = 48.dp, bottom = 16.dp), verticalArrangement = Arrangement.Bottom) {
-        Text(release?.title ?: stringResource(R.string.home), fontSize = 26.sp,
-            fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (release != null) {
-            val metadata = listOfNotNull(release.year?.toString(), release.type, release.season, release.publishDay)
-            Text((metadata + release.genres.take(3)).joinToString("  •  "), color = Color(0xFFE0D9D9), fontSize = 13.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(release.description.orEmpty().replace(Regex("<[^>]*>"), "").replace('\n', ' '),
-                color = Color(0xFFC7C1C1), fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-@Composable
 private fun ScheduleRow(
     title: String,
     items: List<ScheduleItem>,
@@ -277,8 +265,10 @@ private fun ScheduleRow(
     onFocus: (Release) -> Unit,
     onClick: (Int) -> Unit,
     cardModifier: (Release) -> Modifier = { Modifier },
+    selected: Release? = null,
 ) {
-    PosterRow(title, items.map { it.release }, cardModifier = cardModifier,
+    PosterRow(title, items.map { it.release }, cardModifier = cardModifier, selected = selected,
+        episodeLabel = { release -> items.firstOrNull { it.release.id == release.id }?.nextEpisodeNumber?.let { stringResource(R.string.episode_number, it) } },
         badge = { release -> items.firstOrNull { it.release.id == release.id }?.nextEpisodeNumber?.let { stringResource(R.string.episode_number, it) } },
         favoriteIds = favoriteIds, onFocus = onFocus, onClick = onClick)
 }
@@ -297,8 +287,11 @@ private fun PosterRow(
     onLongClick: (Release) -> Unit = { onClick(it.id) },
     onNearEnd: (() -> Unit)? = null,
     cardModifier: (Release) -> Modifier = { Modifier },
+    /** Release focused in this row; its title and details are shown under the row. */
+    selected: Release? = null,
+    episodeLabel: @Composable (Release) -> String? = { null },
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(title + if (onTitleClick != null) "  ›" else "",
             modifier = Modifier.padding(start = 48.dp)
                 .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier),
@@ -318,10 +311,27 @@ private fun PosterRow(
                             onFocus(release)
                             if (onNearEnd != null && index >= releases.size - 10) onNearEnd()
                         }, onClick = { onClick(release.id) },
-                        onLongClick = { onLongClick(release) })
+                        onLongClick = { onLongClick(release) }, showTitle = false)
                 }
             }
+            if (selected != null) SelectedInfo(selected, episodeLabel(selected))
         }
+    }
+}
+
+/** Under the focused row, like the official app: full title, then year/season/genres/episode/freshness. */
+@Composable
+private fun SelectedInfo(release: Release, episode: String?) {
+    Column(Modifier.padding(start = 48.dp, end = 48.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(release.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        val parts = listOfNotNull(
+            listOfNotNull(release.year?.toString(), release.season?.lowercase()).joinToString(" ").ifBlank { null },
+            release.genres.take(2).joinToString(" • ").ifBlank { null },
+            episode,
+            release.freshAt?.let { freshLabel(it) },
+        )
+        Text(parts.joinToString("  •  "), fontSize = 14.sp, color = Color(0xFFCFCFCF), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

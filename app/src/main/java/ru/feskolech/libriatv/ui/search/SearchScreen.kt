@@ -94,13 +94,9 @@ fun SearchScreen(
         }
     }
 
-    // Don't start in the text field: focusing it pops the on-screen keyboard right away. Start on the
-    // mic so the viewer chooses: OK = voice, Left = type.
+    // Nothing is preselected: focus stays on the "Search" item in the drawer until the viewer moves
+    // right and picks voice (first, if the device has it) or typing. Focusing the field pops the keyboard.
     val micFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
-        withFrameNanos { }
-        if (!voiceAvailable || runCatching { micFocus.requestFocus() }.isFailure) runCatching { fieldFocus.requestFocus() }
-    }
 
     Column(
         Modifier.fillMaxSize().background(Color(0xFF101010)).onFocusChanged { if (it.hasFocus) onContentFocus() }
@@ -112,6 +108,11 @@ fun SearchScreen(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (voiceAvailable) {
+                Button(onClick = { voice.launch(voiceIntent) }, modifier = Modifier.focusRequester(micFocus)) {
+                    Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.search_voice))
+                }
+            }
             SearchField(
                 value = query,
                 onChange = viewModel::onQueryChange,
@@ -129,11 +130,6 @@ fun SearchScreen(
                     } else false
                 },
             )
-            if (voiceAvailable) {
-                Button(onClick = { voice.launch(voiceIntent) }, modifier = Modifier.focusRequester(micFocus)) {
-                    Icon(Icons.Filled.Mic, contentDescription = stringResource(R.string.search_voice))
-                }
-            }
         }
 
         when (val current = results) {
