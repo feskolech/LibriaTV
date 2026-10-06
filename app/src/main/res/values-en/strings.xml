@@ -235,4 +235,5 @@
     <string name="update_up_to_date">You have the latest version.</string>
     <string name="update_check_failed">Could not check for updates. Check the connection.</string>
     <string name="search_similar">Similar titles</string>
+    <string name="release_region_blocked">Episodes of this release are not available in your country (rights holder restriction).</string>
 </resources>

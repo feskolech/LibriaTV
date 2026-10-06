@@ -27,7 +27,7 @@ class ApiRepositoryTest {
             .addConverterFactory(Json { ignoreUnknownKeys = true; explicitNulls = false }
                 .asConverterFactory("application/json".toMediaType()))
             .build().create(AniLibriaApi::class.java)
-        repo = ApiRepository(api)
+        repo = ApiRepository(api, LegacyCatalog("http://127.0.0.1:9/")) // unreachable: no legacy fallback in these tests
     }
 
     @After fun tearDown() { server.shutdown() }

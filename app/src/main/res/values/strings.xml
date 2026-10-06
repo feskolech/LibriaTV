@@ -237,4 +237,5 @@
     <string name="update_up_to_date">Установлена актуальная версия.</string>
     <string name="update_check_failed">Не удалось проверить обновления. Проверьте интернет.</string>
     <string name="search_similar">Похожие названия</string>
+    <string name="release_region_blocked">Серии этого релиза недоступны в вашей стране — ограничение правообладателя.</string>
 </resources>

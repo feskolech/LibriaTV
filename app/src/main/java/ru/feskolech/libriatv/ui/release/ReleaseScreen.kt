@@ -181,6 +181,9 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                         }
                     }
                     item { Text(stringResource(R.string.episodes), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
+                    if (release.regionBlocked) item {
+                        Text(stringResource(R.string.release_region_blocked), color = Color(0xFFD8D8D8))
+                    }
                     items(ordered, key = { it.id }) { episode ->
                         EpisodeRow(episode, current.progress[episode.id], onPlay)
                     }

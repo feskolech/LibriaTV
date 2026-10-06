@@ -15,6 +15,8 @@ data class Release(
     val episodesTotal: Double? = null,
     /** 1 = Monday … 7 = Sunday, as the API numbers release days. */
     val publishDayNumber: Int? = null,
+    /** Episodes are not served in the viewer's country (known only from the legacy API). */
+    val regionBlocked: Boolean = false,
 )
 data class ScheduleItem(val release: Release, val publishedEpisode: Episode?, val nextEpisodeNumber: Int?)
 data class CurrentSchedule(val today: List<ScheduleItem>, val tomorrow: List<ScheduleItem>)

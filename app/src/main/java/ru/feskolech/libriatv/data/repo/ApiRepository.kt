@@ -21,7 +21,7 @@ sealed interface ApiResult<out T> {
     data class Failure(val status: Int?, val message: String) : ApiResult<Nothing>
 }
 
-class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
+class ApiRepository @Inject constructor(private val api: AniLibriaApi, private val legacy: LegacyCatalog) {
     private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = try {
         ApiResult.Success(block())
     } catch (cancelled: CancellationException) {
@@ -52,8 +52,11 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     suspend fun favoriteReleases(): ApiResult<List<Release>> = request {
         api.favoriteReleases(limit = 30).data.mapNotNull { it.toDomain() }
     }
-    suspend fun release(idOrAlias: String): ApiResult<Release> = request {
-        api.release(idOrAlias).toDomain() ?: error("Release has no id")
+    suspend fun release(idOrAlias: String): ApiResult<Release> {
+        val result = request { api.release(idOrAlias).toDomain() ?: error("Release has no id") }
+        // Hidden by the v1 API for this country (404/403): the legacy API may still serve it.
+        if (result is ApiResult.Failure) idOrAlias.toIntOrNull()?.let { legacy.release(it) }?.let { return ApiResult.Success(it) }
+        return result
     }
     suspend fun episode(id: String): ApiResult<Episode> = request {
         api.episode(id).toDomain() ?: error("Episode has no id")
@@ -114,11 +117,26 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
     }
 
     /** (titles matching the query, other fuzzy results), each in the API's order. */
-    suspend fun searchSplit(query: String): ApiResult<Pair<List<Release>, List<Release>>> = request {
-        val (match, rest) = api.search(query).partition { dto ->
-            matchesQuery(query, listOf(dto.name?.main, dto.name?.english, dto.name?.alternative))
+    suspend fun searchSplit(query: String): ApiResult<Pair<List<Release>, List<Release>>> = coroutineScope {
+        // The legacy search runs alongside: it also finds titles the v1 API hides in some countries.
+        val old = async { legacy.search(query) }
+        val result = request {
+            val (match, rest) = api.search(query).partition { dto ->
+                matchesQuery(query, listOf(dto.name?.main, dto.name?.english, dto.name?.alternative))
+            }
+            match.mapNotNull { it.toDomain() } to rest.mapNotNull { it.toDomain() }
         }
-        match.mapNotNull { it.toDomain() } to rest.mapNotNull { it.toDomain() }
+        val extra = old.await()
+        when (result) {
+            is ApiResult.Success -> {
+                val known = (result.value.first + result.value.second).map { it.id }.toSet()
+                // The legacy search matches titles strictly (all its names, incl. English), so its results are kept as is.
+                val missing = extra.filter { it.id !in known }
+                ApiResult.Success(mergeById(result.value.first, missing, extra) to result.value.second)
+            }
+            // v1 unreachable: the legacy results alone are still useful.
+            is ApiResult.Failure -> if (extra.isNotEmpty()) ApiResult.Success(extra to emptyList()) else result
+        }
     }
     suspend fun torrents(releaseId: Int): ApiResult<List<Torrent>> = request {
         api.torrents(releaseId).mapNotNull { it.toDomain() }
@@ -135,4 +153,15 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
             ServerTimecode(row[0].jsonPrimitive.content, (seconds * 1000).toLong().coerceAtLeast(0), watched)
         }
     }
+}
+
+/**
+ * Exact v1 matches plus legacy-only titles, ordered like the legacy search (which ranks the
+ * franchise sensibly); titles it does not know keep their v1 position at the end.
+ */
+internal fun mergeById(v1: List<Release>, legacyOnly: List<Release>, legacyOrder: List<Release>): List<Release> {
+    if (legacyOnly.isEmpty()) return v1
+    val all = (v1 + legacyOnly).distinctBy { it.id }
+    val rank = legacyOrder.mapIndexed { i, r -> r.id to i }.toMap()
+    return all.sortedBy { rank[it.id] ?: (legacyOrder.size + all.indexOf(it)) }
 }
