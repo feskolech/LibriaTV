@@ -208,8 +208,13 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val firstItemFocus = remember { FocusRequester() }
     val itemFocus = remember { Destination.entries.associateWith { FocusRequester() } }
-    val selectedDestination = Destination.entries.firstOrNull { it.route == currentRoute }
-        ?: if (currentRoute.startsWith("search?")) Destination.Search else Destination.Home
+    // A release page / player belongs to the section it was opened from (catalog, favorites…), so the
+    // menu highlights that section and entering the menu lands on it, not on Home.
+    var lastSection by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(Destination.Home.route) }
+    val routeSection = Destination.entries.firstOrNull { it.route == currentRoute }
+        ?: if (currentRoute.startsWith("search?")) Destination.Search else null
+    LaunchedEffect(routeSection) { routeSection?.let { lastSection = it.route } }
+    val selectedDestination = routeSection ?: Destination.entries.firstOrNull { it.route == lastSection } ?: Destination.Home
     var confirmExit by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     fun openSection(destination: Destination) {
@@ -284,8 +289,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
             ) {
                 Destination.entries.forEachIndexed { index, destination ->
                     NavigationDrawerItem(
-                        selected = currentRoute == destination.route ||
-                            (destination == Destination.Search && currentRoute.startsWith("search?")),
+                        selected = destination == selectedDestination,
                         // The section already opened while the item was focused; OK just steps into it.
                         onClick = {
                             if (currentRoute == destination.route) {
@@ -305,10 +309,14 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                             .then(if (drawerValue == DrawerValue.Open) Modifier.fillMaxWidth() else Modifier.width(72.dp))
                             .onFocusChanged {
                                 if (it.isFocused) {
+                                    // Only moving inside an already open menu previews a section; focus that merely
+                                    // falls into the menu (e.g. while a release page is still loading) must not.
+                                    val browsing = drawerState.currentValue == DrawerValue.Open
+                                    if (!browsing) lastMenuItem = null
                                     drawerState.setValue(DrawerValue.Open)
                                     // Moving within the menu opens the section as a preview (not the item the
                                     // menu was entered on: that one is the current screen, e.g. a release page).
-                                    if (lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
+                                    if (browsing && lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
                                     lastMenuItem = destination
                                 }
                             },
