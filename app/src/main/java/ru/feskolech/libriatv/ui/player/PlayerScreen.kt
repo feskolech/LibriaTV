@@ -1,4 +1,6 @@
 package ru.feskolech.libriatv.ui.player
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -220,10 +222,21 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     onAutoSkipEnding = viewModel::toggleAutoSkipEnding,
                     onNightMode = viewModel::toggleNightMode,
                     onSleepTimer = viewModel::setSleepTimer,
-                    modifier = Modifier.align(Alignment.CenterEnd),
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                        .focusProperties { onExit = { if (requestedFocusDirection != androidx.compose.ui.focus.FocusDirection.Exit) cancelFocusChange() } }
+                        .focusGroup(),
                 )
             } else if (current.panel != PlayerPanel.Hidden) {
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().background(Color(0xE6101010))
+                // Focus never leaves the panel: at its edges (Left of the first button, Up from the
+                // progress bar…) it stays on the last element instead of vanishing behind the video.
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .focusProperties {
+                        onExit = {
+                            if (requestedFocusDirection != androidx.compose.ui.focus.FocusDirection.Exit) cancelFocusChange()
+                        }
+                    }
+                    .focusGroup()
+                    .background(Color(0xE6101010))
                     .padding(horizontal = 48.dp, vertical = 27.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(current.release.title + " • " + stringResource(R.string.episode_number, current.episode.ordinal?.toInt() ?: 0), color = Color.White)
                     Text(formatTime(current.positionMs) + " / " + formatTime(current.durationMs), color = Color.White)
@@ -253,13 +266,13 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                     if (current.panel == PlayerPanel.Controls) {
                         // Playback only; everything that is a setting lives behind the gear.
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, viewModel::previousEpisode)
+                            ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, { viewModel.previousEpisode(keepPanel = true) })
                             ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
                             ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
                                 if (current.error == null) Modifier.focusRequester(panelFocus) else Modifier)
                             ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1, keepPanel = true) })
-                            ControlButton(Icons.Filled.SkipNext, R.string.next_episode, viewModel::nextEpisode)
+                            ControlButton(Icons.Filled.SkipNext, R.string.next_episode, { viewModel.nextEpisode(keepPanel = true) })
                             Spacer(Modifier.weight(1f))
                             ControlButton(Icons.AutoMirrored.Filled.List, R.string.episodes, { viewModel.showPanel(PlayerPanel.Episodes) })
                             ControlButton(Icons.Filled.Settings, R.string.player_settings, { viewModel.showPanel(PlayerPanel.Settings) })

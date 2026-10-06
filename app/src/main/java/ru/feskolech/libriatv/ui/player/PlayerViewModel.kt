@@ -224,7 +224,8 @@ class PlayerViewModel @Inject constructor(
         android.util.Log.i("EpisodePlayer", "playing: episode=${episode.id}")
     }
 
-    fun playEpisode(id: String) {
+    /** [keepPanel]: switching from the prev/next buttons keeps the controls on screen. */
+    fun playEpisode(id: String, keepPanel: Boolean = false) {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         if (id != current.episode.id && current.sleepTimer == SleepTimer.AfterEpisode) setSleepTimer(SleepTimer.Off)
         if (player.hasNextMediaItem() && player.getMediaItemAt(player.currentMediaItemIndex + 1).mediaId == id) {
@@ -234,11 +235,11 @@ class PlayerViewModel @Inject constructor(
             progressSavedForTransition = true
             player.seekToNextMediaItem()
             player.play()
-            update { it.copy(panel = PlayerPanel.Hidden) }
+            update { it.copy(panel = if (keepPanel) it.panel else PlayerPanel.Hidden) }
         } else viewModelScope.launch {
             saveProgress()
             current.release.episodes.firstOrNull { it.id == id }?.let { prepare(it, resume = true) }
-            update { it.copy(panel = PlayerPanel.Hidden) }
+            update { it.copy(panel = if (keepPanel) it.panel else PlayerPanel.Hidden) }
         }
     }
 
@@ -301,10 +302,10 @@ class PlayerViewModel @Inject constructor(
         update { it.copy(nightMode = night) }
     }
 
-    fun previousEpisode() {
+    fun previousEpisode(keepPanel: Boolean = false) {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         val episodes = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
-        episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } - 1)?.let { playEpisode(it.id) }
+        episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } - 1)?.let { playEpisode(it.id, keepPanel) }
     }
 
     /** Number keys on remotes that have them: jump to episode N. */
@@ -450,9 +451,9 @@ class PlayerViewModel @Inject constructor(
         return episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } + 1)
     }
 
-    fun nextEpisode() {
+    fun nextEpisode(keepPanel: Boolean = false) {
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
-        nextEpisode(current)?.let { playEpisode(it.id) }
+        nextEpisode(current)?.let { playEpisode(it.id, keepPanel) }
     }
 
     fun pauseAndSave() { player.pause(); viewModelScope.launch { saveProgress() } }
