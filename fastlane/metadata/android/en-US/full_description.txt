@@ -1,0 +1,15 @@
+LibriaTV is an unofficial AniLiberty (formerly AniLibria) client for Android TV and TV boxes, built for a remote control. Content is in Russian.
+
+<b>Features</b>
+• Sign in with a phone code or login/password
+• New episodes, Continue watching, airing today and tomorrow, recommendations
+• New-episode notices for favorites and an Android TV home-screen channel
+• Favorites and lists: Watching, Planned, Watched, On hold, Dropped
+• Catalog with filters, search (including voice), weekly schedule
+• Player 480/720/1080p: opening/ending skip, speed, sleep timer, night sound; progress syncs with your account
+• Torrents via TorrServe with episode picking
+• Phone remote, themes and accent colours, self-update
+
+Not affiliated with the AniLiberty team or the AniLibria studio. All content belongs to its rights holders and is streamed from AniLiberty servers.
+
+Source code (GPL-3.0): https://github.com/feskolech/LibriaTV

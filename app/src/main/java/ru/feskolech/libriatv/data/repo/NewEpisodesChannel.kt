@@ -52,7 +52,7 @@ class NewEpisodesChannel @Inject constructor(@ApplicationContext private val con
     private fun channelId(): Long? {
         val saved = prefs.getLong(KEY, -1L)
         if (saved >= 0 && runCatching { helper.getPreviewChannel(saved) }.getOrNull() != null) return saved
-        val logo = ContextCompat.getDrawable(context, R.drawable.ic_launcher)?.toBitmap(160, 160) ?: return null
+        val logo = ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(160, 160) ?: return null
         val id = runCatching {
             helper.publishChannel(PreviewChannel.Builder()
                 .setDisplayName(context.getString(R.string.channel_new_episodes))
