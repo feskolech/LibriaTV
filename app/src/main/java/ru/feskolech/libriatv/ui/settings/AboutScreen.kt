@@ -80,8 +80,13 @@ fun AboutScreen(notes: String, checkUpdates: () -> Unit, updateState: UpdateUiSt
         item { Button(onClick = { history = true }) { Text(stringResource(R.string.about_more)) } }
         item { Button(onClick = checkUpdates) { Text(stringResource(R.string.settings_check_updates)) } }
         item {
-            if (updateState == UpdateUiState.Checking) Text(stringResource(R.string.settings_checking),
-                color = MaterialTheme.colorScheme.onBackground)
+            val status = when (updateState) {
+                UpdateUiState.Checking -> R.string.settings_checking
+                UpdateUiState.Current, UpdateUiState.NoRelease -> R.string.update_up_to_date
+                UpdateUiState.Unavailable -> R.string.update_check_failed
+                else -> null
+            }
+            if (status != null) Text(stringResource(status), color = MaterialTheme.colorScheme.onBackground)
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {

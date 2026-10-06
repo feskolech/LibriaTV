@@ -61,7 +61,18 @@ fun CatalogScreen(
     val filter = state.filter
     val refs = state.references
 
-    LaunchedEffect(refs != null) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { firstFilter.requestFocus() } }
+    // Back from a release page returns to the card that was opened (the grid keeps its scroll
+    // position); otherwise the screen starts on the first filter.
+    var lastOpened by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(-1) }
+    val openedCard = remember { FocusRequester() }
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+    LaunchedEffect(refs != null) {
+        withFrameNanos { }
+        if (DrawerBrowsing.active) return@LaunchedEffect
+        val restored = lastOpened >= 0 && state.releases.any { it.id == lastOpened } &&
+            runCatching { openedCard.requestFocus() }.isSuccess
+        if (!restored) runCatching { firstFilter.requestFocus() }
+    }
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
@@ -119,6 +130,7 @@ fun CatalogScreen(
                 onOpen = onOpenRelease)
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(160.dp),
+                state = gridState,
                 modifier = Modifier.fillMaxSize().focusRestorer(),
                 contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                 horizontalArrangement = Arrangement.spacedBy(22.dp),
@@ -132,7 +144,8 @@ fun CatalogScreen(
                             onContentFocus()
                             if (index >= state.releases.size - PRELOAD_DISTANCE) viewModel.loadMore()
                         },
-                        onClick = { onOpenRelease(release.id) },
+                        modifier = if (release.id == lastOpened) Modifier.focusRequester(openedCard) else Modifier,
+                        onClick = { lastOpened = release.id; onOpenRelease(release.id) },
                     )
                 }
             }

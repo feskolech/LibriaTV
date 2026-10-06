@@ -234,4 +234,6 @@
     <string name="about_history">История версий</string>
     <string name="about_history_loading">Загружаем историю версий…</string>
     <string name="about_history_error">Не удалось загрузить историю версий. Проверьте интернет.</string>
+    <string name="update_up_to_date">Установлена актуальная версия.</string>
+    <string name="update_check_failed">Не удалось проверить обновления. Проверьте интернет.</string>
 </resources>
