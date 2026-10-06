@@ -38,8 +38,8 @@ android {
         applicationId = "ru.feskolech.libriatv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 9
-        versionName = "0.9.8"
+        versionCode = 10
+        versionName = "0.9.9"
         // GitHub repo checked for app updates ("owner/name"); forks can override with -PupdateRepo=.
         buildConfigField("String", "UPDATE_REPO", "\"${findProperty("updateRepo") ?: "feskolech/LibriaTV"}\"")
         fun escapedProperty(name: String) = (findProperty(name) as String?).orEmpty()
