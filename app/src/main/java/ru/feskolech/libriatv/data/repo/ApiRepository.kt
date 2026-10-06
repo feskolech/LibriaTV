@@ -107,8 +107,18 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi) {
         api.random(1).firstNotNullOfOrNull { it.toDomain() } ?: error("No random release")
     }
 
-    suspend fun search(query: String): ApiResult<List<Release>> = request {
-        api.search(query).mapNotNull { it.toDomain() }
+    /** Search results with real title matches first (see [matchesQuery]). */
+    suspend fun search(query: String): ApiResult<List<Release>> = when (val r = searchSplit(query)) {
+        is ApiResult.Success -> ApiResult.Success(r.value.first + r.value.second)
+        is ApiResult.Failure -> r
+    }
+
+    /** (titles matching the query, other fuzzy results), each in the API's order. */
+    suspend fun searchSplit(query: String): ApiResult<Pair<List<Release>, List<Release>>> = request {
+        val (match, rest) = api.search(query).partition { dto ->
+            matchesQuery(query, listOf(dto.name?.main, dto.name?.english, dto.name?.alternative))
+        }
+        match.mapNotNull { it.toDomain() } to rest.mapNotNull { it.toDomain() }
     }
     suspend fun torrents(releaseId: Int): ApiResult<List<Torrent>> = request {
         api.torrents(releaseId).mapNotNull { it.toDomain() }

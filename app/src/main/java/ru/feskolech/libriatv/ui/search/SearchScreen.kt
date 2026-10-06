@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.search
 
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
@@ -174,6 +175,23 @@ fun SearchScreen(
                                 onOpenRelease(release.id)
                             },
                         )
+                    }
+                    if (current.similar.isNotEmpty()) {
+                        item(key = "similar-header", span = { GridItemSpan(maxLineSpan) }) {
+                            Text(stringResource(R.string.search_similar), Modifier.padding(top = 12.dp),
+                                style = MaterialTheme.typography.titleLarge, color = Color.LightGray)
+                        }
+                        items(current.similar, key = { "s" + it.id }) { release ->
+                            PosterCard(
+                                release,
+                                badge = release.year?.toString(),
+                                onFocus = onContentFocus,
+                                onClick = {
+                                    viewModel.remember()
+                                    onOpenRelease(release.id)
+                                },
+                            )
+                        }
                     }
                 }
             }

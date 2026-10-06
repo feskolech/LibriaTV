@@ -234,4 +234,5 @@
     <string name="about_history_error">Could not load the version history. Check the connection.</string>
     <string name="update_up_to_date">You have the latest version.</string>
     <string name="update_check_failed">Could not check for updates. Check the connection.</string>
+    <string name="search_similar">Similar titles</string>
 </resources>

@@ -22,7 +22,8 @@ sealed interface SearchResults {
     /** Query too short — the screen shows search history instead. */
     data object Idle : SearchResults
     data object Loading : SearchResults
-    data class Content(val query: String, val releases: List<Release>) : SearchResults
+    /** [releases]: titles matching the query; [similar]: the API's looser matches, shown below. */
+    data class Content(val query: String, val releases: List<Release>, val similar: List<Release> = emptyList()) : SearchResults
     data class Error(val message: String) : SearchResults
 }
 
@@ -68,10 +69,12 @@ class SearchViewModel @Inject constructor(
     private suspend fun search(query: String) {
         if (query.length < MIN_LENGTH) { _results.value = SearchResults.Idle; return }
         _results.value = SearchResults.Loading
-        val result = repository.search(query)
+        val result = repository.searchSplit(query)
         if (_query.value.trim() != query) return // a newer query is already on its way
         _results.value = when (result) {
-            is ApiResult.Success -> SearchResults.Content(query, result.value)
+            // Nothing matched exactly (typo, partial word): show the API's results as they are.
+            is ApiResult.Success -> if (result.value.first.isEmpty()) SearchResults.Content(query, result.value.second)
+                else SearchResults.Content(query, result.value.first, result.value.second)
             is ApiResult.Failure -> SearchResults.Error(result.message)
         }
     }
