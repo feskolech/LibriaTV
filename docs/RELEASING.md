@@ -42,7 +42,7 @@ Settings → Secrets and variables → Actions → New repository secret:
 ## Форки
 
 Проверка обновлений смотрит в репозиторий из `BuildConfig.UPDATE_REPO`
-(по умолчанию `feskolech/anilibria-androidtv`). Для своего форка: `-PupdateRepo=owner/repo`.
+(по умолчанию `feskolech/LibriaTV`). Для своего форка: `-PupdateRepo=owner/repo`.
 Автообновление работает только с публичным репозиторием (GitHub API без токена).
 
 ## Сборка с отчётами о падениях
