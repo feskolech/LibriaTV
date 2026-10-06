@@ -37,7 +37,17 @@ object ApiModule {
                 original.newBuilder().url(original.url.newBuilder().host(preferred).build()).build() else original
             val request = apiRequest.newBuilder()
                 .header("User-Agent", "LibriaTV/${BuildConfig.VERSION_NAME}")
-                .apply { if (isApi && !token.isNullOrBlank()) header("Authorization", "Bearer $token") }
+                .apply {
+                    if (isApi) {
+                        header("mobileApp", "true")
+                        // Match the official app-tv client headers for AniLibria API requests.
+                        header("App-Id", "ru.radiationx.anilibria.app.tv")
+                        header("App-Ver-Name", "1.3.2")
+                        header("App-Ver-Code", "8")
+                        header("User-Agent", "mobileApp Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36 OPR/53.0.2907.68")
+                        if (!token.isNullOrBlank()) header("Authorization", "Bearer $token")
+                    }
+                }
                 .build()
             val response = try {
                 chain.proceed(request)
