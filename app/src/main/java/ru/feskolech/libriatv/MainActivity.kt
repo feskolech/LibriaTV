@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv
 
+import androidx.compose.foundation.focusable
 import androidx.compose.runtime.withFrameNanos
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import ru.feskolech.libriatv.ui.components.LocalDrawerFocus
@@ -128,6 +129,11 @@ class MainActivity : ComponentActivity() {
      * D-pad moves and OK. playSoundEffect honours the system "touch sounds" setting.
      */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        // Back is not counted: it usually closes a page, and the focus passing through the menu meanwhile
+        // must not open it (that also stopped Home from restoring the card the page was opened from).
+        if (event.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+            DrawerBrowsing.lastMenuKeyAt = android.os.SystemClock.uptimeMillis()
+        }
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
             (event.keyCode == KeyEvent.KEYCODE_SEARCH || event.keyCode == KeyEvent.KEYCODE_VOICE_ASSIST)) {
             startVoiceSearch()
@@ -217,6 +223,16 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     val selectedDestination = routeSection ?: Destination.entries.firstOrNull { it.route == lastSection } ?: Destination.Home
     var confirmExit by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    // Opening a page: park the focus on an invisible anchor in the content area first. Otherwise the
+    // focused card disappears with the old screen and the focus falls into the side menu for a moment,
+    // which slides the menu open and shut ("the menu twitches"). The new page then takes the focus.
+    val focusAnchor = remember { FocusRequester() }
+    var parking by remember { mutableStateOf(false) }
+    fun openPage(route: String) {
+        parking = true
+        runCatching { focusAnchor.requestFocus() }
+        navController.navigate(route)
+    }
     fun openSection(destination: Destination) {
         if (currentRoute != destination.route) {
             navController.navigate(destination.route) {
@@ -228,6 +244,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
     }
     // Side-menu browsing: the focused section opens after a short pause, so quickly scrolling
     // past items does not load every screen on the way.
+    var drawerFocused by remember { mutableStateOf(false) }
     var lastMenuItem by remember { mutableStateOf<Destination?>(null) }
     var previewTarget by remember { mutableStateOf<Destination?>(null) }
     LaunchedEffect(drawerState.currentValue) {
@@ -281,9 +298,23 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                     // only the open drawer stands out a little.
                     .background(drawerColor)
                     .padding(horizontal = 8.dp, vertical = 27.dp)
+                    .onFocusChanged { drawerFocused = it.hasFocus }
                     .selectableGroup()
                     // Entering the drawer from content lands on the current section, not on the nearest row.
-                    .focusProperties { onEnter = { itemFocus.getValue(selectedDestination).requestFocus() } }
+                    .focusProperties {
+                        onEnter = {
+                            val byArrow = requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Left ||
+                                requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Up ||
+                                requestedFocusDirection == androidx.compose.ui.focus.FocusDirection.Down
+                            val asked = android.os.SystemClock.uptimeMillis() - DrawerBrowsing.lastMenuKeyAt < 700
+                            // Focus that only falls into the menu while one screen replaces another (opening a
+                            // release page) is refused: the drawer would slide open for a moment. The new
+                            // screen takes the focus a frame later.
+                            if (!byArrow && !asked && currentRoute != Destination.Home.route &&
+                                Destination.entries.none { it.route == currentRoute }) cancelFocusChange()
+                            else itemFocus.getValue(selectedDestination).requestFocus()
+                        }
+                    }
                     .focusGroup(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -313,7 +344,10 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                                     // falls into the menu (e.g. while a release page is still loading) must not.
                                     val browsing = drawerState.currentValue == DrawerValue.Open
                                     if (!browsing) lastMenuItem = null
-                                    drawerState.setValue(DrawerValue.Open)
+                                    // Focus that merely passes through the menu while screens swap (opening a release
+                                    // page) must not slide the menu open for a moment: only Left/Back open it.
+                                    val askedForMenu = android.os.SystemClock.uptimeMillis() - DrawerBrowsing.lastMenuKeyAt < 700
+                                    if (browsing || askedForMenu || drawerFocused) drawerState.setValue(DrawerValue.Open)
                                     // Moving within the menu opens the section as a preview (not the item the
                                     // menu was entered on: that one is the current screen, e.g. a release page).
                                     if (browsing && lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
@@ -328,6 +362,11 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
         },
     ) {
         // Screens use this to send Left from their leftmost controls straight to the side menu.
+        // Focusable only while parking, so arrow keys never land on it.
+        androidx.compose.foundation.layout.Box(Modifier.size(1.dp).focusRequester(focusAnchor)
+            .focusProperties { canFocus = parking }
+            .onFocusChanged { if (!it.isFocused) parking = false }
+            .focusable())
         CompositionLocalProvider(LocalDrawerFocus provides itemFocus.getValue(selectedDestination)) {
             // Short cross-fade: the old screen stays focusable while it fades out, and browsing the menu
             // swaps sections often, so the default 700 ms fade felt slow and could catch the focus.
@@ -341,27 +380,27 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                         if (destination == Destination.Profile) {
                             AuthScreen(
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                                onOpenMenu = { firstItemFocus.requestFocus() },
+                                onOpenMenu = { DrawerBrowsing.lastMenuKeyAt = android.os.SystemClock.uptimeMillis(); firstItemFocus.requestFocus() },
                             )
                         } else if (destination == Destination.Catalog) {
                             CatalogScreen(
-                                onOpenRelease = { navController.navigate("release/$it") },
+                                onOpenRelease = { openPage("release/$it") },
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             )
                         } else if (destination == Destination.Favorites) {
                             FavoritesScreen(
-                                onOpenRelease = { navController.navigate("release/$it") },
+                                onOpenRelease = { openPage("release/$it") },
                                 onLogin = { navController.navigate(Destination.Profile.route) },
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             )
                         } else if (destination == Destination.Schedule) {
                             ScheduleScreen(
-                                onOpenRelease = { navController.navigate("release/$it") },
+                                onOpenRelease = { openPage("release/$it") },
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             )
                         } else if (destination == Destination.Search) {
                             SearchScreen(
-                                onOpenRelease = { navController.navigate("release/$it") },
+                                onOpenRelease = { openPage("release/$it") },
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                             )
                         } else if (destination == Destination.Home) {
@@ -369,7 +408,7 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                                 active = currentRoute == Destination.Home.route,
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                                 onOpenFeed = { navController.navigate("feed") },
-                                onOpenRelease = { navController.navigate("release/$it") },
+                                onOpenRelease = { openPage("release/$it") },
                             )
                         } else if (destination == Destination.Settings) {
                             SettingsScreen(
@@ -382,25 +421,25 @@ private fun AppNavigation(phoneRemote: PhoneRemote, deepLink: kotlinx.coroutines
                         } else {
                             PlaceholderScreen(destination.title,
                                 onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
-                                onOpenMenu = { firstItemFocus.requestFocus() })
+                                onOpenMenu = { DrawerBrowsing.lastMenuKeyAt = android.os.SystemClock.uptimeMillis(); firstItemFocus.requestFocus() })
                         }
                     }
                 }
                 composable("search?query={query}") { entry ->
-                    SearchScreen(onOpenRelease = { navController.navigate("release/$it") },
+                    SearchScreen(onOpenRelease = { openPage("release/$it") },
                         onContentFocus = { drawerState.setValue(DrawerValue.Closed) },
                         initialQuery = entry.arguments?.getString("query").orEmpty())
                 }
                 composable("feed") {
-                    FeedScreen(onOpenRelease = { navController.navigate("release/$it") },
+                    FeedScreen(onOpenRelease = { openPage("release/$it") },
                         onContentFocus = { drawerState.setValue(DrawerValue.Closed) })
                 }
                 composable("release/{id}") { entry ->
                     ReleaseScreen(
-                        onPlay = { navController.navigate("player/${entry.arguments?.getString("id")}/$it") },
+                        onPlay = { openPage("player/${entry.arguments?.getString("id")}/$it") },
                         onTorrents = { navController.navigate("torrents/$it") },
                         onLogin = { navController.navigate(Destination.Profile.route) },
-                        onOpenRelease = { navController.navigate("release/$it") },
+                        onOpenRelease = { openPage("release/$it") },
                     )
                 }
                 composable("torrents/{releaseId}") { TorrentsScreen() }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -26,7 +27,15 @@ fun rememberRowFocusMemory(): RowFocusMemory = remember { RowFocusMemory() }
 
 /** On the row container (LazyRow). */
 fun Modifier.rowFocusMemory(memory: RowFocusMemory): Modifier =
-    focusProperties { onEnter = { memory.requesters[memory.last]?.requestFocus() } }.focusGroup()
+    focusProperties {
+        onEnter = {
+            // Only arrow moves from another row are redirected. A direct request (restoring the card
+            // a release page was opened from) must land where it asked, or Back would jump to card 1.
+            if (requestedFocusDirection == FocusDirection.Up || requestedFocusDirection == FocusDirection.Down) {
+                memory.requesters[memory.last]?.requestFocus()
+            }
+        }
+    }.focusGroup()
 
 /** On each card of the row. */
 @Composable

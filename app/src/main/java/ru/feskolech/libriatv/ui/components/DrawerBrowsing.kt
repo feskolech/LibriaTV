@@ -11,4 +11,7 @@ import androidx.compose.runtime.setValue
  */
 object DrawerBrowsing {
     var active by mutableStateOf(false)
+
+    /** Uptime of the last Left press: the key that legitimately takes the viewer into the menu. */
+    var lastMenuKeyAt = 0L
 }
