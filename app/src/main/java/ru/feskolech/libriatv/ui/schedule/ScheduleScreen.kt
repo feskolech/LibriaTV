@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv.ui.schedule
 
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
@@ -49,6 +51,9 @@ fun ScheduleScreen(
 
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
+            // From the side menu: land on the selected day (today at first), not on whichever tab is nearest.
+            .focusProperties { onEnter = { runCatching { tabFocus.requestFocus() } } }
+            .focusGroup()
             .padding(top = 27.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -64,7 +69,8 @@ fun ScheduleScreen(
             is ScheduleUiState.Content -> {
                 var selected by rememberSaveable { mutableIntStateOf(current.today) }
                 // TV tabs switch on focus, like the system launcher.
-                TabRow(selectedTabIndex = selected, modifier = Modifier.padding(horizontal = 48.dp)) {
+                // Up from the posters returns to the selected day instead of switching to the tab above.
+                TabRow(selectedTabIndex = selected, modifier = Modifier.padding(horizontal = 48.dp).focusRestorer(tabFocus)) {
                     days.forEachIndexed { index, day ->
                         Tab(
                             selected = index == selected,

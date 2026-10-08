@@ -120,6 +120,15 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
         if (current?.qualityHint != null) viewModel.dismissQualityHint()
         else if (!viewModel.hidePanel()) viewModel.close(onBack)
     }
+    // Home button / another app on top: stop playback instead of playing on in the background.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) viewModel.pauseAndSave()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     FrameRateMatchEffect(current?.frameRate.takeIf { current?.frameRateMatch == true })
     // OK is resolved on key-up so that a long press can open the quick menu instead of pausing.
     val okLongPressed = remember { booleanArrayOf(false) }
