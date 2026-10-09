@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.tv.material3.MaterialTheme
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,12 +19,16 @@ import org.robolectric.RobolectricTestRunner
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.ScheduleItem
+import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 
 /** Schedule tabs with the remote: it opens on today, and Up from the posters never switches the day. */
 @OptIn(ExperimentalTestApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ScheduleContentTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    /** The menu state is app-wide: an open menu left by another test would stop the tabs taking the focus. */
+    @Before fun menuClosed() { DrawerBrowsing.active = false }
 
     private fun item(id: Int, title: String) = ScheduleItem(
         Release(id, title, null, null, null, null, emptyList(), emptyList(), null), null, null)

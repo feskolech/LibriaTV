@@ -28,6 +28,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import org.junit.Assert.assertEquals
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -52,6 +53,7 @@ class AppShellTest {
 
     /** The menu state is app-wide; a test must not inherit it from the one before. */
     @Before fun resetMenu() { DrawerBrowsing.active = false; DrawerBrowsing.lastMenuKeyAt = 0 }
+    @After fun leaveMenuClosed() = resetMenu()
 
     private fun launch() {
         rule.mainClock.autoAdvance = false
