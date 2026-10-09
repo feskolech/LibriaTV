@@ -89,6 +89,14 @@ class PlaybackRulesTest {
     }
 
     @Test
+    fun `a watched episode starts over, an unfinished one resumes`() {
+        assertEquals(0L, resumePositionMs(null, null))
+        assertEquals(600_000L, resumePositionMs(600_000, 1_500_000))
+        assertEquals(0L, resumePositionMs(1_490_000, 1_500_000))
+        assertEquals(600_000L, resumePositionMs(600_000, 0))
+    }
+
+    @Test
     fun `an episode counts as watched from 90 percent`() {
         assertTrue(isWatched(90_000, 100_000))
         assertFalse(isWatched(89_999, 100_000))

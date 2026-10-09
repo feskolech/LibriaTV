@@ -71,3 +71,14 @@ internal fun nextCountdown(autoNext: Boolean, sleepTimer: SleepTimer, remaining:
 
 /** The site counts an episode as watched from 90 %. */
 internal fun isWatched(positionMs: Long, durationMs: Long): Boolean = durationMs > 0 && positionMs >= durationMs * 0.9
+
+/**
+ * Where an episode starts when opened again: where the viewer stopped, but from the beginning once
+ * it was watched. Resuming a finished episode at its end would end it at once (and the last one
+ * would close the player straight away).
+ */
+internal fun resumePositionMs(savedPositionMs: Long?, savedDurationMs: Long?): Long = when {
+    savedPositionMs == null -> 0
+    savedDurationMs != null && isWatched(savedPositionMs, savedDurationMs) -> 0
+    else -> savedPositionMs
+}

@@ -215,7 +215,8 @@ class PlayerViewModel @Inject constructor(
         player.setMediaItem(mediaItem(episode, url))
         preloadManager.reset()
         player.prepare()
-        val position = if (resume) store.progress(episode.id)?.positionMs ?: 0 else 0
+        val saved = if (resume) store.progress(episode.id) else null
+        val position = resumePositionMs(saved?.positionMs, saved?.durationMs)
         player.seekTo(position)
         player.playWhenReady = true
         android.util.Log.i("EpisodePlayer", "playing: episode=${episode.id}")
