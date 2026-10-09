@@ -238,4 +238,8 @@
     <string name="update_check_failed">Не удалось проверить обновления. Проверьте интернет.</string>
     <string name="search_similar">Похожие названия</string>
     <string name="release_region_blocked">Серии этого релиза недоступны в вашей стране — ограничение правообладателя.</string>
+    <string name="error_list_not_saved">Не удалось сохранить список. Проверьте интернет.</string>
+    <string name="error_rating_not_saved">Не удалось сохранить оценку. Проверьте интернет.</string>
+    <string name="error_network_short">Нет связи с сервером. Попробуйте ещё раз.</string>
+    <string name="error_filters_unavailable">Фильтры недоступны: не удалось загрузить справочники.</string>
 </resources>

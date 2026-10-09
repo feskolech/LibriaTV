@@ -22,18 +22,7 @@ sealed interface ApiResult<out T> {
 }
 
 class ApiRepository @Inject constructor(private val api: AniLibriaApi, private val legacy: LegacyCatalog) {
-    private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = try {
-        ApiResult.Success(block())
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: HttpException) {
-        val body = error.response()?.errorBody()?.string()
-        val parsed = body?.let { runCatching { Json.decodeFromString<ApiErrorDto>(it) }.getOrNull() }
-        val message = parsed?.errors?.values?.flatten()?.firstOrNull() ?: parsed?.message ?: error.message()
-        ApiResult.Failure(error.code(), message)
-    } catch (error: Exception) {
-        ApiResult.Failure(null, error.message ?: "Network error")
-    }
+    private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = safeApiCall(block)
 
     suspend fun scheduleNow(): ApiResult<List<ScheduleItem>> = request {
         api.scheduleNow().today.mapNotNull { it.toDomain() }

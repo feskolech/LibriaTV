@@ -33,7 +33,10 @@ data class CatalogUiState(
 }
 
 @HiltViewModel
-class CatalogViewModel @Inject constructor(private val repository: ApiRepository) : ViewModel() {
+class CatalogViewModel @Inject constructor(
+    private val repository: ApiRepository,
+    private val messages: ru.feskolech.libriatv.ui.components.UserMessages,
+) : ViewModel() {
     private val _state = MutableStateFlow(CatalogUiState())
     val state: StateFlow<CatalogUiState> = _state
     private var pageJob: Job? = null
@@ -49,7 +52,8 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
                 references = result.value,
                 filter = _state.value.filter.let { it.copy(sorting = it.sorting ?: result.value.sorting.firstOrNull()?.id) },
             )
-            is ApiResult.Failure -> Unit // filters stay hidden; the grid still works with defaults
+            // The grid still works with defaults, but say why the filters are missing.
+            is ApiResult.Failure -> messages.show(ru.feskolech.libriatv.R.string.error_filters_unavailable)
         }
     }
 
@@ -116,7 +120,8 @@ class CatalogViewModel @Inject constructor(private val repository: ApiRepository
 
     /** "I'm feeling lucky": a random release id, or null when the API fails. */
     fun random(onResult: (Int) -> Unit) = viewModelScope.launch {
-        (repository.randomRelease() as? ApiResult.Success)?.value?.id?.let(onResult)
+        val id = (repository.randomRelease() as? ApiResult.Success)?.value?.id
+        if (id != null) onResult(id) else messages.show(ru.feskolech.libriatv.R.string.error_network_short)
     }
 
     fun loadMore() {

@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv
 
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.focusable
 import androidx.compose.runtime.withFrameNanos
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
@@ -97,6 +98,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity() {
     @Inject lateinit var phoneRemote: PhoneRemote
     @Inject lateinit var settingsStore: SettingsStore
+    @Inject lateinit var userMessages: ru.feskolech.libriatv.ui.components.UserMessages
     private val deepLink = kotlinx.coroutines.flow.MutableStateFlow<android.net.Uri?>(null)
     private val voiceQuery = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val voiceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -114,6 +116,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         deepLink.value = intent?.data
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                userMessages.messages.collect { text ->
+                    android.widget.Toast.makeText(this@MainActivity, text, android.widget.Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         setContent {
             LibriaTvTheme(settingsStore) {
                 // While the drawer collapses, its slot is briefly wider than its content; without a themed

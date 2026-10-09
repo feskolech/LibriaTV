@@ -49,17 +49,7 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = try {
-        ApiResult.Success(block())
-    } catch (cancelled: CancellationException) {
-        throw cancelled
-    } catch (error: HttpException) {
-        val body = error.response()?.errorBody()?.string()
-        val parsed = body?.let { runCatching { Json { ignoreUnknownKeys = true }.decodeFromString<ApiErrorDto>(it) }.getOrNull() }
-        ApiResult.Failure(error.code(), parsed?.errors?.values?.flatten()?.firstOrNull() ?: parsed?.message ?: error.message())
-    } catch (error: Exception) {
-        ApiResult.Failure(null, error.message ?: "Network error")
-    }
+    private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = safeApiCall(block)
 
     suspend fun getOtp(): ApiResult<OtpChallenge> = request {
         api.otpGet(OtpGetRequestDto(deviceIdStore.get())).toChallenge()

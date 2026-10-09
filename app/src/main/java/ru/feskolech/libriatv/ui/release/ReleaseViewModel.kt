@@ -38,6 +38,7 @@ class ReleaseViewModel @Inject constructor(
     private val favorites: FavoritesRepository,
     private val auth: AuthRepository,
     private val library: LibraryRepository,
+    private val messages: ru.feskolech.libriatv.ui.components.UserMessages,
 ) : ViewModel() {
     private val id: String = checkNotNull(savedState["id"])
     private val _state = MutableStateFlow<ReleaseUiState>(ReleaseUiState.Loading)
@@ -88,10 +89,9 @@ class ReleaseViewModel @Inject constructor(
         if (!content.authorized) { onLogin(); return }
         viewModelScope.launch {
             val result = favorites.toggle(content.release.id)
-            if (result is ApiResult.Failure) {
-                val latest = _state.value as? ReleaseUiState.Content ?: return@launch
-                _state.value = latest.copy(favoriteError = result.message)
-            }
+            val latest = _state.value as? ReleaseUiState.Content ?: return@launch
+            // A later success clears an earlier error message.
+            _state.value = latest.copy(favoriteError = (result as? ApiResult.Failure)?.message)
         }
     }
 
@@ -103,6 +103,7 @@ class ReleaseViewModel @Inject constructor(
         viewModelScope.launch {
             if (!library.setList(content.release.id, list)) {
                 (_state.value as? ReleaseUiState.Content)?.let { _state.value = it.copy(list = previous) }
+                messages.show(ru.feskolech.libriatv.R.string.error_list_not_saved)
             }
         }
     }
@@ -115,6 +116,7 @@ class ReleaseViewModel @Inject constructor(
         viewModelScope.launch {
             if (!library.rate(content.release.id, score)) {
                 (_state.value as? ReleaseUiState.Content)?.let { _state.value = it.copy(rating = previous) }
+                messages.show(ru.feskolech.libriatv.R.string.error_rating_not_saved)
             }
         }
     }
