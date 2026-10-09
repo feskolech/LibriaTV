@@ -17,12 +17,11 @@ media3 = "1.8.0"
 tvprovider = "1.0.0"
 work = "2.10.1"
 datastore = "1.1.7"
-room = "2.8.3"
 junit = "4.13.2"
-mockWebServer = "4.12.0"
 zxing = "3.5.3"
 acra = "5.12.0"
 nanohttpd = "2.3.1"
+ksp = "2.2.21-2.0.4"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
@@ -36,7 +35,7 @@ navigation-compose = { module = "androidx.navigation:navigation-compose", versio
 tv-material = { module = "androidx.tv:tv-material", version.ref = "tvMaterial" }
 material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
-retrofit-kotlinx = { module = "com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter", version = "1.0.0" }
+retrofit-kotlinx = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
@@ -52,11 +51,8 @@ media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 junit = { module = "junit:junit", version.ref = "junit" }
-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "mockWebServer" }
+mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "okhttp" }
 zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 acra-core = { module = "ch.acra:acra-core", version.ref = "acra" }
 nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
@@ -66,5 +62,5 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version = "2.2.21-2.0.4" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

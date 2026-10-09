@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -61,8 +62,10 @@ android {
     buildTypes {
         debug {
             (findProperty("debugApplicationIdSuffix") as String?)?.let { applicationIdSuffix = it }
-            // Local emulator verification can replace an installed release without clearing its account.
-            if (releaseSigning != null) signingConfig = signingConfigs.getByName("release")
+            // Opt-in only (-PdebugWithReleaseKey=true): a debuggable APK with the release signature could
+            // replace a real install and expose its data through run-as.
+            if (releaseSigning != null && findProperty("debugWithReleaseKey") == "true")
+                signingConfig = signingConfigs.getByName("release")
         }
         release {
             isMinifyEnabled = true
@@ -77,14 +80,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 
     buildFeatures {
         compose = true
         buildConfig = true
     }
+}
+
+kotlin {
+    compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
 dependencies {
