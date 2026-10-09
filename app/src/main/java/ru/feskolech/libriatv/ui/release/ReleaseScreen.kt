@@ -123,11 +123,34 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                 // Short teaser keeps the header height stable (a long text made it jitter while moving
                                 // between the buttons); the full text is one button away.
                                 val description = remember(release) { release.description.orEmpty().replace(HTML_TAG, "").trim() }
-                                Text(description, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
-                                // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
+                                // The teaser itself opens the full text (Up from the buttons): no separate button for it.
+                                if (description.isNotEmpty()) androidx.tv.material3.Surface(onClick = { showDescription = true },
+                                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
+                                    scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.Transparent,
+                                        focusedContainerColor = Color(0x1AFFFFFF), contentColor = Color.White, focusedContentColor = Color.White),
+                                    border = androidx.tv.material3.ClickableSurfaceDefaults.border(focusedBorder = androidx.tv.material3.Border(
+                                        androidx.compose.foundation.BorderStroke(2.dp, Color.White)))) {
+                                    Text(description, Modifier.padding(horizontal = 6.dp, vertical = 2.dp), maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis)
+                                }
+                                // Actions sit at the bottom of the header: bring-into-view alone stops once they are
                                 // visible and leaves the title cut off when coming back up from the episodes.
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp),
-                                    modifier = Modifier.onFocusChanged {
+                                ReleaseActions(
+                                    mainLabel = if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
+                                        else stringResource(R.string.watch),
+                                    mainEnabled = first != null, onMain = { first?.let { onPlay(it.id) } },
+                                    mainModifier = Modifier.focusRequester(focus),
+                                    actions = listOf(
+                                        ReleaseAction(ReleaseIcons.favorite(current.favorite),
+                                            stringResource(if (current.favorite) R.string.in_favorites else R.string.add_favorite)) { viewModel.toggleFavorite(onLogin) },
+                                        ReleaseAction(ReleaseIcons.list(current.list != null),
+                                            current.list?.let { stringResource(it.label()) } ?: stringResource(R.string.list_add)) { showLists = true },
+                                        ReleaseAction(ReleaseIcons.rating(current.rating != null),
+                                            current.rating?.let { stringResource(R.string.rating_own, it) } ?: stringResource(R.string.rating_rate)) { showRating = true },
+                                        ReleaseAction(ReleaseIcons.torrents, stringResource(R.string.torrents)) { onTorrents(release.id) },
+                                    ),
+                                    modifier = Modifier.padding(top = 4.dp).onFocusChanged {
                                         // Let the focus system's own bring-into-view finish first; scrolling at the
                                         // same time gets cancelled by it and the header stays cut off.
                                         if (it.hasFocus) headerScope.launch {
@@ -136,29 +159,8 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                                 listState.animateScrollToItem(0)
                                             }
                                         }
-                                    }) {
-                                    Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        HeaderButton(if (resume != null) stringResource(R.string.continue_episode, resume.ordinal?.toInt() ?: 1)
-                                            else stringResource(R.string.watch), onClick = { first?.let { onPlay(it.id) } },
-                                            enabled = first != null, modifier = Modifier.focusRequester(focus), leftmost = true)
-                                        HeaderButton(stringResource(if (current.favorite) R.string.in_favorites else R.string.add_favorite),
-                                            onClick = { viewModel.toggleFavorite(onLogin) })
-                                    }
-                                    Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        HeaderButton(stringResource(R.string.torrents), onClick = { onTorrents(release.id) }, leftmost = true)
-                                        if (description.isNotEmpty()) {
-                                            HeaderButton(stringResource(R.string.description_more), onClick = { showDescription = true })
-                                        } else Spacer(Modifier.weight(1f))
-                                    }
-                                }
+                                    })
                                 if (showDescription) DescriptionDialog(release.title, description) { showDescription = false }
-                                // Second row: account lists and own rating (sign-in prompt for guests).
-                                Row(HeaderButtonRow, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    HeaderButton(current.list?.let { stringResource(it.label()) } ?: stringResource(R.string.list_add),
-                                        onClick = { showLists = true }, leftmost = true)
-                                    HeaderButton(current.rating?.let { stringResource(R.string.rating_own, it) } ?: stringResource(R.string.rating_rate),
-                                        onClick = { showRating = true })
-                                }
                                 if (showLists) ChoiceDialog(stringResource(R.string.list_title),
                                     UserList.entries.map { stringResource(it.label()) } + stringResource(R.string.list_remove),
                                     selected = current.list?.ordinal,
@@ -197,9 +199,9 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                     if (release.regionBlocked) item {
                         Text(stringResource(R.string.release_region_blocked), color = Color(0xFFD8D8D8))
                     }
-                    items(ordered, key = { it.id }) { episode ->
-                        EpisodeRow(episode, current.progress[episode.id], onPlay)
-                    }
+                    // Range chips over a grid of numbers: any episode of a long series is a few presses away,
+                    // and the similar titles below stay one Down from the grid instead of hundreds of rows.
+                    item { EpisodePicker(ordered, current.progress, resumeId = resume?.id, onPlay = onPlay) }
                     if (current.similar.isNotEmpty()) {
                         item { Text(stringResource(R.string.similar), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
                         item {
@@ -220,35 +222,6 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/** Header buttons share one width (two per row), whatever their labels, so the block reads as a grid. */
-private val HeaderButtonRow = Modifier.widthIn(max = 520.dp).fillMaxWidth()
-
-@Composable
-private fun RowScope.HeaderButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    leftmost: Boolean = false) {
-    // From the left column, Left goes straight to the side menu instead of the seasons row below the poster.
-    val drawer = ru.feskolech.libriatv.ui.components.LocalDrawerFocus.current
-    val toMenu = if (leftmost && drawer != null) Modifier.focusProperties { left = drawer } else Modifier
-    Button(onClick = onClick, modifier = modifier.then(toMenu).weight(1f), enabled = enabled) {
-        Text(text, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun EpisodeRow(episode: Episode, progress: ru.feskolech.libriatv.data.repo.PlaybackProgress?, onPlay: (String) -> Unit) {
-    Button(onClick = { onPlay(episode.id) }, modifier = Modifier.fillMaxWidth(), scale = WideButtonScale) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            AsyncImage(episode.previewUrl, null, Modifier.size(width = 110.dp, height = 64.dp)
-                .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)), contentScale = ContentScale.Crop)
-            Column {
-                Text(stringResource(R.string.episode_number, episode.ordinal?.toInt() ?: 0) + "  " + episode.name)
-                if (progress != null) Text(if (progress.watched) stringResource(R.string.watched)
-                    else stringResource(R.string.progress_minutes, progress.positionMs / 60000))
             }
         }
     }
