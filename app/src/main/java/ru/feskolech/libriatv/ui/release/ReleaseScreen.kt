@@ -112,27 +112,35 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                 ) {
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                            AsyncImage(release.posterUrl, null, Modifier.width(185.dp).height(278.dp), contentScale = ContentScale.Crop)
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                // Compact, fixed-height header: title ≤ 2 lines and all metadata on one ellipsized line,
-                                // so the header always fits the screen and moving between buttons never scrolls it.
+                            AsyncImage(release.posterUrl, null, Modifier.width(PosterWidth).height(PosterHeight), contentScale = ContentScale.Crop)
+                            // As tall as the poster: title and details on top, the actions at the poster's bottom edge,
+                            // and the description takes whatever room is left between them (fewer lines under a
+                            // two-line title). All in dp/sp, so it keeps its proportions at any interface scale.
+                            Column(Modifier.height(PosterHeight), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                // Title ≤ 2 lines and all metadata on one ellipsized line.
                                 Text(release.title, style = androidx.tv.material3.MaterialTheme.typography.headlineMedium,
                                     color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 Text((listOfNotNull(release.year?.toString(), release.season, release.type, release.publishDay) + release.genres)
                                     .joinToString(" • "), color = Color(0xFFD8D8D8), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                // Short teaser keeps the header height stable (a long text made it jitter while moving
-                                // between the buttons); the full text is one button away.
+                                // The header's height is fixed to the poster's, so a long text never makes it jitter while
+                                // moving between the buttons; the full text opens from the teaser.
                                 val description = remember(release) { release.description.orEmpty().replace(HTML_TAG, "").trim() }
+                                // The room between the details and the actions; the description fills it at most, so the
+                                // actions always sit at the poster's bottom and the focus outline hugs the text.
+                                Column(Modifier.weight(1f)) {
                                 // The teaser itself opens the full text (Up from the buttons): no separate button for it.
                                 if (description.isNotEmpty()) androidx.tv.material3.Surface(onClick = { showDescription = true },
+                                    modifier = Modifier.weight(1f, fill = false),
                                     shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)),
                                     scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1f),
                                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.Transparent,
                                         focusedContainerColor = Color(0x1AFFFFFF), contentColor = Color.White, focusedContentColor = Color.White),
                                     border = androidx.tv.material3.ClickableSurfaceDefaults.border(focusedBorder = androidx.tv.material3.Border(
                                         androidx.compose.foundation.BorderStroke(2.dp, Color.White)))) {
-                                    Text(description, Modifier.padding(horizontal = 6.dp, vertical = 2.dp), maxLines = 2,
+                                    // No line limit: the text is cut with an ellipsis at the last line that fits.
+                                    Text(description, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                         overflow = TextOverflow.Ellipsis)
+                                }
                                 }
                                 // Actions sit at the bottom of the header: bring-into-view alone stops once they are
                                 // visible and leaves the title cut off when coming back up from the episodes.
@@ -288,3 +296,5 @@ private object StillBringIntoViewSpec : BringIntoViewSpec {
 }
 
 private val HTML_TAG = Regex("<[^>]*>")
+private val PosterWidth = 185.dp
+private val PosterHeight = 278.dp
