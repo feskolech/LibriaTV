@@ -46,6 +46,11 @@ data class PlayerContent(
     val sleepTimer: SleepTimer = SleepTimer.Off, val sleepWarning: Boolean = false,
     val seekTargetMs: Long? = null, val seekFrame: Bitmap? = null,
     val qualityHint: Int? = null,
+    /**
+     * The video should be playing (also while it buffers or retries), so the TV must not dim or sleep.
+     * Off when paused (by the viewer or the sleep timer) and after the last episode ends.
+     */
+    val keepAwake: Boolean = false,
 )
 sealed interface PlayerUiState {
     data object Loading : PlayerUiState
@@ -106,8 +111,12 @@ class PlayerViewModel @Inject constructor(
                 if (isPlaying) retryCount = 0
                 update { it.copy(playing = isPlaying) }
             }
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                update { it.copy(keepAwake = shouldKeepAwake()) }
+            }
             override fun onPlaybackStateChanged(playbackState: Int) {
-                update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE) }
+                update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE,
+                    keepAwake = shouldKeepAwake()) }
                 val current = (_state.value as? PlayerUiState.Content)?.value ?: return
                 val now = SystemClock.elapsedRealtime()
                 if (playbackState == Player.STATE_BUFFERING && player.playWhenReady && now >= ignoreBufferUntil)
@@ -205,6 +214,9 @@ class PlayerViewModel @Inject constructor(
         val current = (_state.value as? PlayerUiState.Content)?.value ?: return
         _state.value = PlayerUiState.Content(block(current))
     }
+
+    /** Not [Player.isPlaying]: that drops during buffering, and clearing the flag then could sleep the TV at once. */
+    private fun shouldKeepAwake() = player.playWhenReady && player.playbackState != Player.STATE_ENDED
 
     private suspend fun prepare(episode: Episode, resume: Boolean) {
         val state = (_state.value as? PlayerUiState.Content)?.value ?: return

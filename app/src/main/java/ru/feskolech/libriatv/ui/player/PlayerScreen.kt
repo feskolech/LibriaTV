@@ -120,6 +120,14 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
         if (current?.qualityHint != null) viewModel.dismissQualityHint()
         else if (!viewModel.hidePanel()) viewModel.close(onBack)
     }
+    // While the video plays the box must not go to sleep (it counts only remote presses as activity);
+    // when paused or finished the normal screen timeout applies again.
+    val view = androidx.compose.ui.platform.LocalView.current
+    val keepAwake = current?.keepAwake == true
+    androidx.compose.runtime.DisposableEffect(view, keepAwake) {
+        view.keepScreenOn = keepAwake
+        onDispose { view.keepScreenOn = false }
+    }
     // Home button / another app on top: stop playback instead of playing on in the background.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
