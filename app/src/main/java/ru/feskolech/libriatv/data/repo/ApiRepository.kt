@@ -55,7 +55,9 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi, private v
     suspend fun release(idOrAlias: String): ApiResult<Release> {
         val result = request { api.release(idOrAlias).toDomain() ?: error("Release has no id") }
         // Hidden by the v1 API for this country (404/403): the legacy API may still serve it.
-        if (result is ApiResult.Failure) idOrAlias.toIntOrNull()?.let { legacy.release(it) }?.let { return ApiResult.Success(it) }
+        // Only for "not found / forbidden": a timeout or 5xx must show the real error, not legacy data.
+        if (result is ApiResult.Failure && (result.status == 404 || result.status == 403))
+            idOrAlias.toIntOrNull()?.let { legacy.release(it) }?.let { return ApiResult.Success(it) }
         return result
     }
     suspend fun episode(id: String): ApiResult<Episode> = request {

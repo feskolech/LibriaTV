@@ -4,7 +4,6 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -14,9 +13,17 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import okhttp3.MediaType.Companion.toMediaType
 import ru.feskolech.libriatv.BuildConfig
 import ru.feskolech.libriatv.data.api.AniLibriaApi
-import ru.feskolech.libriatv.data.repo.TokenStore
-import ru.feskolech.libriatv.data.repo.SettingsStore
+import ru.feskolech.libriatv.data.api.ApiAuthInterceptor
 import java.io.IOException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
+import ru.feskolech.libriatv.data.repo.SettingsStore
+import ru.feskolech.libriatv.data.repo.TokenStore
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -24,46 +31,19 @@ import javax.inject.Singleton
 object ApiModule {
     @Provides @Singleton fun json(): Json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
-    @Provides @Singleton fun client(tokenStore: TokenStore, settingsStore: SettingsStore,
+    @Provides @Singleton fun client(session: ApiSession,
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context): OkHttpClient {
-        val auth = Interceptor { chain ->
-            val token = runBlocking { tokenStore.get() }
-            val preferred = runBlocking { settingsStore.mirror() }
-            val original = chain.request()
-            // The same client also fetches HLS playlists/segments from CDN hosts: the account token and
-            // the 401 logout only apply to the AniLibria API itself.
-            val isApi = original.url.host == "anilibria.top" || original.url.host == "aniliberty.top"
-            val apiRequest = if (isApi)
-                original.newBuilder().url(original.url.newBuilder().host(preferred).build()).build() else original
-            val request = apiRequest.newBuilder()
-                .header("User-Agent", "LibriaTV/${BuildConfig.VERSION_NAME}")
-                .apply {
-                    if (isApi) {
-                        header("mobileApp", "true")
-                        // Match the official app-tv client headers for AniLibria API requests.
-                        header("App-Id", "ru.radiationx.anilibria.app.tv")
-                        header("App-Ver-Name", "1.3.2")
-                        header("App-Ver-Code", "8")
-                        header("User-Agent", "mobileApp Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.170 Safari/537.36 OPR/53.0.2907.68")
-                        if (!token.isNullOrBlank()) header("Authorization", "Bearer $token")
-                    }
-                }
-                .build()
-            val response = try {
-                chain.proceed(request)
-            } catch (error: IOException) {
-                if (request.url.host != "anilibria.top" && request.url.host != "aniliberty.top") throw error
-                val fallback = if (request.url.host == "anilibria.top") "aniliberty.top" else "anilibria.top"
-                chain.proceed(request.newBuilder().url(request.url.newBuilder().host(fallback).build()).build())
-            }
-            if (isApi && response.code == 401) runBlocking { tokenStore.set(null) }
-            response
-        }
+        val auth = ApiAuthInterceptor(
+            token = session::token, mirror = session::mirror, onUnauthorized = session::onUnauthorized,
+            userAgent = "LibriaTV/${BuildConfig.VERSION_NAME}",
+        )
         // Path + status + duration only (no query, headers or body): safe in release, used to diagnose
         // slow screens on real TV boxes via `adb logcat -s LibriaNet`.
         val timing = Interceptor { chain ->
             val started = System.nanoTime()
             val request = chain.request()
+            // Video segments go through this client too: logging each of them only floods logcat.
+            if (request.url.host !in ApiAuthInterceptor.API_HOSTS) return@Interceptor chain.proceed(request)
             try {
                 chain.proceed(request).also {
                     android.util.Log.i("LibriaNet", "${it.code} ${(System.nanoTime() - started) / 1_000_000} ms ${request.method} ${request.url.host}${request.url.encodedPath}")
@@ -76,7 +56,11 @@ object ApiModule {
         // Per-phase timings (DNS / connect / TLS / waiting for a connection) for the same diagnostics.
         val phases = okhttp3.EventListener.Factory { call ->
             val t0 = System.nanoTime()
-            fun log(phase: String) { android.util.Log.i("LibriaNet", "+${(System.nanoTime() - t0) / 1_000_000} ms $phase ${call.request().url.encodedPath}") }
+            val apiCall = call.request().url.host in ApiAuthInterceptor.API_HOSTS
+            fun log(phase: String) {
+                if (!apiCall) return
+                android.util.Log.i("LibriaNet", "+${(System.nanoTime() - t0) / 1_000_000} ms $phase ${call.request().url.encodedPath}")
+            }
             object : okhttp3.EventListener() {
                 override fun dnsStart(call: okhttp3.Call, domainName: String) { log("dnsStart") }
                 override fun dnsEnd(call: okhttp3.Call, domainName: String, inetAddressList: List<java.net.InetAddress>) { log("dnsEnd ${inetAddressList.joinToString { it.hostAddress.orEmpty() }}") }
@@ -105,4 +89,22 @@ object ApiModule {
         .client(client)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build().create(AniLibriaApi::class.java)
+}
+
+/**
+ * Token and mirror for the network layer, mirrored from storage into memory: the interceptor runs
+ * for every request (including video segments) and must not read DataStore each time. The values
+ * are loaded once at startup and then follow every change.
+ */
+@Singleton
+class ApiSession @Inject constructor(
+    private val tokenStore: TokenStore,
+    settingsStore: SettingsStore,
+    @ApplicationScope private val scope: CoroutineScope,
+) {
+    private val tokenState = tokenStore.token.stateIn(scope, SharingStarted.Eagerly, runBlocking { tokenStore.token.first() })
+    private val mirrorState = settingsStore.mirror.stateIn(scope, SharingStarted.Eagerly, runBlocking { settingsStore.mirror.first() })
+    fun token(): String? = tokenState.value
+    fun mirror(): String = mirrorState.value
+    fun onUnauthorized() { scope.launch { tokenStore.set(null) } }
 }
