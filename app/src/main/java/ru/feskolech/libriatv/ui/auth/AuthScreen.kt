@@ -172,7 +172,7 @@ private fun AuthField(value: String, change: (String) -> Unit, label: String, mo
 }
 
 @Composable
-private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> Unit, logout: () -> Unit) {
+internal fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> Unit, logout: () -> Unit) {
     val focus = remember { FocusRequester() }
     var confirmLogout by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { focus.requestFocus() } }

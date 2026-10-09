@@ -196,7 +196,7 @@ private fun FilterDialog(title: String, onDismiss: () -> Unit,
 }
 
 @Composable
-private fun MultiSelectDialog(
+internal fun MultiSelectDialog(
     title: String,
     options: List<FilterOption>,
     selected: Set<String>,

@@ -46,6 +46,17 @@ fun ScheduleScreen(
     viewModel: ScheduleViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
+    ScheduleContent(state, onRetry = viewModel::refresh, onOpenRelease = onOpenRelease, onContentFocus = onContentFocus)
+}
+
+/** The schedule drawn from its state: day tabs (today selected first) over that day's posters. */
+@Composable
+internal fun ScheduleContent(
+    state: ScheduleUiState,
+    onRetry: () -> Unit,
+    onOpenRelease: (Int) -> Unit,
+    onContentFocus: () -> Unit,
+) {
     val days = stringArrayResource(R.array.week_days)
     val tabFocus = remember { FocusRequester() }
 
@@ -63,7 +74,7 @@ fun ScheduleScreen(
             ScheduleUiState.Loading -> Text(stringResource(R.string.home_loading), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
             is ScheduleUiState.Error -> Column(Modifier.padding(horizontal = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(current.message, color = Color.White)
-                Button(onClick = { viewModel.refresh() }, modifier = Modifier.focusRequester(tabFocus)) { Text(stringResource(R.string.retry)) }
+                Button(onClick = onRetry, modifier = Modifier.focusRequester(tabFocus)) { Text(stringResource(R.string.retry)) }
                 LaunchedEffect(Unit) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { tabFocus.requestFocus() } }
             }
             is ScheduleUiState.Content -> {
