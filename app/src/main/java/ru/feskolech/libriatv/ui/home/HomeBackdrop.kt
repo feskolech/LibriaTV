@@ -32,7 +32,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 import ru.feskolech.libriatv.domain.Release
@@ -114,11 +113,11 @@ internal fun HomeBackdrop(release: Release?, videoEnabled: Boolean) {
                 exit = androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(300)),
                 modifier = Modifier.align(Alignment.TopEnd).fillMaxWidth(.66f).aspectRatio(16f / 9f),
             ) {
-                AndroidView(factory = { PlayerView(it).apply {
-                    useController = false
-                    this.player = player
-                    setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
-                } }, modifier = Modifier.fillMaxSize())
+                // A TextureView, not PlayerView's default SurfaceView: a SurfaceView ignores Compose alpha,
+                // so the video vanished in one frame when Home was left instead of fading with the screen
+                // (a visible brightness jump). The texture also keeps the last frame while it fades out.
+                AndroidView(factory = { android.view.TextureView(it).also(player::setVideoTextureView) },
+                    modifier = Modifier.fillMaxSize())
             }
             Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(
                 MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background.copy(alpha = .92f), Color.Transparent))))

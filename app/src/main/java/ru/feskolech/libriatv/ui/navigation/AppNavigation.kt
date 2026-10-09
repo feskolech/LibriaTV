@@ -3,6 +3,7 @@ package ru.feskolech.libriatv.ui.navigation
 import android.net.Uri
 import android.os.SystemClock
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -65,6 +66,9 @@ import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 
 /** How long OK on a menu item keeps waiting for a loading section to have something to focus. */
 private const val ENTER_SECTION_TIMEOUT_MS = 30_000L
+/** Cross-fade between menu sections, and between a section and a page (release, player…). */
+private const val SECTION_FADE_MS = 350
+private const val PAGE_FADE_MS = 150
 
 /** The side menu, the screen graph and the app-wide dialogs (update, crash report, exit). */
 @Composable
@@ -143,7 +147,7 @@ fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
         val target = pendingEnter ?: return@LaunchedEffect
         if (currentRoute != target.route) return@LaunchedEffect
         // Wait out the cross-fade: the old screen must be gone, or the focus would land on it.
-        delay(200)
+        delay(SECTION_FADE_MS + 50L)
         val giveUpAt = SystemClock.uptimeMillis() + ENTER_SECTION_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < giveUpAt) {
             withFrameNanos { }
@@ -217,11 +221,17 @@ fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
         CompositionLocalProvider(LocalDrawerFocus provides itemFocus.getValue(selectedDestination)) {
             val closeMenu = { drawerState.setValue(DrawerValue.Closed) }
             val openRelease: (Int) -> Unit = { openPage(Routes.release(it)) }
-            // Short cross-fade: the old screen stays focusable while it fades out, and browsing the menu
-            // swaps sections often, so the default 700 ms fade felt slow and could catch the focus.
+            // Pages (release, player) cross-fade quickly: the old screen stays focusable while it fades out.
+            // Menu sections fade slower and eased: Home with its poster backdrop is about twice as bright
+            // as Search or the catalog, and a quick fade between them read as a brightness jump.
+            fun fadeMs(from: String?, to: String?) =
+                if (from != null && to != null && Routes.section(from) != null && Routes.section(to) != null) SECTION_FADE_MS
+                else PAGE_FADE_MS
             NavHost(navController = navController, startDestination = Destination.Home.route,
-                enterTransition = { fadeIn(tween(150)) }, exitTransition = { fadeOut(tween(150)) },
-                popEnterTransition = { fadeIn(tween(150)) }, popExitTransition = { fadeOut(tween(150)) }) {
+                enterTransition = { fadeIn(tween(fadeMs(initialState.destination.route, targetState.destination.route), easing = FastOutSlowInEasing)) },
+                exitTransition = { fadeOut(tween(fadeMs(initialState.destination.route, targetState.destination.route), easing = FastOutSlowInEasing)) },
+                popEnterTransition = { fadeIn(tween(fadeMs(initialState.destination.route, targetState.destination.route), easing = FastOutSlowInEasing)) },
+                popExitTransition = { fadeOut(tween(fadeMs(initialState.destination.route, targetState.destination.route), easing = FastOutSlowInEasing)) }) {
                 Destination.entries.forEach { destination ->
                     composable(destination.route) {
                         when (destination) {
