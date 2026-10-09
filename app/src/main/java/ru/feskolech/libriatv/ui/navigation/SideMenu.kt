@@ -82,6 +82,13 @@ internal fun NavigationDrawerScope.SideMenu(
                     if (!byArrow && !menuRecentlyAsked() && pageOpen) cancelFocusChange()
                     else itemFocus.getValue(selected).requestFocus()
                 }
+                // Only Right leaves the menu. Up from the top item (a held Up runs into it) or Down from
+                // the bottom one would otherwise jump to whatever the screen has above or below (the
+                // search field sits higher than Home) and close the menu.
+                onExit = {
+                    if (requestedFocusDirection == FocusDirection.Up || requestedFocusDirection == FocusDirection.Down)
+                        cancelFocusChange()
+                }
             }
             .focusGroup(),
         verticalArrangement = Arrangement.spacedBy(8.dp),

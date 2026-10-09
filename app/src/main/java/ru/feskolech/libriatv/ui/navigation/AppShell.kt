@@ -98,11 +98,12 @@ internal fun AppShell(navController: NavHostController, onExit: () -> Unit, grap
     // Side-menu browsing: the focused section opens after a short pause, so quickly scrolling
     // past items does not load every screen on the way.
     var drawerFocused by remember { mutableStateOf(false) }
-    var lastMenuItem by remember { mutableStateOf<Destination?>(null) }
+    /** The menu item the focus moved from, or null when it came into the menu from outside. */
+    var menuItemBefore by remember { mutableStateOf<Destination?>(null) }
     var previewTarget by remember { mutableStateOf<Destination?>(null) }
     LaunchedEffect(drawerState.currentValue) {
         DrawerBrowsing.active = drawerState.currentValue == DrawerValue.Open
-        if (drawerState.currentValue == DrawerValue.Closed) { lastMenuItem = null; previewTarget = null }
+        if (drawerState.currentValue == DrawerValue.Closed) previewTarget = null
     }
     // OK on a menu item means "go into this section". A section that is still loading (the profile or
     // Home on a cold start over a slow link) has nothing to focus yet, so the request waits for it
@@ -145,21 +146,31 @@ internal fun AppShell(navController: NavHostController, onExit: () -> Unit, grap
                 hidden = Routes.isPlayer(currentRoute),
                 pageOpen = Destination.entries.none { it.route == currentRoute },
                 itemFocus = itemFocus,
-                onFocusInside = { drawerFocused = it },
+                onFocusInside = { inside ->
+                    drawerFocused = inside
+                    if (!inside) menuItemBefore = null
+                },
                 onItemFocused = { destination ->
-                    // Only moving inside an already open menu previews a section; focus that merely
-                    // falls into the menu (e.g. while a release page is still loading) must not.
-                    val browsing = drawerState.currentValue == DrawerValue.Open
-                    if (!browsing) lastMenuItem = null
-                    // Focus that merely passes through the menu while screens swap (opening a release
-                    // page) must not slide the menu open for a moment: only Left/Back open it.
-                    if (browsing || menuRecentlyAsked() || drawerFocused) drawerState.setValue(DrawerValue.Open)
-                    // Moving within the menu opens the section as a preview (not the item the
-                    // menu was entered on: that one is the current screen, e.g. a release page).
-                    if (browsing && lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
-                    lastMenuItem = destination
+                    // Not the drawer state: the TV NavigationDrawer opens itself as soon as anything
+                    // focuses its content, so "is it open" cannot tell whether the viewer asked for it.
+                    val previous = menuItemBefore
+                    menuItemBefore = destination
                     // Moving on to another item cancels a pending "go into the section".
                     if (pendingEnter != null && pendingEnter != destination) pendingEnter = null
+                    if (previous != null || menuRecentlyAsked()) {
+                        // The viewer is in the menu: Left from a screen, or moving between items.
+                        drawerState.setValue(DrawerValue.Open)
+                        // Moving within the menu opens the section as a preview (not the item the
+                        // menu was entered on: that one is the current screen, e.g. a release page).
+                        if (previous != null && previous != destination) previewTarget = destination
+                    } else {
+                        // Nobody asked for the menu: the focus fell into it because the screen redrew
+                        // and dropped its focused element (a section finishing loading, often right
+                        // after OK in the menu). Keeping the menu open was "it opens again by itself";
+                        // collapse it and hand the focus back to the screen once it has a target.
+                        drawerState.setValue(DrawerValue.Closed)
+                        if (Routes.section(currentRoute) == destination) pendingEnter = destination
+                    }
                 },
                 onItemClick = { destination ->
                     if (currentRoute == destination.route) {
