@@ -62,12 +62,15 @@ class PlayerViewModel @Inject constructor(
     private val tokenStore: TokenStore,
     private val watchNext: WatchNextPublisher,
     client: OkHttpClient,
+    @ru.feskolech.libriatv.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
     private val frameLoader = SeekFrameLoader(context, client.newBuilder().build())
     private val bufferingHint = BufferingHint()
     private var retryCount = 0
     private var sleepDeadline = 0L
     private var seekJob: Job? = null
+    /** Pending silent retry after a playback error; cancelled when another episode is prepared. */
+    private var retryJob: Job? = null
     private var seekHideJob: Job? = null
     private var ignoreBufferUntil = 0L
     private val releaseId: String = checkNotNull(savedState["id"])
@@ -131,7 +134,8 @@ class PlayerViewModel @Inject constructor(
                     val delayMs = RETRY_DELAYS_MS[retryCount++]
                     val position = player.currentPosition
                     update { it.copy(buffering = true) }
-                    viewModelScope.launch {
+                    retryJob?.cancel()
+                    retryJob = viewModelScope.launch {
                         delay(delayMs)
                         player.prepare()
                         player.seekTo(position)
@@ -208,6 +212,7 @@ class PlayerViewModel @Inject constructor(
             .filter { !it.second.isNullOrBlank() }
             .let { options -> options.firstOrNull { it.first == state.quality } ?: options.firstOrNull() }
             ?: run { update { it.copy(error = "No video stream") }; return }
+        retryJob?.cancel()
         update { it.copy(episode = episode, quality = quality, positionMs = 0, durationMs = 0, skip = null, nextCountdown = null, error = null) }
         autoSkipped.clear()
         bufferingHint.clear()
@@ -457,11 +462,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun pauseAndSave() { player.pause(); viewModelScope.launch { saveProgress() } }
+    /** Back from the player: the position is stored locally right away; the server and Watch Next follow in the background. */
     fun close(onSaved: () -> Unit) = viewModelScope.launch {
         setSleepTimer(SleepTimer.Off)
         saveProgress()
         (_state.value as? PlayerUiState.Content)?.value?.let { current ->
-            watchNext.update(current.release, current.episode, store.progress(current.episode.id))
+            appScope.launch { watchNext.update(current.release, current.episode, store.progress(current.episode.id)) }
         }
         onSaved()
     }
@@ -475,7 +481,8 @@ class PlayerViewModel @Inject constructor(
 
     private suspend fun saveProgress(current: PlayerContent, position: Long, duration: Long) {
         store.save(current.episode.id, position, duration, current.release.id)
-        if (!tokenStore.get().isNullOrBlank()) {
+        // The network part must neither delay leaving the player nor be cancelled with this screen.
+        if (!tokenStore.get().isNullOrBlank()) appScope.launch {
             repository.saveTimecode(current.episode.id, position / 1000.0,
                 duration > 0 && position >= duration * 0.9)
         }
@@ -492,7 +499,7 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         sleepDeadline = 0L
-        seekJob?.cancel(); seekHideJob?.cancel()
+        seekJob?.cancel(); seekHideJob?.cancel(); retryJob?.cancel()
         android.util.Log.i("EpisodePlayer", "released")
         nightAudio.release(); player.release(); preloadManager.release(); super.onCleared()
     }

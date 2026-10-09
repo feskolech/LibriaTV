@@ -1,6 +1,8 @@
 package ru.feskolech.libriatv.data.repo
 
 import javax.inject.Inject
+import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.async
 import ru.feskolech.libriatv.domain.Episode
 import ru.feskolech.libriatv.domain.Release
 
@@ -18,6 +20,7 @@ fun mergeProgress(local: PlaybackProgress?, server: ServerTimecode?): PlaybackPr
     )
 }
 
+@javax.inject.Singleton
 class ProgressRepository @Inject constructor(
     private val repository: ApiRepository,
     private val store: PlaybackStore,
@@ -40,20 +43,35 @@ class ProgressRepository @Inject constructor(
         }.toMap()
     }
 
-    suspend fun continueItems(): List<ContinueItem> {
+    /** episode id -> release id; episodes never move between releases, so this is cached for the process. */
+    private val releaseOfEpisode = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val requests = kotlinx.coroutines.sync.Semaphore(4)
+
+    /**
+     * Unfinished episodes, one per release. Lookups run in parallel (at most 4 requests at a time)
+     * instead of one after another, which made a long watch history hold up the home screen.
+     */
+    suspend fun continueItems(): List<ContinueItem> = kotlinx.coroutines.coroutineScope {
         val local = store.entries().associateBy { it.episodeId }
         val server = (serverTimecodes() as? ApiResult.Success)?.value.orEmpty().associateBy { it.episodeId }
-        val episodeIds = local.keys + server.keys
-        val releaseIds = episodeIds.mapNotNull { id ->
-            local[id]?.releaseId ?: (repository.episodeDetails(id) as? ApiResult.Success)?.value?.releaseId
-        }.distinct()
-        return releaseIds.mapNotNull { id ->
-            val release = (repository.release(id.toString()) as? ApiResult.Success)?.value ?: return@mapNotNull null
-            release.episodes.mapNotNull { episode ->
-                mergeProgress(local[episode.id]?.progress, server[episode.id])?.let { progress ->
-                    if (progress.positionMs > 0 && !progress.watched) ContinueItem(release, episode, progress) else null
-                }
-            }.maxByOrNull { it.episode.ordinal ?: 0.0 }
-        }
+        val episodeIds = (local.keys + server.keys).toList()
+        val releaseIds = episodeIds.map { id ->
+            async {
+                local[id]?.releaseId ?: releaseOfEpisode[id] ?: requests.withPermit {
+                    (repository.episodeDetails(id) as? ApiResult.Success)?.value?.releaseId
+                }?.also { releaseOfEpisode[id] = it }
+            }
+        }.mapNotNull { it.await() }.distinct()
+        releaseIds.map { id ->
+            async {
+                val release = requests.withPermit { (repository.release(id.toString()) as? ApiResult.Success)?.value }
+                    ?: return@async null
+                release.episodes.mapNotNull { episode ->
+                    mergeProgress(local[episode.id]?.progress, server[episode.id])?.let { progress ->
+                        if (progress.positionMs > 0 && !progress.watched) ContinueItem(release, episode, progress) else null
+                    }
+                }.maxByOrNull { it.episode.ordinal ?: 0.0 }
+            }
+        }.mapNotNull { it.await() }
     }
 }

@@ -80,7 +80,6 @@ class HomeViewModel @Inject constructor(
             val schedule = async { repository.currentSchedule() }
             // Optional row: a failure here must not break the whole home screen.
             val recommended = async { (repository.recommended() as? ApiResult.Success)?.value.orEmpty() }
-            val continueItems = async { progress.continueItems() }
             val videoPreviewEnabled = async { settings.homeVideoPreview() }
             val latestResult = latest.await()
             val scheduleResult = schedule.await()
@@ -95,12 +94,14 @@ class HomeViewModel @Inject constructor(
                     previous?.favorites.orEmpty(), favoritesRepository.ids.value, authorized,
                     recommended = recommended.await(),
                     videoPreviewEnabled = videoPreviewEnabled.await(),
-                    continueItems = continueItems.await(),
+                    continueItems = previous?.continueItems.orEmpty(),
                     newEpisodes = previous?.newEpisodes.orEmpty(),
                     showEpisodeDialog = previous?.showEpisodeDialog ?: false,
                     latestNextPage = if (latestResult.value.size < LATEST_FIRST_PAGE) null else 2,
                 )
                 android.util.Log.i("LibriaNet", "home shown after ${System.currentTimeMillis() - started} ms")
+                // "Continue watching" may need many lookups: it fills in after the screen is shown.
+                refreshContinue()
                 if (authorized) viewModelScope.launch { checkFavorites() }
                 lastRefresh = System.currentTimeMillis()
             } else {
@@ -109,6 +110,18 @@ class HomeViewModel @Inject constructor(
                 if (_state.value !is HomeUiState.Content) _state.value = HomeUiState.Error(error)
             }
             loading = false
+        }
+    }
+
+    private var continueJob: kotlinx.coroutines.Job? = null
+
+    /** Re-reads "Continue watching" only (cheap): used when coming back to Home from a player. */
+    fun refreshContinue() {
+        continueJob?.cancel()
+        continueJob = viewModelScope.launch {
+            val items = progress.continueItems()
+            val current = _state.value as? HomeUiState.Content ?: return@launch
+            if (current.continueItems != items) _state.value = current.copy(continueItems = items)
         }
     }
 

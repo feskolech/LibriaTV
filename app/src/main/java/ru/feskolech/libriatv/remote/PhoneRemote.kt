@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -47,6 +48,8 @@ class PhoneRemote @Inject constructor(
     private var pin: String? = null
     private var server: RemoteServer? = null
     private val gate = PinGate()
+    /** The phone page is static: read from assets once, not on every request. */
+    private val remotePage by lazy { context.assets.open("remote.html").bufferedReader(Charsets.UTF_8).use { it.readText() } }
 
     suspend fun foreground(value: Boolean) = mutex.withLock {
         foreground = value
@@ -134,14 +137,15 @@ class PhoneRemote @Inject constructor(
             val path = session.uri
             if (session.method == Method.GET && path == "/") {
                 val english = session.headers["accept-language"]?.trim()?.startsWith("en", true) == true
-                val html = context.assets.open("remote.html").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val html = remotePage
                     .replace("<html lang=\"ru\">", if (english) "<html lang=\"en\">" else "<html lang=\"ru\">")
                 return reply(Response.Status.OK, "text/html; charset=utf-8", html)
             }
             if (session.method == Method.GET && path == "/api/search") {
                 val query = parameters["q"]?.trim().orEmpty()
                 if (query.isEmpty() || query.length > 100) return reply(Response.Status.BAD_REQUEST, "application/json", "{}")
-                return when (val result = runBlocking { repository.search(query) }) {
+                return when (val result = runBlocking { withTimeoutOrNull(REQUEST_TIMEOUT_MS) { repository.search(query) } }) {
+                    null -> reply(Response.Status.INTERNAL_ERROR, "application/json", "{}")
                     is ApiResult.Success -> {
                         val data = JsonArray(result.value.take(30).map(::releaseJson))
                         reply(Response.Status.OK, "application/json; charset=utf-8", data.toString())
@@ -152,7 +156,8 @@ class PhoneRemote @Inject constructor(
             if (session.method == Method.GET && path == "/api/release") {
                 val id = parameters["id"]?.toIntOrNull()?.takeIf { it > 0 }
                     ?: return reply(Response.Status.BAD_REQUEST, "application/json", "{}")
-                return when (val result = runBlocking { repository.release(id.toString()) }) {
+                return when (val result = runBlocking { withTimeoutOrNull(REQUEST_TIMEOUT_MS) { repository.release(id.toString()) } }) {
+                    null -> reply(Response.Status.INTERNAL_ERROR, "application/json", "{}")
                     is ApiResult.Success -> reply(Response.Status.OK, "application/json; charset=utf-8", releaseJson(result.value).toString())
                     is ApiResult.Failure -> reply(Response.Status.INTERNAL_ERROR, "application/json", "{}")
                 }
@@ -184,3 +189,6 @@ class PhoneRemote @Inject constructor(
             }
     }
 }
+
+/** A slow catalog request must not hold one of the server's few worker threads for long. */
+private const val REQUEST_TIMEOUT_MS = 10_000L

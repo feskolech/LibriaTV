@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.data.repo
 
+import kotlinx.coroutines.sync.withLock
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -25,8 +26,15 @@ class NewEpisodesChannel @Inject constructor(@ApplicationContext private val con
     private val prefs = context.getSharedPreferences("tv_channel", Context.MODE_PRIVATE)
     private val helper by lazy { PreviewChannelHelper(context) }
 
-    fun publish(items: List<NewFavoriteEpisode>) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    private val lock = kotlinx.coroutines.sync.Mutex()
+
+    /** Content-provider IPC: runs on IO; serialized because the worker and Home may publish at once. */
+    suspend fun publish(items: List<NewFavoriteEpisode>) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return@withContext
+        lock.withLock { publishLocked(items) }
+    }
+
+    private fun publishLocked(items: List<NewFavoriteEpisode>) {
         runCatching {
             val channelId = channelId() ?: return
             context.contentResolver.delete(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), null, null)

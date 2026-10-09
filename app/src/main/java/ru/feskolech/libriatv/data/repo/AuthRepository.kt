@@ -87,6 +87,19 @@ class AuthRepository @Inject constructor(
         _state.value = AuthState.Guest
     }
 
+    /**
+     * Profile check for background work: same request, but a network failure does not flip the
+     * app-wide state to Error (the UI would show it). Returns the user id, null for a guest, or
+     * throws [java.io.IOException] when the answer is unknown.
+     */
+    suspend fun currentUserIdForBackground(): Int? {
+        (state.value as? AuthState.Authorized)?.let { return it.user.id }
+        return when (val result = request { api.profile().toDomain() ?: error("User id is missing") }) {
+            is ApiResult.Success -> { _state.value = AuthState.Authorized(result.value); result.value.id }
+            is ApiResult.Failure -> if (result.status == 401) null else throw java.io.IOException(result.message)
+        }
+    }
+
     suspend fun refreshProfile() {
         when (val result = request { api.profile().toDomain() ?: error("User id is missing") }) {
             is ApiResult.Success -> _state.value = AuthState.Authorized(result.value)

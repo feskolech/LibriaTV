@@ -75,6 +75,14 @@ class ReleaseViewModel @Inject constructor(
         }
     }
 
+    /** Back from the player: the watched marks and "Continue episode N" button must reflect it. */
+    fun refreshProgress() = viewModelScope.launch {
+        val content = _state.value as? ReleaseUiState.Content ?: return@launch
+        val progress = progressRepository.releaseProgress(content.release)
+        val current = _state.value as? ReleaseUiState.Content ?: return@launch
+        if (current.release.id == content.release.id) _state.value = current.copy(progress = progress)
+    }
+
     fun toggleFavorite(onLogin: () -> Unit) {
         val content = _state.value as? ReleaseUiState.Content ?: return
         if (!content.authorized) { onLogin(); return }

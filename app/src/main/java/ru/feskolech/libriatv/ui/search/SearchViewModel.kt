@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -43,7 +44,8 @@ class SearchViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            _query.map(String::trim).distinctUntilChanged().debounce(DEBOUNCE_MS).collect(::search)
+            // collectLatest: a newer query cancels the one still in flight instead of waiting for it.
+            _query.map(String::trim).distinctUntilChanged().debounce(DEBOUNCE_MS).collectLatest(::search)
         }
     }
 
@@ -55,11 +57,15 @@ class SearchViewModel @Inject constructor(
     /** Explicit search (IME action, voice, history item): no debounce and remembered in history. */
     fun submit(value: String = _query.value) {
         _query.value = value
-        viewModelScope.launch {
-            search(value.trim())
+        submitJob?.cancel()
+        submitJob = viewModelScope.launch {
+            // Same text already searched by the debounced flow and shown: just remember it.
+            val shown = (_results.value as? SearchResults.Content)?.query
+            if (shown != value.trim()) search(value.trim())
             history.add(value)
         }
     }
+    private var submitJob: kotlinx.coroutines.Job? = null
 
     /** Opening a result counts as a successful query worth remembering. */
     fun remember() { viewModelScope.launch { history.add(_query.value) } }

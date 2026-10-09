@@ -32,8 +32,8 @@ class NewEpisodesWorker(context: Context, params: WorkerParameters) : CoroutineW
 
     override suspend fun doWork(): Result {
         val deps = EntryPointAccessors.fromApplication(applicationContext, Deps::class.java)
-        deps.auth().refreshProfile()
-        val userId = (deps.auth().state.value as? AuthState.Authorized)?.user?.id
+        // Offline: try later, keeping the channel as it is (it used to be wiped on any network error).
+        val userId = try { deps.auth().currentUserIdForBackground() } catch (_: java.io.IOException) { return Result.retry() }
         if (userId == null) {
             deps.channel().publish(emptyList())
             return Result.success()

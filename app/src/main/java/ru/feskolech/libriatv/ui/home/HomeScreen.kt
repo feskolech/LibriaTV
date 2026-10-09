@@ -82,7 +82,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    LaunchedEffect(Unit) { viewModel.refresh(force = true) }
+    // Back on Home: refresh within the 5-minute throttle only, but always update "Continue watching".
+    LaunchedEffect(Unit) { viewModel.refresh(); viewModel.refreshContinue() }
     when (val content = state) {
         HomeUiState.Loading -> Box(Modifier.fillMaxSize().padding(48.dp)) {
             Text(stringResource(R.string.home_loading))
