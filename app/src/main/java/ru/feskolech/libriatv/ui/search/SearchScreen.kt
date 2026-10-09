@@ -28,6 +28,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -204,9 +206,15 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onSearch: () 
     var focused by remember { mutableStateOf(false) }
     // Read-only until OK is pressed: a read-only field starts no input session, so no keyboard.
     var editing by remember { mutableStateOf(false) }
+    // The text with its cursor. Text that arrives from outside (voice search, a recent query) puts the
+    // cursor at its end, and so does opening the field with OK: typing then continues the query
+    // instead of starting before it.
+    var field by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
+    val shown = if (field.text == value) field else TextFieldValue(value, TextRange(value.length))
+    LaunchedEffect(value) { if (field.text != value) field = TextFieldValue(value, TextRange(value.length)) }
     BasicTextField(
-        value = value,
-        onValueChange = onChange,
+        value = shown,
+        onValueChange = { changed -> field = changed; if (changed.text != value) onChange(changed.text) },
         readOnly = !editing,
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -218,7 +226,10 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onSearch: () 
             .onPreviewKeyEvent { event ->
                 val ok = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
                 if (ok && !editing) {
-                    if (event.type == KeyEventType.KeyUp) editing = true
+                    if (event.type == KeyEventType.KeyUp) {
+                        editing = true
+                        field = field.copy(selection = TextRange(field.text.length))
+                    }
                     true
                 } else false
             }

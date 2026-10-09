@@ -259,7 +259,7 @@ private fun DescriptionDialog(title: String, text: String, onDismiss: () -> Unit
     // Focus stays on Close; ▲/▼ scroll the text so long synopses are readable with a remote.
     val scroll = androidx.compose.foundation.rememberScrollState()
     val scope = rememberCoroutineScope()
-    AppDialog(onDismiss = onDismiss, title = title, width = 720.dp, actions = {
+    AppDialog(onDismiss = onDismiss, title = title, widthFraction = 0.75f, actions = {
         SingleDialogButton(stringResource(R.string.close), onDismiss, modifier = Modifier.onPreviewKeyEvent { e ->
             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (e.key) {

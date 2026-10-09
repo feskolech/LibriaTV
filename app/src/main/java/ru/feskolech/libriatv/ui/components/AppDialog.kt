@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.components
 
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -34,11 +35,16 @@ fun AppDialog(
     onDismiss: () -> Unit,
     title: String? = null,
     width: Dp = 520.dp,
+    /** Share of the screen width instead of [width], for dialogs that show long text. */
+    widthFraction: Float? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit = {},
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(Modifier.width(width), shape = RoundedCornerShape(20.dp)) {
+    // Without usePlatformDefaultWidth = false the system caps every dialog at its own narrow width
+    // (about 440 dp), whatever width is asked for.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(if (widthFraction != null) Modifier.fillMaxWidth(widthFraction) else Modifier.width(width),
+            shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 if (title != null) Text(title, style = MaterialTheme.typography.headlineSmall)
                 content()

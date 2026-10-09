@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.settings
 
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.onFocusChanged
@@ -120,7 +121,7 @@ private fun ChangelogDialog(load: suspend () -> List<ChangelogEntry>?, onDismiss
     }
     val focus = remember { FocusRequester() }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        androidx.tv.material3.Surface(Modifier.width(820.dp).height(560.dp), shape = RoundedCornerShape(20.dp)) {
+        androidx.tv.material3.Surface(Modifier.fillMaxWidth(0.88f).fillMaxHeight(0.85f), shape = RoundedCornerShape(20.dp)) {
             Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(stringResource(R.string.about_history), style = MaterialTheme.typography.headlineSmall)
                 val list = entries
