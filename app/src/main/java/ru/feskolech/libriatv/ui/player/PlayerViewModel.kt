@@ -1,7 +1,6 @@
 package ru.feskolech.libriatv.ui.player
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.os.SystemClock
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -28,35 +27,7 @@ import ru.feskolech.libriatv.data.repo.PlaybackStore
 import ru.feskolech.libriatv.data.repo.TokenStore
 import ru.feskolech.libriatv.data.repo.WatchNextPublisher
 import ru.feskolech.libriatv.domain.Episode
-import ru.feskolech.libriatv.domain.Release
 import ru.feskolech.libriatv.domain.Skip
-
-enum class PlayerPanel { Hidden, Controls, Episodes, Settings }
-enum class SleepTimer { Off, Minutes15, Minutes30, Minutes60, AfterEpisode }
-data class PlayerContent(
-    val release: Release, val episode: Episode, val quality: Int,
-    val positionMs: Long = 0, val durationMs: Long = 0, val playing: Boolean = false,
-    val panel: PlayerPanel = PlayerPanel.Hidden, val skip: Skip? = null,
-    val skipOpening: Boolean = false, val nextCountdown: Int? = null,
-    val autoSkipOpening: Boolean = false, val autoSkipEnding: Boolean = false, val error: String? = null,
-    val buffering: Boolean = true, val speed: Float = 1f,
-    /** Frame rate of the playing video, or null if the stream does not declare it. */
-    val frameRate: Float? = null, val frameRateMatch: Boolean = true, val nightMode: Boolean = false,
-    val autoNext: Boolean = true,
-    val sleepTimer: SleepTimer = SleepTimer.Off, val sleepWarning: Boolean = false,
-    val seekTargetMs: Long? = null, val seekFrame: Bitmap? = null,
-    val qualityHint: Int? = null,
-    /**
-     * The video should be playing (also while it buffers or retries), so the TV must not dim or sleep.
-     * Off when paused (by the viewer or the sleep timer) and after the last episode ends.
-     */
-    val keepAwake: Boolean = false,
-)
-sealed interface PlayerUiState {
-    data object Loading : PlayerUiState
-    data class Content(val value: PlayerContent) : PlayerUiState
-    data class Error(val message: String) : PlayerUiState
-}
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -89,6 +60,8 @@ class PlayerViewModel @Inject constructor(
     private var queuedItem: MediaItem? = null
     private val _state = MutableStateFlow<PlayerUiState>(PlayerUiState.Loading)
     val state: StateFlow<PlayerUiState> = _state
+    /** The loaded episode's state, or null while loading or on an error. */
+    private val content: PlayerContent? get() = (_state.value as? PlayerUiState.Content)?.value
     /** Auto-skip each segment (opening, ending) at most once per episode, so seeking back into it is respected. */
     private val autoSkipped = mutableSetOf<Skip>()
     private var lastSync = 0L
@@ -99,9 +72,9 @@ class PlayerViewModel @Inject constructor(
         preloadManager.addListener(object : PreloadManagerListener {
             override fun onCompleted(mediaItem: MediaItem) {
                 viewModelScope.launch {
-                    val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+                    val current = content ?: return@launch
                     if (queuedItem?.mediaId != mediaItem.mediaId ||
-                        nextEpisode(current)?.id != mediaItem.mediaId || player.hasNextMediaItem()) return@launch
+                        current.release.episodeAfter(current.episode.id)?.id != mediaItem.mediaId || player.hasNextMediaItem()) return@launch
                     preloadManager.getMediaSource(mediaItem)?.let { player.addMediaSource(it) }
                 }
             }
@@ -117,12 +90,12 @@ class PlayerViewModel @Inject constructor(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE,
                     keepAwake = shouldKeepAwake()) }
-                val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+                val current = content ?: return
                 val now = SystemClock.elapsedRealtime()
                 if (playbackState == Player.STATE_BUFFERING && player.playWhenReady && now >= ignoreBufferUntil)
                     bufferingHint.start(now)
                 else if (playbackState == Player.STATE_READY) {
-                    val lower = lowerQuality(current)
+                    val lower = lowerQuality(current.episode, current.quality)
                     if (bufferingHint.finish(now, current.quality, lower != null))
                         update { it.copy(qualityHint = lower) }
                 } else bufferingHint.interrupt()
@@ -133,7 +106,7 @@ class PlayerViewModel @Inject constructor(
                 update { it.copy(frameRate = rate) }
             }
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
-                val night = (_state.value as? PlayerUiState.Content)?.value?.nightMode ?: false
+                val night = content?.nightMode ?: false
                 nightAudio.apply(audioSessionId, night)
             }
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -155,7 +128,7 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+                val current = content ?: return
                 val next = current.release.episodes.firstOrNull { it.id == mediaItem?.mediaId } ?: return
                 if (next.id == current.episode.id) return
                 if (!progressSavedForTransition) {
@@ -211,7 +184,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun update(block: (PlayerContent) -> PlayerContent) {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val current = content ?: return
         _state.value = PlayerUiState.Content(block(current))
     }
 
@@ -219,7 +192,7 @@ class PlayerViewModel @Inject constructor(
     private fun shouldKeepAwake() = player.playWhenReady && player.playbackState != Player.STATE_ENDED
 
     private suspend fun prepare(episode: Episode, resume: Boolean) {
-        val state = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val state = content ?: return
         val (quality, url) = streamFor(episode, state.quality)
             ?: run { update { it.copy(error = "No video stream") }; return }
         retryJob?.cancel()
@@ -241,7 +214,7 @@ class PlayerViewModel @Inject constructor(
 
     /** [keepPanel]: switching from the prev/next buttons keeps the controls on screen. */
     fun playEpisode(id: String, keepPanel: Boolean = false) {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val current = content ?: return
         if (id != current.episode.id && current.sleepTimer == SleepTimer.AfterEpisode) setSleepTimer(SleepTimer.Off)
         if (player.hasNextMediaItem() && player.getMediaItemAt(player.currentMediaItemIndex + 1).mediaId == id) {
             val position = player.currentPosition.coerceAtLeast(0)
@@ -269,7 +242,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun changeQuality(quality: Int) = viewModelScope.launch {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val current = content ?: return@launch
         if (current.quality == quality) return@launch
         val position = player.currentPosition
         retryCount = 0
@@ -282,13 +255,13 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleAutoSkipOpening() = viewModelScope.launch {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val current = content ?: return@launch
         store.setAutoSkipOpening(!current.autoSkipOpening)
         update { it.copy(autoSkipOpening = !current.autoSkipOpening) }
     }
 
     fun toggleAutoSkipEnding() = viewModelScope.launch {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val current = content ?: return@launch
         store.setAutoSkipEnding(!current.autoSkipEnding)
         update { it.copy(autoSkipEnding = !current.autoSkipEnding) }
     }
@@ -296,7 +269,7 @@ class PlayerViewModel @Inject constructor(
     fun togglePause() { if (player.isPlaying) player.pause() else player.play() }
 
     fun cycleSpeed() = viewModelScope.launch {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val current = content ?: return@launch
         val next = SPEEDS[(SPEEDS.indexOf(current.speed) + 1) % SPEEDS.size]
         player.setPlaybackSpeed(next)
         store.setSpeed(next)
@@ -310,7 +283,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun toggleNightMode() = viewModelScope.launch {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return@launch
+        val current = content ?: return@launch
         val night = !current.nightMode
         store.setNightMode(night)
         nightAudio.apply(player.audioSessionId, night)
@@ -318,20 +291,19 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun previousEpisode(keepPanel: Boolean = false) {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
-        val episodes = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
-        episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } - 1)?.let { playEpisode(it.id, keepPanel) }
+        val current = content ?: return
+        current.release.episodeBefore(current.episode.id)?.let { playEpisode(it.id, keepPanel) }
     }
 
     /** Number keys on remotes that have them: jump to episode N. */
     fun playEpisodeNumber(number: Int) {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
-        current.release.episodes.firstOrNull { it.ordinal?.toInt() == number }?.let { playEpisode(it.id) }
+        val current = content ?: return
+        current.release.episodeNumber(number)?.let { playEpisode(it.id) }
     }
     /** [keepPanel]: seeking from the progress bar keeps the controls open instead of hiding them. */
     fun seek(direction: Int, repeat: Int = 0, keepPanel: Boolean = false) {
-        val seconds = when { repeat >= 8 -> 60; repeat >= 3 -> 30; else -> 10 }
-        val base = (_state.value as? PlayerUiState.Content)?.value?.seekTargetMs ?: player.currentPosition
+        val seconds = seekStepSeconds(repeat)
+        val base = content?.seekTargetMs ?: player.currentPosition
         val target = (base + direction * seconds * 1000L)
             .coerceIn(0, player.duration.takeIf { it > 0 } ?: Long.MAX_VALUE)
         bufferingHint.interrupt()
@@ -342,7 +314,7 @@ class PlayerViewModel @Inject constructor(
         seekJob?.cancel()
         seekHideJob?.cancel()
         if (repeat > 0) {
-            val episode = (_state.value as? PlayerUiState.Content)?.value?.episode ?: return
+            val episode = content?.episode ?: return
             seekJob = viewModelScope.launch {
                 delay(250)
                 val url = episode.hls480 ?: return@launch
@@ -358,12 +330,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun setSleepTimer(timer: SleepTimer) {
-        sleepDeadline = when (timer) {
-            SleepTimer.Minutes15 -> SystemClock.elapsedRealtime() + 15 * 60_000L
-            SleepTimer.Minutes30 -> SystemClock.elapsedRealtime() + 30 * 60_000L
-            SleepTimer.Minutes60 -> SystemClock.elapsedRealtime() + 60 * 60_000L
-            else -> 0L
-        }
+        sleepDeadline = sleepDeadline(timer, SystemClock.elapsedRealtime())
         update { it.copy(sleepTimer = timer, sleepWarning = false) }
         if (timer == SleepTimer.AfterEpisode) {
             if (player.hasNextMediaItem()) player.removeMediaItems(player.currentMediaItemIndex + 1, player.mediaItemCount)
@@ -371,7 +338,7 @@ class PlayerViewModel @Inject constructor(
             preloadManager.reset()
         }
         player.setPauseAtEndOfMediaItems(timer == SleepTimer.AfterEpisode ||
-            !((_state.value as? PlayerUiState.Content)?.value?.autoNext ?: true))
+            !(content?.autoNext ?: true))
     }
 
     fun cancelSleepWarning() = setSleepTimer(SleepTimer.Off)
@@ -389,19 +356,14 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun acceptQualityHint() {
-        val quality = (_state.value as? PlayerUiState.Content)?.value?.qualityHint ?: return
+        val quality = content?.qualityHint ?: return
         dismissQualityHint()
         changeQuality(quality)
     }
 
-    private fun lowerQuality(current: PlayerContent): Int? = when (current.quality) {
-        1080 -> if (!current.episode.hls720.isNullOrBlank()) 720 else null
-        720 -> if (!current.episode.hls480.isNullOrBlank()) 480 else null
-        else -> null
-    }
     fun showPanel(panel: PlayerPanel) { update { it.copy(panel = panel) } }
     fun hidePanel(): Boolean {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return false
+        val current = content ?: return false
         if (current.panel == PlayerPanel.Hidden) return false
         // Back from the settings menu or the episode list returns to the playback controls, not to
         // the bare video: both are reached from the controls' buttons.
@@ -409,13 +371,13 @@ class PlayerViewModel @Inject constructor(
         return true
     }
     fun skip() {
-        val skip = (_state.value as? PlayerUiState.Content)?.value?.skip ?: return
+        val skip = content?.skip ?: return
         player.seekTo(((skip.stop ?: return) * 1000).toLong())
         update { it.copy(skip = null) }
     }
 
     private fun tick() {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val current = content ?: return
         if (sleepDeadline > 0) {
             val left = sleepDeadline - SystemClock.elapsedRealtime()
             if (left <= 0) { triggerSleep(); return }
@@ -423,26 +385,23 @@ class PlayerViewModel @Inject constructor(
         }
         val position = player.currentPosition.coerceAtLeast(0)
         val duration = player.duration.coerceAtLeast(0)
-        val seconds = position / 1000.0
-        val opening = current.episode.opening?.takeIf { it.start != null && it.stop != null && seconds >= it.start && seconds < it.stop }
-        val ending = current.episode.ending?.takeIf { it.start != null && it.stop != null && seconds >= it.start && seconds < it.stop }
-        val skip = opening ?: ending
-        val autoSkip = if (opening != null) current.autoSkipOpening else current.autoSkipEnding
+        val active = activeSkip(current.episode, position)
+        val skip = active?.segment
+        val autoSkip = if (active?.isOpening == true) current.autoSkipOpening else current.autoSkipEnding
         if (skip != null && autoSkip && autoSkipped.add(skip)) {
             player.seekTo((skip.stop!! * 1000).toLong())
         }
-        val remaining = if (duration > 0) (duration - position) / 1000 else Long.MAX_VALUE
+        val remaining = remainingSeconds(position, duration)
         if (current.sleepTimer == SleepTimer.AfterEpisode && remaining in 1..30 && !current.sleepWarning)
             update { it.copy(sleepWarning = true) }
-        val next = nextEpisode(current)
+        val next = current.release.episodeAfter(current.episode.id)
         if (current.sleepTimer != SleepTimer.AfterEpisode && remaining in 1..60 && next != null && queuedItem == null &&
             player.currentMediaItemIndex == player.mediaItemCount - 1 &&
             player.currentMediaItem?.mediaId == current.episode.id) {
             streamFor(next, current.quality)?.let { (_, url) ->
                 val item = mediaItem(next, url)
                 queuedItem = item
-                val index = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
-                    .indexOfFirst { it.id == next.id }
+                val index = current.release.orderedEpisodes().indexOfFirst { it.id == next.id }
                 preloadManager.setCurrentPlayingIndex(index - 1)
                 preloadManager.add(item, index)
                 preloadManager.invalidate()
@@ -451,9 +410,9 @@ class PlayerViewModel @Inject constructor(
         if (current.sleepTimer == SleepTimer.AfterEpisode && duration > 0 && remaining <= 0) {
             triggerSleep(); return
         }
-        val countdown = if (current.autoNext && current.sleepTimer != SleepTimer.AfterEpisode && remaining in 1..8 && next != null) remaining.toInt() else null
+        val countdown = nextCountdown(current.autoNext, current.sleepTimer, remaining, hasNext = next != null)
         update { it.copy(positionMs = position, durationMs = duration, skip = if (autoSkip) null else skip,
-            skipOpening = opening != null, nextCountdown = countdown) }
+            skipOpening = active?.isOpening == true, nextCountdown = countdown) }
         if (current.autoNext && current.sleepTimer != SleepTimer.AfterEpisode && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {
             lastSync = position
@@ -461,14 +420,9 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private fun nextEpisode(current: PlayerContent): Episode? {
-        val episodes = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
-        return episodes.getOrNull(episodes.indexOfFirst { it.id == current.episode.id } + 1)
-    }
-
     fun nextEpisode(keepPanel: Boolean = false) {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
-        nextEpisode(current)?.let { playEpisode(it.id, keepPanel) }
+        val current = content ?: return
+        current.release.episodeAfter(current.episode.id)?.let { playEpisode(it.id, keepPanel) }
     }
 
     fun pauseAndSave() { player.pause(); viewModelScope.launch { saveProgress() } }
@@ -476,14 +430,14 @@ class PlayerViewModel @Inject constructor(
     fun close(onSaved: () -> Unit) = viewModelScope.launch {
         setSleepTimer(SleepTimer.Off)
         saveProgress()
-        (_state.value as? PlayerUiState.Content)?.value?.let { current ->
+        content?.let { current ->
             appScope.launch { watchNext.update(current.release, current.episode, store.progress(current.episode.id)) }
         }
         onSaved()
     }
 
     private suspend fun saveProgress() {
-        val current = (_state.value as? PlayerUiState.Content)?.value ?: return
+        val current = content ?: return
         val position = player.currentPosition.coerceAtLeast(0)
         val duration = player.duration.coerceAtLeast(0)
         saveProgress(current, position, duration)
@@ -493,16 +447,9 @@ class PlayerViewModel @Inject constructor(
         store.save(current.episode.id, position, duration, current.release.id)
         // The network part must neither delay leaving the player nor be cancelled with this screen.
         if (!tokenStore.get().isNullOrBlank()) appScope.launch {
-            repository.saveTimecode(current.episode.id, position / 1000.0,
-                duration > 0 && position >= duration * 0.9)
+            repository.saveTimecode(current.episode.id, position / 1000.0, isWatched(position, duration))
         }
     }
-
-    private fun streamFor(episode: Episode, preferredQuality: Int): Pair<Int, String>? =
-        listOf(1080 to episode.hls1080, 720 to episode.hls720, 480 to episode.hls480)
-            .filter { !it.second.isNullOrBlank() }
-            .let { options -> options.firstOrNull { it.first == preferredQuality } ?: options.firstOrNull() }
-            ?.let { it.first to it.second!! }
 
     private fun mediaItem(episode: Episode, url: String): MediaItem = MediaItem.Builder()
         .setMediaId(episode.id).setUri(url).build()

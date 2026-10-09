@@ -298,7 +298,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             ControlButton(Icons.Filled.Settings, R.string.player_settings, { viewModel.showPanel(PlayerPanel.Settings) })
                         }
                     } else {
-                        val ordered = current.release.episodes.sortedBy { it.ordinal ?: 0.0 }
+                        val ordered = current.release.orderedEpisodes()
                         // Start scrolled to the playing episode so it is composed and can take focus.
                         val episodesState = androidx.compose.foundation.lazy.rememberLazyListState(
                             initialFirstVisibleItemIndex = (ordered.indexOfFirst { it.id == current.episode.id } - 2).coerceAtLeast(0),
