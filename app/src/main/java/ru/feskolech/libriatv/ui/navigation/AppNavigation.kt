@@ -63,6 +63,9 @@ import ru.feskolech.libriatv.ui.settings.UpdateUiState
 import ru.feskolech.libriatv.ui.settings.UpdateViewModel
 import ru.feskolech.libriatv.ui.torrents.TorrentsScreen
 
+/** How long OK on a menu item keeps waiting for a loading section to have something to focus. */
+private const val ENTER_SECTION_TIMEOUT_MS = 30_000L
+
 /** The side menu, the screen graph and the app-wide dialogs (update, crash report, exit). */
 @Composable
 fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
@@ -131,18 +134,24 @@ fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
         DrawerBrowsing.active = drawerState.currentValue == DrawerValue.Open
         if (drawerState.currentValue == DrawerValue.Closed) { lastMenuItem = null; previewTarget = null }
     }
-    var enterAfterOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(currentRoute, enterAfterOpen) {
-        if (!enterAfterOpen) return@LaunchedEffect
-        // Wait out the cross-fade (the old screen must be gone), then give the new one up to ~1 s of
-        // loading to have something to focus.
+    // OK on a menu item means "go into this section". A section that is still loading (the profile or
+    // Home on a cold start over a slow link) has nothing to focus yet, so the request waits for it
+    // instead of giving up after a second and leaving the menu open over a loaded screen. It is
+    // dropped as soon as the focus leaves the menu some other way or the viewer moves on in it.
+    var pendingEnter by remember { mutableStateOf<Destination?>(null) }
+    LaunchedEffect(currentRoute, pendingEnter) {
+        val target = pendingEnter ?: return@LaunchedEffect
+        if (currentRoute != target.route) return@LaunchedEffect
+        // Wait out the cross-fade: the old screen must be gone, or the focus would land on it.
         delay(200)
-        repeat(20) {
+        val giveUpAt = SystemClock.uptimeMillis() + ENTER_SECTION_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < giveUpAt) {
             withFrameNanos { }
-            if (focusManager.moveFocus(FocusDirection.Right)) { enterAfterOpen = false; return@LaunchedEffect }
+            if (!drawerFocused) break
+            if (focusManager.moveFocus(FocusDirection.Right)) break
             delay(50)
         }
-        enterAfterOpen = false
+        pendingEnter = null
     }
     LaunchedEffect(previewTarget) {
         val target = previewTarget ?: return@LaunchedEffect
@@ -180,17 +189,20 @@ fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
                     // menu was entered on: that one is the current screen, e.g. a release page).
                     if (browsing && lastMenuItem != null && lastMenuItem != destination) previewTarget = destination
                     lastMenuItem = destination
+                    // Moving on to another item cancels a pending "go into the section".
+                    if (pendingEnter != null && pendingEnter != destination) pendingEnter = null
                 },
-                // The section already opened while the item was focused; OK just steps into it.
                 onItemClick = { destination ->
                     if (currentRoute == destination.route) {
-                        focusManager.moveFocus(FocusDirection.Right)
+                        // The section already opened while the item was focused: step into it now, or
+                        // as soon as it has something to focus if it is still loading.
+                        if (!focusManager.moveFocus(FocusDirection.Right)) pendingEnter = destination
                     } else {
                         // Scrolled quickly: the section is not open yet. Stepping right now would land in
                         // the old screen, which then disappears and drops the focus back into the menu.
                         previewTarget = null
                         openSection(destination)
-                        enterAfterOpen = true
+                        pendingEnter = destination
                     }
                 },
             )
