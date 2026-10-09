@@ -63,7 +63,8 @@ import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.window.Dialog
+import ru.feskolech.libriatv.ui.components.AppDialog
+import ru.feskolech.libriatv.ui.components.SingleDialogButton
 import androidx.tv.material3.Surface
 import androidx.tv.material3.MaterialTheme
 import ru.feskolech.libriatv.data.repo.NewFavoriteEpisode
@@ -150,7 +151,8 @@ private fun HomeContent(
         Column(Modifier.fillMaxSize()) {
             if (content.newEpisodes.isNotEmpty()) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 48.dp, vertical = 8.dp)
-                    .background(Color(0xFF402020), RoundedCornerShape(8.dp)).padding(12.dp)) {
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 20.dp, vertical = 14.dp)) {
                     Text(stringResource(R.string.favorite_new_episodes), color = Color.White, fontWeight = FontWeight.Bold)
                     content.newEpisodes.forEach { Text(newEpisodeText(it), color = Color.White) }
                 }
@@ -204,19 +206,10 @@ private fun HomeContent(
         }
     }
     if (content.showEpisodeDialog) {
-        val closeFocus = remember { FocusRequester() }
-        Dialog(onDismissRequest = dismissEpisodeDialog) {
-            Surface {
-                Column(Modifier.width(560.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Text(stringResource(R.string.favorite_new_episodes), style = MaterialTheme.typography.headlineSmall)
-                    content.newEpisodes.forEach { Text(newEpisodeText(it)) }
-                    Button(onClick = dismissEpisodeDialog, modifier = Modifier.focusRequester(closeFocus)) {
-                        Text(stringResource(R.string.close))
-                    }
-                }
-            }
+        AppDialog(onDismiss = dismissEpisodeDialog, title = stringResource(R.string.favorite_new_episodes), width = 560.dp,
+            actions = { SingleDialogButton(stringResource(R.string.close), dismissEpisodeDialog) }) {
+            content.newEpisodes.forEach { Text(newEpisodeText(it)) }
         }
-        LaunchedEffect(Unit) { withFrameNanos { }; closeFocus.requestFocus() }
     }
 }
 

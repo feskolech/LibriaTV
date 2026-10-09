@@ -7,11 +7,9 @@
     <string name="schedule">Расписание</string>
     <string name="profile">Профиль</string>
     <string name="settings">Настройки</string>
-    <string name="coming_soon">Раздел появится в следующих обновлениях.</string>
     <string name="exit_question">Выйти из LibriaTV?</string>
     <string name="exit">Выйти</string>
     <string name="cancel">Отмена</string>
-    <string name="open_menu">Открыть меню</string>
     <string name="auth_eyebrow">АККАУНТ ANILIBERTY</string>
     <string name="auth_title">Вход в LibriaTV</string>
     <string name="auth_code_heading">Войти с помощью кода</string>
@@ -36,6 +34,8 @@
     <string name="auth_password_note">Для входа нужен аккаунт AniLiberty (бывш. AniLibria).</string>
     <string name="auth_back_to_code">Вернуться к коду</string>
     <string name="auth_logout">Выйти из аккаунта</string>
+    <string name="logout_question">Выйти из аккаунта?</string>
+    <string name="logout_confirm">Выйти</string>
     <string name="auth_loading_profile">Загружаем профиль…</string>
     <string name="retry">Повторить</string>
     <string name="home_loading">Загружаем релизы…</string>

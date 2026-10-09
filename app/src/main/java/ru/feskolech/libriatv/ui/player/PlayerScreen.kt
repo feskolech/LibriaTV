@@ -272,9 +272,12 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             }
                         } else Text(error, color = Color.White)
                     }
+                    // Controls and the episode strip share one fixed-height slot, so switching between them
+                    // never resizes the HUD (icon buttons and text buttons differ in height).
+                    Box(Modifier.fillMaxWidth().height(HUD_ROW_HEIGHT), contentAlignment = Alignment.CenterStart) {
                     if (current.panel == PlayerPanel.Controls) {
                         // Playback only; everything that is a setting lives behind the gear.
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, { viewModel.previousEpisode(keepPanel = true) })
                             ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
                             ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -302,6 +305,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                                 }
                             }
                         }
+                    }
                     }
                     current.nextCountdown?.let { Text(stringResource(R.string.next_in, it), color = Color.White) }
                 }
@@ -352,3 +356,6 @@ private fun SeekBar(positionMs: Long, durationMs: Long, selectable: Boolean, onS
         }
     }
 }
+
+/** Height of the controls / episodes slot: a focused (scaled-up) icon button fits without clipping. */
+private val HUD_ROW_HEIGHT = 60.dp

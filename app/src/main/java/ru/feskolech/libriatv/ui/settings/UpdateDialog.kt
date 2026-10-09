@@ -1,22 +1,16 @@
 package ru.feskolech.libriatv.ui.settings
 
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Row
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,11 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
+import ru.feskolech.libriatv.ui.components.AppDialog
+import ru.feskolech.libriatv.ui.components.DialogButton
+import ru.feskolech.libriatv.ui.components.SingleDialogButton
 import androidx.core.content.FileProvider
-import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.data.repo.verifyDownloadedApk
@@ -43,73 +37,57 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
     val context = LocalContext.current
     var permissionNeeded by remember(state) { mutableStateOf(false) }
     var invalidApk by remember(state) { mutableStateOf(false) }
-    Dialog(onDismissRequest = dismiss) {
-        // Same look as the exit dialog: rounded card, fixed width, actions in one row of equal buttons.
-        Surface(Modifier.width(520.dp), shape = RoundedCornerShape(20.dp)) {
-            Column(Modifier.padding(28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                when (state) {
-                    is UpdateUiState.Available -> {
-                        Text(stringResource(R.string.update_available, state.release.version), style = MaterialTheme.typography.headlineSmall)
-                        if (state.release.notes.isNotBlank()) Text(state.release.notes, maxLines = 8)
-                        ActionRow {
-                            ActionButton(stringResource(R.string.update_now), download)
-                            ActionButton(stringResource(R.string.update_later), dismiss)
-                        }
-                    }
-                    is UpdateUiState.Downloading -> {
-                        Text(stringResource(R.string.update_downloading, state.percent), style = MaterialTheme.typography.headlineSmall)
-                        Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0x33FFFFFF))) {
-                            Box(Modifier.fillMaxWidth(state.percent / 100f).height(8.dp).clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primary))
-                        }
-                    }
-                    is UpdateUiState.Ready -> {
-                        Text(stringResource(R.string.update_ready), style = MaterialTheme.typography.headlineSmall)
-                        if (permissionNeeded) Text(stringResource(R.string.update_permission_hint))
-                        if (invalidApk) Text(stringResource(R.string.update_invalid_apk))
-                        ActionRow {
-                        ActionButton(stringResource(R.string.update_install), onClick = {
-                            if (!verifyDownloadedApk(context, state.file)) {
-                                state.file.delete()
-                                invalidApk = true
-                            } else if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
-                                permissionNeeded = true
-                                context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                    Uri.parse("package:${context.packageName}")))
-                            } else {
-                                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", state.file)
-                                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, "application/vnd.android.package-archive")
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                })
-                            }
-                        })
-                        ActionButton(stringResource(R.string.update_later), dismiss)
-                        }
-                    }
-                    UpdateUiState.Failed -> {
-                        Text(stringResource(R.string.settings_download_failed))
-                        ActionRow { ActionButton(stringResource(R.string.close), dismiss) }
-                    }
-                    UpdateUiState.InvalidApk -> {
-                        Text(stringResource(R.string.update_invalid_apk))
-                        ActionRow { ActionButton(stringResource(R.string.close), dismiss) }
-                    }
-                    else -> Unit
-                }
-            }
+    val install = {
+        val file = (state as UpdateUiState.Ready).file
+        if (!verifyDownloadedApk(context, file)) {
+            file.delete()
+            invalidApk = true
+        } else if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
+            permissionNeeded = true
+            context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
+        } else {
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+            context.startActivity(Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+            })
         }
     }
-}
-
-@Composable
-private fun ActionRow(content: @Composable RowScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), content = content)
-}
-
-@Composable
-private fun RowScope.ActionButton(text: String, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.weight(1f)) {
-        Text(text, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 1)
+    val title = when (state) {
+        is UpdateUiState.Available -> stringResource(R.string.update_available, state.release.version)
+        is UpdateUiState.Downloading -> stringResource(R.string.update_downloading, state.percent)
+        is UpdateUiState.Ready -> stringResource(R.string.update_ready)
+        else -> null
+    }
+    val later = stringResource(R.string.update_later)
+    val close = stringResource(R.string.close)
+    val actions: (@Composable RowScope.() -> Unit)? = when (state) {
+        is UpdateUiState.Available -> ({
+            DialogButton(stringResource(R.string.update_now), download, initialFocus = true)
+            DialogButton(later, dismiss)
+        })
+        is UpdateUiState.Ready -> ({
+            DialogButton(stringResource(R.string.update_install), install, initialFocus = true)
+            DialogButton(later, dismiss)
+        })
+        UpdateUiState.Failed, UpdateUiState.InvalidApk -> ({ SingleDialogButton(close, dismiss) })
+        else -> null
+    }
+    AppDialog(onDismiss = dismiss, title = title, actions = actions) {
+        when (state) {
+            is UpdateUiState.Available -> if (state.release.notes.isNotBlank()) Text(state.release.notes, maxLines = 8)
+            is UpdateUiState.Downloading ->
+                Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0x33FFFFFF))) {
+                    Box(Modifier.fillMaxWidth(state.percent / 100f).height(8.dp).clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.primary))
+                }
+            is UpdateUiState.Ready -> {
+                if (permissionNeeded) Text(stringResource(R.string.update_permission_hint))
+                if (invalidApk) Text(stringResource(R.string.update_invalid_apk))
+            }
+            UpdateUiState.Failed -> Text(stringResource(R.string.settings_download_failed))
+            UpdateUiState.InvalidApk -> Text(stringResource(R.string.update_invalid_apk))
+            else -> Unit
+        }
     }
 }

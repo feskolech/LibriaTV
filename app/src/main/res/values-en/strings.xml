@@ -7,11 +7,9 @@
     <string name="schedule">Schedule</string>
     <string name="profile">Profile</string>
     <string name="settings">Settings</string>
-    <string name="coming_soon">This section is coming in a future update.</string>
     <string name="exit_question">Exit LibriaTV?</string>
     <string name="exit">Exit</string>
     <string name="cancel">Cancel</string>
-    <string name="open_menu">Open menu</string>
     <string name="auth_eyebrow">ANILIBERTY ACCOUNT</string>
     <string name="auth_title">Sign in to LibriaTV</string>
     <string name="auth_code_heading">Sign in with a code</string>
@@ -36,6 +34,8 @@
     <string name="auth_password_note">An AniLiberty (formerly AniLibria) account is required.</string>
     <string name="auth_back_to_code">Back to code</string>
     <string name="auth_logout">Sign out</string>
+    <string name="logout_question">Sign out of your account?</string>
+    <string name="logout_confirm">Sign out</string>
     <string name="auth_loading_profile">Loading profile…</string>
     <string name="retry">Retry</string>
     <string name="home_loading">Loading releases…</string>

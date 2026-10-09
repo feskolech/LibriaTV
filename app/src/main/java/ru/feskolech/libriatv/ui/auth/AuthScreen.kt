@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv.ui.auth
 
+import ru.feskolech.libriatv.ui.components.DialogButton
+import ru.feskolech.libriatv.ui.components.AppDialog
 import androidx.compose.runtime.withFrameNanos
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.draw.clip
@@ -172,6 +174,7 @@ private fun AuthField(value: String, change: (String) -> Unit, label: String, mo
 @Composable
 private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> Unit, logout: () -> Unit) {
     val focus = remember { FocusRequester() }
+    var confirmLogout by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { focus.requestFocus() } }
     // The screen title stays top-left; the account itself sits in the middle of the screen.
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
@@ -181,6 +184,14 @@ private fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> U
             if (avatarUrl != null) AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
         }
         Text(name, style = MaterialTheme.typography.headlineMedium)
-        Button(onClick = logout, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.auth_logout)) }
+        Button(onClick = { confirmLogout = true }, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.auth_logout)) }
+    }
+    if (confirmLogout) {
+        // Signing out is easy to hit by accident with a remote, so ask first; Cancel is focused.
+        AppDialog(onDismiss = { confirmLogout = false }, title = stringResource(R.string.logout_question), width = 480.dp,
+            actions = {
+                DialogButton(stringResource(R.string.logout_confirm), onClick = { confirmLogout = false; logout() })
+                DialogButton(stringResource(R.string.cancel), onClick = { confirmLogout = false }, initialFocus = true)
+            })
     }
 }
