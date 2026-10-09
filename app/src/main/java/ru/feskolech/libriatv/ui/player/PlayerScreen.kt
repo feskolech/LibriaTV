@@ -317,8 +317,6 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
     }
 }
 
-private fun formatSpeed(speed: Float): String =
-    if (speed % 1f == 0f) "${speed.toInt()}×" else "${"%.2f".format(java.util.Locale.US, speed).trimEnd('0')}×"
 
 private fun formatTime(ms: Long): String {
     val seconds = ms / 1000

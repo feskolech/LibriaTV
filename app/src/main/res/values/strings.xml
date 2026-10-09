@@ -25,7 +25,6 @@
     <string name="auth_qr_description">QR-код страницы подключения устройства</string>
     <string name="auth_scan">Сканируйте QR</string>
     <string name="auth_url">aniliberty.top/app/auth/otp/linkDevice</string>
-    <string name="auth_url_short">aniliberty.top\n/app/auth/otp/linkDevice</string>
     <string name="auth_site_hint">На сайте войдите в аккаунт и введите код с экрана ТВ.</string>
     <string name="auth_password_button">Войти по логину и паролю</string>
     <string name="auth_password_heading">Вход по паролю</string>
@@ -48,13 +47,10 @@
     <string name="episode_number">Серия %1$d</string>
     <string name="hours_ago">%1$d ч назад</string>
     <string name="less_than_hour_ago">&lt;1 ч назад</string>
-    <string name="release_details">Карточка релиза</string>
-    <string name="back">Назад</string>
     <string name="watch">Смотреть</string>
     <string name="continue_episode">Продолжить с %1$d серии</string>
     <string name="continue_watching">Продолжить просмотр</string>
     <string name="add_favorite">В избранное</string>
-    <string name="remove_favorite">Убрать из избранного</string>
     <string name="in_favorites">В избранном ✓</string>
     <string name="favorites_login_hint">Войдите, чтобы видеть избранное.</string>
     <string name="favorites_empty">В избранном пока нет релизов.</string>
@@ -121,7 +117,6 @@
     <string name="filter_any">Любой</string>
     <string name="recommended">Рекомендуем</string>
     <string name="random_release">Мне повезёт</string>
-    <string name="speed">Скорость %1$s</string>
     <string name="night_mode">Ночной режим звука</string>
     <string name="settings_playback">Воспроизведение</string>
     <string name="settings_quality">Качество по умолчанию</string>
@@ -138,9 +133,6 @@
     <string name="settings_about">О приложении</string>
     <string name="settings_check_updates">Проверить обновления</string>
     <string name="settings_checking">Проверяем обновления…</string>
-    <string name="settings_current">Установлена актуальная версия</string>
-    <string name="settings_no_release">Публичных релизов пока нет</string>
-    <string name="settings_unavailable">Не удалось проверить обновления</string>
     <string name="settings_download_failed">Не удалось скачать обновление</string>
     <string name="settings_version">Версия %1$s</string>
     <string name="settings_github">Страница проекта на GitHub</string>

@@ -85,7 +85,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
         }
         is ReleaseUiState.Content -> {
             val release = current.release
-            val ordered = release.episodes.sortedBy { it.ordinal ?: 0.0 }
+            val ordered = remember(release) { release.episodes.sortedBy { it.ordinal ?: 0.0 } }
             val resume = ordered.firstOrNull { current.progress[it.id]?.let { progress -> progress.positionMs > 0 && !progress.watched } == true }
             val first = resume ?: ordered.firstOrNull()
             val listState = rememberLazyListState()
@@ -99,7 +99,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             // moving between the header buttons. Here the page only scrolls when the focused element is
             // not fully visible; the poster rows inside keep the usual TV behaviour.
             val pivotSpec = LocalBringIntoViewSpec.current
-            val stillSpec = remember(pivotSpec) { StillBringIntoViewSpec(pivotSpec) }
+            val stillSpec = StillBringIntoViewSpec
             CompositionLocalProvider(LocalBringIntoViewSpec provides stillSpec) {
                 LazyColumn(
                     state = listState,
@@ -119,7 +119,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                     .joinToString(" • "), color = Color(0xFFD8D8D8), maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 // Short teaser keeps the header height stable (a long text made it jitter while moving
                                 // between the buttons); the full text is one button away.
-                                val description = release.description.orEmpty().replace(Regex("<[^>]*>"), "").trim()
+                                val description = remember(release) { release.description.orEmpty().replace(HTML_TAG, "").trim() }
                                 Text(description, maxLines = 2, overflow = TextOverflow.Ellipsis, color = Color.White)
                                 // Buttons sit at the bottom of the header: bring-into-view alone stops once they are
                                 // visible and leaves the title cut off when coming back up from the episodes.
@@ -313,10 +313,12 @@ private fun ChoiceDialog(title: String, options: List<String>, selected: Int?, o
  * episode near the edge) it is brought to the middle, so the whole row and its titles are visible.
  */
 @OptIn(ExperimentalFoundationApi::class)
-private class StillBringIntoViewSpec(@Suppress("unused") private val fallback: BringIntoViewSpec) : BringIntoViewSpec {
+private object StillBringIntoViewSpec : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
         offset >= 0f && offset + size <= containerSize * 0.8f -> 0f
         size >= containerSize -> offset
         else -> offset - (containerSize - size) / 2f
     }
 }
+
+private val HTML_TAG = Regex("<[^>]*>")

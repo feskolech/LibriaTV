@@ -208,9 +208,7 @@ class PlayerViewModel @Inject constructor(
 
     private suspend fun prepare(episode: Episode, resume: Boolean) {
         val state = (_state.value as? PlayerUiState.Content)?.value ?: return
-        val (quality, url) = listOf(1080 to episode.hls1080, 720 to episode.hls720, 480 to episode.hls480)
-            .filter { !it.second.isNullOrBlank() }
-            .let { options -> options.firstOrNull { it.first == state.quality } ?: options.firstOrNull() }
+        val (quality, url) = streamFor(episode, state.quality)
             ?: run { update { it.copy(error = "No video stream") }; return }
         retryJob?.cancel()
         update { it.copy(episode = episode, quality = quality, positionMs = 0, durationMs = 0, skip = null, nextCountdown = null, error = null) }
@@ -220,7 +218,7 @@ class PlayerViewModel @Inject constructor(
         clearSeekPreview()
         progressSavedForTransition = false
         queuedItem = null
-        player.setMediaItem(mediaItem(episode, url!!))
+        player.setMediaItem(mediaItem(episode, url))
         preloadManager.reset()
         player.prepare()
         val position = if (resume) store.progress(episode.id)?.positionMs ?: 0 else 0

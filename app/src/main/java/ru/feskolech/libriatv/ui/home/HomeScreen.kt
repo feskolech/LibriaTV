@@ -275,9 +275,12 @@ private fun ScheduleRow(
     cardModifier: (Release) -> Modifier = { Modifier },
     selected: Release? = null,
 ) {
-    PosterRow(title, items.map { it.release }, cardModifier = cardModifier, selected = selected,
-        episodeLabel = { release -> items.firstOrNull { it.release.id == release.id }?.nextEpisodeNumber?.let { stringResource(R.string.episode_number, it) } },
-        badge = { release -> items.firstOrNull { it.release.id == release.id }?.nextEpisodeNumber?.let { stringResource(R.string.episode_number, it) } },
+    // Computed once per data change, not on every recomposition / for every card.
+    val releases = remember(items) { items.map { it.release } }
+    val nextEpisode = remember(items) { items.associate { it.release.id to it.nextEpisodeNumber } }
+    PosterRow(title, releases, cardModifier = cardModifier, selected = selected,
+        episodeLabel = { release -> nextEpisode[release.id]?.let { stringResource(R.string.episode_number, it) } },
+        badge = { release -> nextEpisode[release.id]?.let { stringResource(R.string.episode_number, it) } },
         favoriteIds = favoriteIds, onFocus = onFocus, onClick = onClick)
 }
 

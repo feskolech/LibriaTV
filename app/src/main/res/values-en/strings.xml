@@ -25,7 +25,6 @@
     <string name="auth_qr_description">QR code for device linking page</string>
     <string name="auth_scan">Scan the QR code</string>
     <string name="auth_url">aniliberty.top/app/auth/otp/linkDevice</string>
-    <string name="auth_url_short">aniliberty.top\n/app/auth/otp/linkDevice</string>
     <string name="auth_site_hint">Sign in on the website and enter the code shown on your TV.</string>
     <string name="auth_password_button">Sign in with login and password</string>
     <string name="auth_password_heading">Password sign in</string>
@@ -48,12 +47,9 @@
     <string name="episode_number">Episode %1$d</string>
     <string name="hours_ago">%1$d h ago</string>
     <string name="less_than_hour_ago">&lt;1 h ago</string>
-    <string name="release_details">Release details</string>
-    <string name="back">Back</string>
     <string name="watch">Watch</string>
     <string name="continue_episode">Resume episode %1$d</string>
     <string name="add_favorite">Add to favorites</string>
-    <string name="remove_favorite">Remove from favorites</string>
     <string name="in_favorites">In favorites ✓</string>
     <string name="favorites_login_hint">Sign in to see your favorites.</string>
     <string name="favorites_empty">No favorite releases yet.</string>
@@ -120,7 +116,6 @@
     <string name="filter_any">Any</string>
     <string name="recommended">Recommended</string>
     <string name="random_release">Feeling lucky</string>
-    <string name="speed">Speed %1$s</string>
     <string name="night_mode">Night sound mode</string>
     <string name="settings_playback">Playback</string>
     <string name="settings_quality">Default quality</string>
@@ -137,9 +132,6 @@
     <string name="settings_about">About</string>
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_checking">Checking for updates…</string>
-    <string name="settings_current">You have the latest version</string>
-    <string name="settings_no_release">No public releases yet</string>
-    <string name="settings_unavailable">Could not check for updates</string>
     <string name="settings_download_failed">Could not download update</string>
     <string name="settings_version">Version %1$s</string>
     <string name="settings_github">Project page on GitHub</string>

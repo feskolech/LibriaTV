@@ -24,9 +24,6 @@ sealed interface ApiResult<out T> {
 class ApiRepository @Inject constructor(private val api: AniLibriaApi, private val legacy: LegacyCatalog) {
     private suspend fun <T> request(block: suspend () -> T): ApiResult<T> = safeApiCall(block)
 
-    suspend fun scheduleNow(): ApiResult<List<ScheduleItem>> = request {
-        api.scheduleNow().today.mapNotNull { it.toDomain() }
-    }
     suspend fun currentSchedule(): ApiResult<CurrentSchedule> = request {
         api.scheduleNow().let { response ->
             CurrentSchedule(response.today.mapNotNull { it.toDomain() }, response.tomorrow.mapNotNull { it.toDomain() })
@@ -38,9 +35,6 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi, private v
     suspend fun latest(limit: Int = 30): ApiResult<List<Release>> = request {
         api.latest(limit).mapNotNull { it.toDomain() }
     }
-    suspend fun favoriteReleases(): ApiResult<List<Release>> = request {
-        api.favoriteReleases(limit = 30).data.mapNotNull { it.toDomain() }
-    }
     suspend fun release(idOrAlias: String): ApiResult<Release> {
         val result = request { api.release(idOrAlias).toDomain() ?: error("Release has no id") }
         // Hidden by the v1 API for this country (404/403): the legacy API may still serve it.
@@ -48,9 +42,6 @@ class ApiRepository @Inject constructor(private val api: AniLibriaApi, private v
         if (result is ApiResult.Failure && (result.status == 404 || result.status == 403))
             idOrAlias.toIntOrNull()?.let { legacy.release(it) }?.let { return ApiResult.Success(it) }
         return result
-    }
-    suspend fun episode(id: String): ApiResult<Episode> = request {
-        api.episode(id).toDomain() ?: error("Episode has no id")
     }
     suspend fun episodeDetails(id: String): ApiResult<EpisodeDto> = request { api.episode(id) }
     /** [compact] asks the API only for what a poster grid needs (~8x smaller pages). */

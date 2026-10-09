@@ -38,7 +38,7 @@ class ApiRepositoryTest {
 
     @Test fun scheduleNowMapsRealResponse() = runBlocking {
         enqueue("schedule-now")
-        val result = repo.scheduleNow() as ApiResult.Success
+        val result = (repo.currentSchedule() as ApiResult.Success).let { ApiResult.Success(it.value.today) }
         assertTrue(result.value.isNotEmpty())
         assertTrue(result.value.first().release.id > 0)
         assertTrue(result.value.first().release.posterUrl!!.startsWith("https://anilibria.top/"))
