@@ -31,6 +31,13 @@ class PlaybackRulesTest {
     }
 
     @Test
+    fun `only the highest-numbered episode ends the release`() {
+        assertTrue(release.isLastEpisode("e3"))
+        assertFalse(release.isLastEpisode("e2"))
+        assertFalse(release.isLastEpisode("e1"))
+    }
+
+    @Test
     fun `the preferred stream wins, otherwise the best available one`() {
         assertEquals(720 to "hd", streamFor(episode("e", 1.0), 720))
         assertEquals(720 to "hd", streamFor(episode("e", 1.0, fhd = null), 1080))

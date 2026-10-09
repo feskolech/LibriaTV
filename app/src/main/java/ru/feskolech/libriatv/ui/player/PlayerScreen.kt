@@ -116,6 +116,8 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             viewModel.showPanel(PlayerPanel.Hidden)
         }
     }
+    // The release has no more episodes: leave the player as Back does (progress saved, marked watched).
+    LaunchedEffect(current?.finished) { if (current?.finished == true) viewModel.close(onBack) }
     BackHandler {
         if (current?.qualityHint != null) viewModel.dismissQualityHint()
         else if (!viewModel.hidePanel()) viewModel.close(onBack)

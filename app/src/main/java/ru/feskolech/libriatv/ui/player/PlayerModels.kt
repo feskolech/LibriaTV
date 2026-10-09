@@ -26,6 +26,8 @@ data class PlayerContent(
      * Off when paused (by the viewer or the sleep timer) and after the last episode ends.
      */
     val keepAwake: Boolean = false,
+    /** The last episode of the release has played to the end: the screen leaves the player. */
+    val finished: Boolean = false,
 )
 
 sealed interface PlayerUiState {

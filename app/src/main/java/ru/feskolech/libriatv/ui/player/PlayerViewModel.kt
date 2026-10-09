@@ -86,6 +86,8 @@ class PlayerViewModel @Inject constructor(
             }
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 update { it.copy(keepAwake = shouldKeepAwake()) }
+                // With auto-next off the player pauses at the end of each episode instead of ending.
+                if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) finishIfLastEpisode()
             }
             override fun onPlaybackStateChanged(playbackState: Int) {
                 update { it.copy(buffering = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE,
@@ -100,6 +102,7 @@ class PlayerViewModel @Inject constructor(
                         update { it.copy(qualityHint = lower) }
                 } else bufferingHint.interrupt()
                 if (playbackState == Player.STATE_ENDED && current.sleepTimer == SleepTimer.AfterEpisode) triggerSleep()
+                if (playbackState == Player.STATE_ENDED) finishIfLastEpisode()
             }
             override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
                 val rate = player.videoFormat?.frameRate?.takeIf { it > 0f }
@@ -186,6 +189,12 @@ class PlayerViewModel @Inject constructor(
     private fun update(block: (PlayerContent) -> PlayerContent) {
         val current = content ?: return
         _state.value = PlayerUiState.Content(block(current))
+    }
+
+    /** The last episode played to the end: there is nothing more to watch, the screen goes back to the release. */
+    private fun finishIfLastEpisode() {
+        val current = content ?: return
+        if (current.release.isLastEpisode(current.episode.id)) update { it.copy(finished = true) }
     }
 
     /** Not [Player.isPlaying]: that drops during buffering, and clearing the flag then could sleep the TV at once. */

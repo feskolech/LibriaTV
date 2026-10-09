@@ -18,6 +18,9 @@ internal fun Release.episodeAfter(id: String): Episode? =
 internal fun Release.episodeBefore(id: String): Episode? =
     orderedEpisodes().let { list -> list.indexOfFirst { it.id == id }.takeIf { it >= 0 }?.let { list.getOrNull(it - 1) } }
 
+/** The release has nothing after this episode: when it ends, the player goes back to the release page. */
+internal fun Release.isLastEpisode(id: String): Boolean = episodeAfter(id) == null
+
 /** Number keys on the remote: episode N by its number, not by its position in the list. */
 internal fun Release.episodeNumber(number: Int): Episode? = episodes.firstOrNull { it.ordinal?.toInt() == number }
 
