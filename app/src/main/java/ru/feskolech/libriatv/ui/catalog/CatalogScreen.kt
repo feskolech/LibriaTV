@@ -1,5 +1,9 @@
 package ru.feskolech.libriatv.ui.catalog
 
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.focus.focusProperties
+import ru.feskolech.libriatv.ui.components.DialogButton
+import ru.feskolech.libriatv.ui.components.AppDialog
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.background
@@ -186,15 +190,9 @@ private fun FilterButton(title: String, count: Int, modifier: Modifier = Modifie
 }
 
 @Composable
-private fun FilterDialog(title: String, onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    Dialog(onDismissRequest = onDismiss) {
-        Surface {
-            Column(Modifier.width(520.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineSmall)
-                content()
-            }
-        }
-    }
+private fun FilterDialog(title: String, onDismiss: () -> Unit,
+    actions: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null, content: @Composable () -> Unit) {
+    AppDialog(onDismiss = onDismiss, title = title, actions = actions) { content() }
 }
 
 @Composable
@@ -207,23 +205,24 @@ private fun MultiSelectDialog(
 ) {
     var picked by remember { mutableStateOf(selected) }
     val focus = remember { FocusRequester() }
-    FilterDialog(title, onDismiss) {
-        LazyColumn(Modifier.fillMaxWidth().height(360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val applyFocus = remember { FocusRequester() }
+    // Apply and Clear are equal; Down from the end of the list still lands on Apply, not on Clear.
+    FilterDialog(title, onDismiss, actions = {
+        DialogButton(stringResource(R.string.filter_apply), { onApply(picked); onDismiss() }, modifier = Modifier.focusRequester(applyFocus))
+        DialogButton(stringResource(R.string.filter_clear), { picked = emptySet() })
+    }) {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(options, key = { it.id }) { option ->
                 val on = option.id in picked
                 Button(
                     scale = WideButtonScale,
                     onClick = { picked = if (on) picked - option.id else picked + option.id },
-                    modifier = Modifier.fillMaxWidth().then(if (option == options.first()) Modifier.focusRequester(focus) else Modifier),
+                    modifier = Modifier.fillMaxWidth().then(if (option == options.first()) Modifier.focusRequester(focus) else Modifier)
+                        .then(if (option == options.last()) Modifier.focusProperties { down = applyFocus } else Modifier),
                 ) {
                     Text((if (on) "✓  " else "     ") + option.title)
                 }
             }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Wide Apply: D-pad Down from the list lands here, not on Clear.
-            Button(onClick = { onApply(picked); onDismiss() }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.filter_apply)) }
-            Button(onClick = { picked = emptySet() }) { Text(stringResource(R.string.filter_clear)) }
         }
     }
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
@@ -239,7 +238,7 @@ private fun SingleSelectDialog(
 ) {
     val focus = remember { FocusRequester() }
     FilterDialog(title, onDismiss) {
-        LazyColumn(Modifier.fillMaxWidth().height(360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(options, key = { it.id }) { option ->
                 val on = option.id == selected
                 Button(
@@ -261,27 +260,29 @@ private fun YearsDialog(years: List<Int>, filter: CatalogFilter, onDismiss: () -
     var to by remember { mutableStateOf(filter.toYear) }
     val ascending = remember(years) { years.sorted() }
     val focus = remember { FocusRequester() }
-    FilterDialog(stringResource(R.string.filter_years), onDismiss) {
+    val applyFocus = remember { FocusRequester() }
+    FilterDialog(stringResource(R.string.filter_years), onDismiss, actions = {
+        DialogButton(stringResource(R.string.filter_apply), { onApply(from, to); onDismiss() }, modifier = Modifier.focusRequester(applyFocus))
+        DialogButton(stringResource(R.string.filter_clear), { from = null; to = null })
+    }) {
         Text(stringResource(R.string.filter_year_from), color = Color.LightGray)
         YearRow(ascending, from, Modifier.focusRequester(focus)) { year ->
             from = year
             if (year != null && to != null && to!! < year) to = year
         }
         Text(stringResource(R.string.filter_year_to), color = Color.LightGray)
-        YearRow(ascending, to) { year ->
+        YearRow(ascending, to, down = applyFocus) { year ->
             to = year
             if (year != null && from != null && from!! > year) from = year
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { onApply(from, to); onDismiss() }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.filter_apply)) }
-            Button(onClick = { from = null; to = null }) { Text(stringResource(R.string.filter_clear)) }
         }
     }
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
 }
 
 @Composable
-private fun YearRow(years: List<Int>, selected: Int?, modifier: Modifier = Modifier, onPick: (Int?) -> Unit) {
+private fun YearRow(years: List<Int>, selected: Int?, modifier: Modifier = Modifier, down: FocusRequester? = null, onPick: (Int?) -> Unit) {
+    // [down]: from any year the Down key goes to Apply, wherever that year sits in the row.
+    val chip = if (down == null) Modifier else Modifier.focusProperties { this.down = down }
     val start = (years.indexOf(selected).takeIf { it >= 0 } ?: years.lastIndex).coerceAtLeast(0)
     LazyRow(
         modifier = modifier,
@@ -289,7 +290,7 @@ private fun YearRow(years: List<Int>, selected: Int?, modifier: Modifier = Modif
         verticalAlignment = Alignment.CenterVertically,
         state = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = (start - 2).coerceAtLeast(0)),
     ) {
-        item { Button(onClick = { onPick(null) }) { Text(if (selected == null) "✓ " + stringResource(R.string.filter_any) else stringResource(R.string.filter_any)) } }
-        items(years) { year -> Button(onClick = { onPick(year) }) { Text(if (year == selected) "✓ $year" else "$year") } }
+        item { Button(onClick = { onPick(null) }, modifier = chip) { Text(if (selected == null) "✓ " + stringResource(R.string.filter_any) else stringResource(R.string.filter_any)) } }
+        items(years) { year -> Button(onClick = { onPick(year) }, modifier = chip) { Text(if (year == selected) "✓ $year" else "$year") } }
     }
 }

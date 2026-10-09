@@ -53,18 +53,21 @@ fun AppDialog(
 
 /** One of the dialog's actions; all of them share the row equally. [initialFocus] focuses it when shown. */
 @Composable
-fun RowScope.DialogButton(text: String, onClick: () -> Unit, initialFocus: Boolean = false) {
+fun RowScope.DialogButton(text: String, onClick: () -> Unit, initialFocus: Boolean = false, modifier: Modifier = Modifier) {
     val focus = remember { FocusRequester() }
-    AccentButton(onClick = onClick, modifier = Modifier.weight(1f).focusRequester(focus)) {
+    AccentButton(onClick = onClick, modifier = Modifier.weight(1f).focusRequester(focus).then(modifier)) {
         Text(text, Modifier.fillMaxWidth(), textAlign = TextAlign.Center, maxLines = 1)
     }
     if (initialFocus) LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
 }
 
-/** A lone action (e.g. "Close"): centred at half the row so it does not stretch into a bar. */
+/**
+ * A lone action (e.g. "Close"): centred at half the row so it does not stretch into a bar.
+ * [initialFocus] is off when a list above it should take the focus first.
+ */
 @Composable
-fun RowScope.SingleDialogButton(text: String, onClick: () -> Unit) {
+fun RowScope.SingleDialogButton(text: String, onClick: () -> Unit, initialFocus: Boolean = true, modifier: Modifier = Modifier) {
     Spacer(Modifier.weight(0.5f))
-    DialogButton(text, onClick, initialFocus = true)
+    DialogButton(text, onClick, initialFocus, modifier)
     Spacer(Modifier.weight(0.5f))
 }

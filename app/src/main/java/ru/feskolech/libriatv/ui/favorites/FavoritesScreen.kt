@@ -1,5 +1,6 @@
 package ru.feskolech.libriatv.ui.favorites
 
+import ru.feskolech.libriatv.ui.components.AppDialog
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
@@ -122,11 +124,8 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
     }
     if (sortingOpen) {
         val dialogFocus = remember { FocusRequester() }
-        Dialog(onDismissRequest = { sortingOpen = false }) {
-            Surface {
-                Column(Modifier.width(480.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(stringResource(R.string.filter_sorting), style = MaterialTheme.typography.headlineSmall)
-                    LazyColumn(Modifier.height(510.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        AppDialog(onDismiss = { sortingOpen = false }, title = stringResource(R.string.filter_sorting), width = 480.dp) {
+                    LazyColumn(Modifier.heightIn(max = 510.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         item {
                             Button(onClick = { viewModel.sort(null); sortingOpen = false },
                                 modifier = Modifier.focusRequester(dialogFocus)) {
@@ -144,8 +143,6 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                             }
                         }
                     }
-                }
-            }
         }
         LaunchedEffect(Unit) { withFrameNanos { }; runCatching { dialogFocus.requestFocus() } }
     }

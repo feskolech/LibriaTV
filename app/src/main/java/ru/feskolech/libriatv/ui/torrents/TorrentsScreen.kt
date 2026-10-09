@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv.ui.torrents
 
+import ru.feskolech.libriatv.ui.components.SingleDialogButton
+import ru.feskolech.libriatv.ui.components.AppDialog
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -112,18 +114,13 @@ private fun FileChoiceDialog(
 ) {
     val focus = remember { FocusRequester() }
     val first = listing.files.indexOfFirst { it.episode !in watched }.coerceAtLeast(0)
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(16.dp)) {
-            Column(Modifier.width(650.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.torrent_choose_file), style = MaterialTheme.typography.headlineSmall)
-                LazyColumn(Modifier.heightIn(max = 470.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    itemsIndexed(listing.files) { index, file ->
-                        Button(onClick = { onPick(file) }, scale = WideButtonScale,
-                            modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier)) {
-                            Text("${if (file.episode in watched) "✓  " else ""}${file.episode?.let { "$it. " }.orEmpty()}${file.name}  •  ${formatSize(file.size).orEmpty()}",
-                                maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
+    AppDialog(onDismiss = onDismiss, title = stringResource(R.string.torrent_choose_file), width = 650.dp) {
+        LazyColumn(Modifier.heightIn(max = 470.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            itemsIndexed(listing.files) { index, file ->
+                Button(onClick = { onPick(file) }, scale = WideButtonScale,
+                    modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier)) {
+                    Text("${if (file.episode in watched) "✓  " else ""}${file.episode?.let { "$it. " }.orEmpty()}${file.name}  •  ${formatSize(file.size).orEmpty()}",
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -136,19 +133,15 @@ private fun MarkChoiceDialog(choices: List<Episode>, watched: Set<String>, onCon
     var selected by remember(choices) { mutableStateOf(emptySet<String>()) }
     val focus = remember { FocusRequester() }
     val first = choices.indexOfFirst { it.id !in watched }.coerceAtLeast(0)
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = RoundedCornerShape(16.dp)) {
-            Column(Modifier.width(500.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(R.string.torrent_mark_title), style = MaterialTheme.typography.headlineSmall)
-                LazyColumn(Modifier.heightIn(max = 390.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    itemsIndexed(choices) { index, episode ->
-                        Button(onClick = { selected = if (episode.id in selected) selected - episode.id else selected + episode.id },
-                            modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier), scale = WideButtonScale) {
-                            Text("${if (episode.id in selected || episode.id in watched) "✓" else "○"}  ${episode.ordinal?.toInt() ?: ""} ${episode.name}")
-                        }
-                    }
+    AppDialog(onDismiss = onDismiss, title = stringResource(R.string.torrent_mark_title), width = 500.dp,
+        // The list takes the focus first; "Done" is one step down from it.
+        actions = { SingleDialogButton(stringResource(R.string.torrent_mark_done), { onConfirm(selected) }, initialFocus = false) }) {
+        LazyColumn(Modifier.heightIn(max = 390.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            itemsIndexed(choices) { index, episode ->
+                Button(onClick = { selected = if (episode.id in selected) selected - episode.id else selected + episode.id },
+                    modifier = Modifier.fillMaxWidth().then(if (index == first) Modifier.focusRequester(focus) else Modifier), scale = WideButtonScale) {
+                    Text("${if (episode.id in selected || episode.id in watched) "✓" else "○"}  ${episode.ordinal?.toInt() ?: ""} ${episode.name}")
                 }
-                Button(onClick = { onConfirm(selected) }) { Text(stringResource(R.string.torrent_mark_done)) }
             }
         }
     }
@@ -184,9 +177,8 @@ private fun MagnetQrDialog(magnet: String, onDismiss: () -> Unit) {
     val short = remember(magnet) { shortMagnet(magnet) }
     val qr = remember(short) { makeQr(short, 360) }
     val focus = remember { FocusRequester() }
-    Dialog(onDismissRequest = onDismiss) {
-        Surface {
-            Row(Modifier.padding(32.dp), horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
+    AppDialog(onDismiss = onDismiss, width = 660.dp) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.background(Color.White).padding(8.dp)) {
                     Image(qr.asImageBitmap(), contentDescription = null, modifier = Modifier.size(220.dp))
                 }
@@ -196,7 +188,6 @@ private fun MagnetQrDialog(magnet: String, onDismiss: () -> Unit) {
                     Button(onClick = onDismiss, modifier = Modifier.focusRequester(focus)) { Text(stringResource(R.string.close)) }
                 }
             }
-        }
     }
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { focus.requestFocus() } }
 }

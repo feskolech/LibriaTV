@@ -1,5 +1,7 @@
 package ru.feskolech.libriatv.ui.release
 
+import ru.feskolech.libriatv.ui.components.SingleDialogButton
+import ru.feskolech.libriatv.ui.components.AppDialog
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -253,28 +256,23 @@ private fun EpisodeRow(episode: Episode, progress: ru.feskolech.libriatv.data.re
 
 @Composable
 private fun DescriptionDialog(title: String, text: String, onDismiss: () -> Unit) {
-    val focus = remember { FocusRequester() }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        androidx.tv.material3.Surface {
-            Column(Modifier.width(720.dp).padding(32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                Text(title, style = androidx.tv.material3.MaterialTheme.typography.headlineSmall)
-                // Focus stays on Close; ▲/▼ scroll the text so long synopses are readable with a remote.
-                val scroll = androidx.compose.foundation.rememberScrollState()
-                val scope = rememberCoroutineScope()
-                Text(text, style = androidx.tv.material3.MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.height(360.dp).verticalScroll(scroll))
-                Button(onClick = onDismiss, modifier = Modifier.focusRequester(focus).onPreviewKeyEvent { e ->
-                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                    when (e.key) {
-                        Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(240f) }; true }
-                        Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-240f) }; true }
-                        else -> false
-                    }
-                }) { Text(stringResource(R.string.close)) }
+    // Focus stays on Close; ▲/▼ scroll the text so long synopses are readable with a remote.
+    val scroll = androidx.compose.foundation.rememberScrollState()
+    val scope = rememberCoroutineScope()
+    AppDialog(onDismiss = onDismiss, title = title, width = 720.dp, actions = {
+        SingleDialogButton(stringResource(R.string.close), onDismiss, modifier = Modifier.onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (e.key) {
+                Key.DirectionDown -> { scope.launch { scroll.animateScrollBy(240f) }; true }
+                Key.DirectionUp -> { scope.launch { scroll.animateScrollBy(-240f) }; true }
+                else -> false
             }
-        }
+        })
+    }) {
+        Text(text, style = androidx.tv.material3.MaterialTheme.typography.bodyLarge,
+            // Takes the room left between the title and Close, so Close never falls off a short screen.
+            modifier = Modifier.weight(1f, fill = false).heightIn(max = 300.dp).verticalScroll(scroll))
     }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(50); runCatching { focus.requestFocus() } }
 }
 
 private fun UserList.label(): Int = when (this) {
@@ -289,17 +287,12 @@ private fun UserList.label(): Int = when (this) {
 @Composable
 private fun ChoiceDialog(title: String, options: List<String>, selected: Int?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
     val focus = remember { FocusRequester() }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        androidx.tv.material3.Surface {
-            Column(Modifier.width(420.dp).padding(28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = androidx.tv.material3.MaterialTheme.typography.headlineSmall)
-                LazyColumn(Modifier.height(420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(options.size) { i ->
-                        Button(onClick = { onPick(i) }, scale = ru.feskolech.libriatv.ui.components.WideButtonScale,
-                            modifier = Modifier.fillMaxWidth().then(if (i == (selected ?: 0)) Modifier.focusRequester(focus) else Modifier)) {
-                            Text((if (i == selected) "✓  " else "     ") + options[i])
-                        }
-                    }
+    AppDialog(onDismiss = onDismiss, title = title, width = 420.dp) {
+        LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            items(options.size) { i ->
+                Button(onClick = { onPick(i) }, scale = ru.feskolech.libriatv.ui.components.WideButtonScale,
+                    modifier = Modifier.fillMaxWidth().then(if (i == (selected ?: 0)) Modifier.focusRequester(focus) else Modifier)) {
+                    Text((if (i == selected) "✓  " else "     ") + options[i])
                 }
             }
         }
