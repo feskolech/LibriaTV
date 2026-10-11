@@ -51,7 +51,7 @@
     <string name="continue_episode">Продолжить с %1$d серии</string>
     <string name="continue_watching">Продолжить просмотр</string>
     <string name="add_favorite">В избранное</string>
-    <string name="in_favorites">В избранном ✓</string>
+    <string name="in_favorites">В избранном</string>
     <string name="favorites_login_hint">Войдите, чтобы видеть избранное.</string>
     <string name="favorites_empty">В избранном пока нет релизов.</string>
     <string name="favorite_new_episodes">Вышло в избранном</string>
@@ -83,6 +83,7 @@
     <string name="torrent_mark_done">Готово</string>
     <string name="close">Закрыть</string>
     <string name="search_hint">Название аниме</string>
+    <string name="search_clear">Очистить</string>
     <string name="search_voice">Голосовой поиск</string>
     <string name="search_voice_prompt">Скажите название аниме</string>
     <string name="search_loading">Ищем…</string>

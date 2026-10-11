@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -28,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -68,8 +71,11 @@ internal fun ReleaseActions(mainLabel: String, mainEnabled: Boolean, onMain: () 
         }
         actions.forEach { action -> IconAction(action, onFocused = { focusedLabel = action.label }) }
     }
-    // Always one line high, so the page below does not move as the focus passes the buttons.
-    Text(focusedLabel.orEmpty(), fontSize = 18.sp, color = Color(0xFFB4B4BC), maxLines = 1)
+    // A fixed line's height, so neither the buttons above nor the page below move as the focus passes the
+    // buttons: a label with a glyph from a fallback font (a symbol, an emoji) would make the line taller.
+    Box(Modifier.height(with(LocalDensity.current) { 26.sp.toDp() })) {
+        Text(focusedLabel.orEmpty(), fontSize = 18.sp, color = Color(0xFFB4B4BC), maxLines = 1)
+    }
     }
 }
 

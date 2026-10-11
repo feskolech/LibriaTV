@@ -50,7 +50,7 @@
     <string name="watch">Watch</string>
     <string name="continue_episode">Resume episode %1$d</string>
     <string name="add_favorite">Add to favorites</string>
-    <string name="in_favorites">In favorites ✓</string>
+    <string name="in_favorites">In favorites</string>
     <string name="favorites_login_hint">Sign in to see your favorites.</string>
     <string name="favorites_empty">No favorite releases yet.</string>
     <string name="favorite_new_episodes">New in favorites</string>
@@ -82,6 +82,7 @@
     <string name="torrent_mark_done">Done</string>
     <string name="close">Close</string>
     <string name="search_hint">Anime title</string>
+    <string name="search_clear">Clear</string>
     <string name="search_voice">Voice search</string>
     <string name="search_voice_prompt">Say an anime title</string>
     <string name="search_loading">Searching…</string>

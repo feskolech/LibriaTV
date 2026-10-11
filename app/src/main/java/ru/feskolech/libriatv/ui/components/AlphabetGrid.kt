@@ -45,7 +45,8 @@ private val letters = ('А'..'Е').map(Char::toString) + "Ё" + ('Ж'..'Я').map
 
 @Composable
 fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String? = { null },
-    favoriteIds: Set<Int> = emptySet(), onFocus: (Int) -> Unit = {}, onOpen: (Int) -> Unit) {
+    favoriteIds: Set<Int> = emptySet(), openedId: Int = -1, openedFocus: FocusRequester? = null,
+    onFocus: (Int) -> Unit = {}, onOpen: (Int) -> Unit) {
     val state = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     val alphabetFocus = remember { FocusRequester() }
@@ -60,6 +61,8 @@ fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String
             itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->
                 PosterCard(release, badge(release), isFavorite = release.id in favoriteIds,
                     modifier = Modifier.then(if (index == target) Modifier.focusRequester(targetFocus) else Modifier)
+                        // The card a release page was opened from, so Back can return to it.
+                        .then(if (release.id == openedId && openedFocus != null) Modifier.focusRequester(openedFocus) else Modifier)
                         .then(if (index % columns == columns - 1 || index == releases.lastIndex)
                             Modifier.focusProperties { right = alphabetFocus } else Modifier),
                     onFocus = { onFocus(index) }, onClick = { onOpen(release.id) })

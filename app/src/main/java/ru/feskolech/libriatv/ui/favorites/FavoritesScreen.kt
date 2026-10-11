@@ -23,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -58,8 +60,20 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
     val selectedTab = remember { FocusRequester() }
     var gridHadFocus by remember { mutableStateOf(false) }
     var sortingOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { viewModel.reload() }
-    LaunchedEffect(state.authorized) { withFrameNanos { }; if (!DrawerBrowsing.active) runCatching { first.requestFocus() } }
+    // Back from a release page returns to the card that was opened (the grid keeps its scroll position);
+    // otherwise the screen starts on the tabs.
+    var lastOpened by rememberSaveable { mutableIntStateOf(-1) }
+    val openedCard = remember { FocusRequester() }
+    val open: (Int) -> Unit = { id -> lastOpened = id; onOpenRelease(id) }
+    LaunchedEffect(Unit) { viewModel.refresh() }
+    LaunchedEffect(state.authorized) {
+        withFrameNanos { }
+        if (DrawerBrowsing.active) return@LaunchedEffect
+        // Marked before the request: entering the screen otherwise sends the focus to the tabs.
+        gridHadFocus = lastOpened >= 0 && state.releases.any { it.id == lastOpened }
+        val restored = gridHadFocus && runCatching { openedCard.requestFocus() }.isSuccess
+        if (!restored) { gridHadFocus = false; runCatching { first.requestFocus() } }
+    }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
         .onFocusChanged { if (it.hasFocus) onContentFocus() }
@@ -108,7 +122,7 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                         ?: stringResource(R.string.favorites_empty), Modifier.padding(horizontal = 48.dp), color = Color.White)
                 state.tab == null && state.selectedSorting == "TITLE_ASC" -> AlphabetGrid(state.releases,
                     badge = { it.latestFavoriteOrdinal()?.let { n -> stringResource(R.string.episode_number, n) } },
-                    favoriteIds = state.ids, onOpen = onOpenRelease)
+                    favoriteIds = state.ids, openedId = lastOpened, openedFocus = openedCard, onOpen = open)
                 else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize().focusRestorer().onFocusChanged { if (it.hasFocus) gridHadFocus = true },
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
@@ -116,7 +130,8 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                         PosterCard(release, release.latestFavoriteOrdinal()?.let { stringResource(R.string.episode_number, it) },
                             isFavorite = release.id in state.ids,
                             onFocus = { onContentFocus(); if (index >= state.releases.size - 10) viewModel.loadMore() },
-                            onClick = { onOpenRelease(release.id) })
+                            modifier = if (release.id == lastOpened) Modifier.focusRequester(openedCard) else Modifier,
+                            onClick = { open(release.id) })
                     }
                 }
             }

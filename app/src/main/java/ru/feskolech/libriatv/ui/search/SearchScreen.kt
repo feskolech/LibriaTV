@@ -33,6 +33,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
@@ -45,6 +46,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -104,6 +107,7 @@ fun SearchScreen(
     // lands on the mic (or the field without voice search), never on a recent query below it.
     // The field only opens the keyboard when OK is pressed on it, not when focus merely passes by.
     val micFocus = remember { FocusRequester() }
+    val clearFocus = remember { FocusRequester() }
     val firstControl = if (voiceAvailable) micFocus else fieldFocus
 
     Column(
@@ -136,7 +140,8 @@ fun SearchScreen(
                     viewModel.submit()
                 },
                 // A single-line field keeps D-pad Down for itself; hand focus to the results explicitly.
-                modifier = Modifier.weight(1f).focusRequester(fieldFocus).onPreviewKeyEvent { event ->
+                modifier = Modifier.weight(1f).focusRequester(fieldFocus)
+                    .focusProperties { if (query.isNotEmpty()) right = clearFocus }.onPreviewKeyEvent { event ->
                     if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown &&
                         results is SearchResults.Content && (results as SearchResults.Content).releases.isNotEmpty()
                     ) {
@@ -145,6 +150,17 @@ fun SearchScreen(
                     } else false
                 },
             )
+            // Clears the query in one press; the focus goes back to the field, ready for a new one.
+            if (query.isNotEmpty()) {
+                Button(onClick = { viewModel.onQueryChange(""); runCatching { fieldFocus.requestFocus() } },
+                    modifier = Modifier.size(60.dp).focusRequester(clearFocus),
+                    shape = androidx.tv.material3.ButtonDefaults.shape(androidx.compose.foundation.shape.CircleShape),
+                    contentPadding = PaddingValues(0.dp)) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.search_clear), modifier = Modifier.size(28.dp))
+                    }
+                }
+            }
         }
 
         when (val current = results) {
@@ -203,6 +219,7 @@ fun SearchScreen(
 
 @Composable
 private fun SearchField(value: String, onChange: (String) -> Unit, onSearch: () -> Unit, modifier: Modifier) {
+    val focusManager = LocalFocusManager.current
     var focused by remember { mutableStateOf(false) }
     // Read-only until OK is pressed: a read-only field starts no input session, so no keyboard.
     var editing by remember { mutableStateOf(false) }
@@ -225,7 +242,13 @@ private fun SearchField(value: String, onChange: (String) -> Unit, onSearch: () 
             .onFocusChanged { focused = it.isFocused; if (!it.isFocused) editing = false }
             .onPreviewKeyEvent { event ->
                 val ok = event.key == Key.DirectionCenter || event.key == Key.Enter || event.key == Key.NumPadEnter
-                if (ok && !editing) {
+                // Not editing, Left/Right leave the field (to the voice and clear buttons) instead of moving
+                // a cursor nobody sees.
+                val side = when (event.key) { Key.DirectionLeft -> FocusDirection.Left; Key.DirectionRight -> FocusDirection.Right; else -> null }
+                if (side != null && !editing) {
+                    if (event.type == KeyEventType.KeyDown) focusManager.moveFocus(side)
+                    true
+                } else if (ok && !editing) {
                     if (event.type == KeyEventType.KeyUp) {
                         editing = true
                         field = field.copy(selection = TextRange(field.text.length))

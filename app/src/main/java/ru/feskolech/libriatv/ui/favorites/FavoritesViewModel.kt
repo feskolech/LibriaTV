@@ -75,6 +75,47 @@ class FavoritesViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Back on the screen (from a release page): fetch again the pages already shown, but keep the current
+     * list until the new one has arrived in full. Clearing it, or showing page 1 alone, would drop the grid's
+     * scroll position and the card the viewer came back to. A failed refresh keeps the old list.
+     */
+    fun refresh() {
+        val current = _state.value
+        if (current.releases.isEmpty() || current.page == 0) { reload(); return }
+        if (auth.state.value !is AuthState.Authorized) return
+        loadJob?.cancel()
+        loading = true
+        loadJob = viewModelScope.launch {
+            val byTitle = current.tab == null && current.selectedSorting == "TITLE_ASC"
+            val collected = mutableListOf<Release>()
+            var page = 1
+            var last = if (byTitle) Int.MAX_VALUE else current.page
+            var total = current.totalPages
+            while (page <= last) {
+                val result = current.tab?.let { library.listReleases(it, page) }
+                    ?: when (val r = repository.releases(page, if (byTitle) null else current.selectedSorting)) {
+                        is ApiResult.Success -> r.value
+                        is ApiResult.Failure -> null
+                    }
+                if (result == null) { loading = false; return@launch }
+                collected += result.releases
+                total = result.totalPages
+                last = if (byTitle) total else minOf(last, total)
+                page++
+            }
+            if (current.tab == null) repository.refreshIds()
+            val now = _state.value
+            if (now.tab == current.tab && now.selectedSorting == current.selectedSorting) {
+                val releases = collected.distinctBy { it.id }
+                _state.value = now.copy(loading = false, error = null,
+                    releases = if (byTitle) releases.sortedByTitle() else releases,
+                    page = if (byTitle) total else page - 1, totalPages = total)
+            }
+            loading = false
+        }
+    }
+
     fun selectTab(tab: UserList?) {
         if (tab == _state.value.tab) return
         _state.value = _state.value.copy(tab = tab, releases = emptyList(), page = 0, totalPages = 1)
