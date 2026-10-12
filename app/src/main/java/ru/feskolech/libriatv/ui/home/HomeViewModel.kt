@@ -39,6 +39,8 @@ sealed interface HomeUiState {
         val videoPreviewEnabled: Boolean = false,
         /** Next catalog page for the endless "new episodes" row; null when the end was reached. */
         val latestNextPage: Int? = 2,
+        /** "New episodes" is being asked again (see [HomeViewModel.refreshLatest]). */
+        val refreshingLatest: Boolean = false,
     ) : HomeUiState
     data class Error(val message: String) : HomeUiState
 }
@@ -110,6 +112,27 @@ class HomeViewModel @Inject constructor(
                 if (_state.value !is HomeUiState.Content) _state.value = HomeUiState.Error(error)
             }
             loading = false
+        }
+    }
+
+    private var latestJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Back on Home: asks "New episodes" again (one request) every time, so a fresh episode shows up at once
+     * instead of after the full 5-minute refresh. The row stays as it is meanwhile; cards already appended
+     * by the endless row are kept after the fresh ones.
+     */
+    fun refreshLatest() {
+        if (loading || latestJob?.isActive == true || _state.value !is HomeUiState.Content) return
+        latestJob = viewModelScope.launch {
+            (_state.value as? HomeUiState.Content)?.let { _state.value = it.copy(refreshingLatest = true) }
+            val result = repository.latest(LATEST_FIRST_PAGE)
+            val current = _state.value as? HomeUiState.Content ?: return@launch
+            _state.value = if (result is ApiResult.Success) {
+                val fresh = result.value.sortedByDescending { it.freshAt }
+                val ids = fresh.mapTo(HashSet()) { it.id }
+                current.copy(latest = fresh + current.latest.filter { it.id !in ids }, refreshingLatest = false)
+            } else current.copy(refreshingLatest = false)
         }
     }
 

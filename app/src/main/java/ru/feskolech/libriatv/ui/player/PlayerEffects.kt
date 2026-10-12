@@ -2,38 +2,15 @@ package ru.feskolech.libriatv.ui.player
 
 import android.app.Activity
 import android.os.Build
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-import androidx.tv.material3.MaterialTheme
+import ru.feskolech.libriatv.ui.components.LoadingSpinner
 
 /** Spinner shown while the player buffers, so a slow 1080p start is not just a black screen. */
 @Composable
-fun BufferingIndicator(modifier: Modifier = Modifier) {
-    val accent = MaterialTheme.colorScheme.primary
-    val transition = rememberInfiniteTransition(label = "buffering")
-    val angle by transition.animateFloat(
-        0f, 360f, infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Restart), label = "angle",
-    )
-    Canvas(modifier.size(56.dp)) {
-        drawArc(Color(0x33FFFFFF), 0f, 360f, false, style = Stroke(5.dp.toPx()))
-        drawArc(accent, angle, 90f, false, style = Stroke(5.dp.toPx(), cap = StrokeCap.Round))
-    }
-}
+fun BufferingIndicator(modifier: Modifier = Modifier) = LoadingSpinner(modifier)
 
 /**
  * Switches the display to a refresh rate matching [frameRate] while the player is open and restores

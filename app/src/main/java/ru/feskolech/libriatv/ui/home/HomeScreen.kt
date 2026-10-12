@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -57,6 +58,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Text
+import ru.feskolech.libriatv.ui.components.LoadingSpinner
 import coil3.compose.AsyncImage
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
@@ -83,10 +85,12 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    // Back on Home: refresh within the 5-minute throttle only, but always update "Continue watching".
-    LaunchedEffect(Unit) { viewModel.refresh(); viewModel.refreshContinue() }
+    // Back on Home: the full refresh within the 5-minute throttle only, but "New episodes" and
+    // "Continue watching" every time.
+    LaunchedEffect(Unit) { viewModel.refresh(); viewModel.refreshLatest(); viewModel.refreshContinue() }
     when (val content = state) {
-        HomeUiState.Loading -> Box(Modifier.fillMaxSize().padding(48.dp)) {
+        HomeUiState.Loading -> Row(Modifier.fillMaxSize().padding(48.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            LoadingSpinner(Modifier.padding(top = 2.dp), size = 26.dp)
             Text(stringResource(R.string.home_loading))
         }
         is HomeUiState.Error -> Column(Modifier.fillMaxSize().padding(48.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -169,6 +173,7 @@ private fun HomeContent(
             item {
                 PosterRow(
                     title = stringResource(R.string.new_episodes),
+                    loading = content.refreshingLatest,
                     releases = content.latest,
                     badge = { it.latestEpisode?.ordinal?.let { n -> stringResource(R.string.episode_number, n.toInt()) } },
                     timeBadge = { it.freshAt?.let { value -> freshLabel(value) } },
@@ -294,12 +299,17 @@ private fun PosterRow(
     /** Release focused in this row; its title and details are shown under the row. */
     selected: Release? = null,
     episodeLabel: @Composable (Release) -> String? = { null },
+    /** The row is being fetched again: a spinner next to the title. */
+    loading: Boolean = false,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title + if (onTitleClick != null) "  ›" else "",
-            modifier = Modifier.padding(start = 48.dp)
-                .then(if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier),
-            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+        Row(Modifier.padding(start = 48.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title + if (onTitleClick != null) "  ›" else "",
+                modifier = if (onTitleClick != null) Modifier.clickable(onClick = onTitleClick) else Modifier,
+                fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            if (loading) LoadingSpinner(size = 22.dp)
+        }
         if (releases.isEmpty()) {
             Text(stringResource(R.string.home_no_releases), Modifier.padding(start = 48.dp), color = Color.LightGray)
         } else {
