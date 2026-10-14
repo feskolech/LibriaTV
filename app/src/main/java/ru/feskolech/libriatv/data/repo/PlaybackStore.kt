@@ -18,7 +18,8 @@ data class PlaybackProgress(val positionMs: Long, val durationMs: Long, val serv
     val watched: Boolean get() = manualWatched || (serverWatched ?: (durationMs > 0 && positionMs >= durationMs * 0.9))
 }
 
-data class PlaybackEntry(val episodeId: String, val releaseId: Int?, val progress: PlaybackProgress)
+/** [playedAt]: when the episode was last played here (epoch ms); null for entries saved before it was kept. */
+data class PlaybackEntry(val episodeId: String, val releaseId: Int?, val progress: PlaybackProgress, val playedAt: Long? = null)
 
 @Singleton
 class PlaybackStore @Inject constructor(@ApplicationContext private val context: Context) {
@@ -66,13 +67,15 @@ class PlaybackStore @Inject constructor(@ApplicationContext private val context:
             val releaseId = prefs[intPreferencesKey("release_$id")]
             val position = prefs[longPreferencesKey("position_$id")] ?: return@mapNotNull null
             PlaybackEntry(id, releaseId, PlaybackProgress(position, prefs[longPreferencesKey("duration_$id")] ?: 0,
-                manualWatched = prefs[intPreferencesKey("manual_watched_$id")] == 1))
+                manualWatched = prefs[intPreferencesKey("manual_watched_$id")] == 1),
+                prefs[longPreferencesKey("played_$id")])
         }
     }
 
     suspend fun save(episodeId: String, positionMs: Long, durationMs: Long, releaseId: Int? = null) {
         context.playbackDataStore.edit {
             it[longPreferencesKey("position_$episodeId")] = positionMs.coerceAtLeast(0)
+            it[longPreferencesKey("played_$episodeId")] = System.currentTimeMillis()
             it[longPreferencesKey("duration_$episodeId")] = durationMs.coerceAtLeast(0)
             if (releaseId != null) {
                 it[intPreferencesKey("release_$episodeId")] = releaseId

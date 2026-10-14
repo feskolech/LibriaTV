@@ -86,12 +86,14 @@ internal fun AppShell(navController: NavHostController, onExit: () -> Unit, grap
     // which slides the menu open and shut ("the menu twitches"). The new page then takes the focus.
     val focusAnchor = remember { FocusRequester() }
     var parking by remember { mutableStateOf(false) }
+    // A section left for another one is dropped, not saved: coming back opens it fresh (asks its data
+    // again, starts at the top, today's day in the schedule). A restored section showed a day-old
+    // schedule and kept stale lists and focus. Pages opened inside a section still keep it on Back.
     fun openSection(destination: Destination) {
         if (currentRoute != destination.route) {
             navController.navigate(destination.route) {
-                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                popUpTo(navController.graph.findStartDestination().id)
                 launchSingleTop = true
-                restoreState = true
             }
         }
     }

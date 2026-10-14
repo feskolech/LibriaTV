@@ -48,8 +48,9 @@ class ProgressRepository @Inject constructor(
     private val requests = kotlinx.coroutines.sync.Semaphore(4)
 
     /**
-     * Unfinished episodes, one per release. Lookups run in parallel (at most 4 requests at a time)
-     * instead of one after another, which made a long watch history hold up the home screen.
+     * Unfinished episodes, one per release, the one played last first. Releases watched only on another
+     * device (no local play time) follow, in the server's order. Lookups run in parallel (at most 4
+     * requests at a time) instead of one after another, which made a long watch history hold up Home.
      */
     suspend fun continueItems(): List<ContinueItem> = kotlinx.coroutines.coroutineScope {
         val local = store.entries().associateBy { it.episodeId }
@@ -72,6 +73,14 @@ class ProgressRepository @Inject constructor(
                     }
                 }.maxByOrNull { it.episode.ordinal ?: 0.0 }
             }
-        }.mapNotNull { it.await() }
+        }.mapNotNull { it.await() }.let { items ->
+            val playedAt = local.values.filter { it.releaseId != null && it.playedAt != null }
+                .groupBy { it.releaseId }.mapValues { (_, entries) -> entries.maxOf { it.playedAt!! } }
+            orderByLastPlayed(items, playedAt)
+        }
     }
 }
+
+/** Most recently played first; items never played here keep their order after the rest (sortedBy is stable). */
+internal fun orderByLastPlayed(items: List<ContinueItem>, playedAt: Map<Int?, Long>): List<ContinueItem> =
+    items.sortedByDescending { playedAt[it.release.id] ?: Long.MIN_VALUE }
