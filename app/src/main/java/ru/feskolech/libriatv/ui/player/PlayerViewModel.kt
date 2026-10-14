@@ -37,6 +37,7 @@ class PlayerViewModel @Inject constructor(
     private val store: PlaybackStore,
     private val tokenStore: TokenStore,
     private val watchNext: WatchNextPublisher,
+    private val progress: ru.feskolech.libriatv.data.repo.ProgressRepository,
     client: OkHttpClient,
     @ru.feskolech.libriatv.di.ApplicationScope private val appScope: kotlinx.coroutines.CoroutineScope,
 ) : ViewModel() {
@@ -371,7 +372,22 @@ class PlayerViewModel @Inject constructor(
         changeQuality(quality)
     }
 
-    fun showPanel(panel: PlayerPanel) { update { it.copy(panel = panel) } }
+    fun showPanel(panel: PlayerPanel) {
+        update { it.copy(panel = panel) }
+        if (panel == PlayerPanel.Episodes) loadEpisodeProgress()
+    }
+
+    private var episodeProgressJob: Job? = null
+
+    /** The strip shows each episode's progress and watched mark: read when it opens (one request for the server marks). */
+    private fun loadEpisodeProgress() {
+        val release = content?.release ?: return
+        episodeProgressJob?.cancel()
+        episodeProgressJob = viewModelScope.launch {
+            val saved = runCatching { progress.releaseProgress(release) }.getOrNull() ?: return@launch
+            if (content?.release?.id == release.id) update { it.copy(episodeProgress = saved) }
+        }
+    }
     fun hidePanel(): Boolean {
         val current = content ?: return false
         if (current.panel == PlayerPanel.Hidden) return false

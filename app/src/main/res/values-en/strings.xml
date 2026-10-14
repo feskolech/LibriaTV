@@ -244,4 +244,7 @@
     <string name="filter_show">Show</string>
     <string name="settings_new_catalog">New catalog</string>
     <string name="settings_new_catalog_hint">Quick picks and one filter panel. Turn off to get the previous catalog back.</string>
+    <string name="player_episodes_hint">All episodes</string>
+    <string name="player_back_to_controls">Back to the controls</string>
+    <string name="now_playing">Now</string>
 </resources>

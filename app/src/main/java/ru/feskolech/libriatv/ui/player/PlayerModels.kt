@@ -28,6 +28,8 @@ data class PlayerContent(
     val keepAwake: Boolean = false,
     /** The last episode of the release has played to the end: the screen leaves the player. */
     val finished: Boolean = false,
+    /** Saved progress of the release's episodes, for the episode strip; filled when the strip opens. */
+    val episodeProgress: Map<String, ru.feskolech.libriatv.data.repo.PlaybackProgress> = emptyMap(),
 )
 
 sealed interface PlayerUiState {

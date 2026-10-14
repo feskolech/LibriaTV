@@ -39,7 +39,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -58,11 +58,13 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.ui.PlayerView
 import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Text
+import androidx.tv.material3.Icon
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.ui.components.UiSounds
 import ru.feskolech.libriatv.remote.RemoteCommand
@@ -173,7 +175,8 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                 KeyEvent.KEYCODE_DPAD_LEFT -> if (hidden) { viewModel.seek(-1, native.repeatCount); true } else false
                 KeyEvent.KEYCODE_DPAD_RIGHT -> if (hidden) { viewModel.seek(1, native.repeatCount); true } else false
                 KeyEvent.KEYCODE_DPAD_UP -> when (current?.panel) {
-                    PlayerPanel.Hidden, PlayerPanel.Episodes -> { viewModel.showPanel(PlayerPanel.Controls); true }
+                    // In the episode strip Up moves to its range chips first; the strip leaves by itself.
+                    PlayerPanel.Hidden -> { viewModel.showPanel(PlayerPanel.Controls); true }
                     else -> false
                 }
                 // Any arrow up/down on the bare video brings the playback controls; episodes are one button away.
@@ -245,6 +248,22 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                         .focusProperties { onExit = { if (requestedFocusDirection != androidx.compose.ui.focus.FocusDirection.Exit) cancelFocusChange() } }
                         .focusGroup(),
                 )
+            } else if (current.panel == PlayerPanel.Episodes) {
+                // The episode strip takes the bottom of the screen, over a gradient so the video still shows.
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                    .focusProperties {
+                        onExit = {
+                            if (requestedFocusDirection != androidx.compose.ui.focus.FocusDirection.Exit) cancelFocusChange()
+                        }
+                    }
+                    .focusGroup()
+                    // Dark from just above the first line down, so the hint stays readable over a bright frame.
+                    .background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                        0f to Color.Transparent, 0.14f to Color(0xE6101010), 1f to Color(0xF5101010)))
+                    .padding(start = 48.dp, end = 48.dp, top = 64.dp, bottom = 27.dp)) {
+                    PlayerEpisodeStrip(current, panelFocus, onPlay = { viewModel.playEpisode(it) },
+                        onUp = { viewModel.showPanel(PlayerPanel.Controls) })
+                }
             } else if (current.panel != PlayerPanel.Hidden) {
                 // Focus never leaves the panel: at its edges (Left of the first button, Up from the
                 // progress bar…) it stays on the last element instead of vanishing behind the video.
@@ -282,12 +301,15 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             }
                         } else Text(error, color = Color.White)
                     }
-                    // Controls and the episode strip share one fixed-height slot, so switching between them
-                    // never resizes the HUD (icon buttons and text buttons differ in height).
+                    // A fixed-height slot: a focused (scaled-up) icon button fits without clipping.
                     Box(Modifier.fillMaxWidth().height(HUD_ROW_HEIGHT), contentAlignment = Alignment.CenterStart) {
-                    if (current.panel == PlayerPanel.Controls) {
-                        // Playback only; everything that is a setting lives behind the gear.
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        // Playback only; everything that is a setting lives behind the gear. Down opens the
+                        // episode strip (the hint below says so).
+                        Row(Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
+                            if (event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown) {
+                                viewModel.showPanel(PlayerPanel.Episodes); true
+                            } else false
+                        }, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, { viewModel.previousEpisode(keepPanel = true) })
                             ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
                             ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -296,26 +318,13 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1, keepPanel = true) })
                             ControlButton(Icons.Filled.SkipNext, R.string.next_episode, { viewModel.nextEpisode(keepPanel = true) })
                             Spacer(Modifier.weight(1f))
-                            ControlButton(Icons.AutoMirrored.Filled.List, R.string.episodes, { viewModel.showPanel(PlayerPanel.Episodes) })
                             ControlButton(Icons.Filled.Settings, R.string.player_settings, { viewModel.showPanel(PlayerPanel.Settings) })
                         }
-                    } else {
-                        val ordered = current.release.orderedEpisodes()
-                        // Start scrolled to the playing episode so it is composed and can take focus.
-                        val episodesState = androidx.compose.foundation.lazy.rememberLazyListState(
-                            initialFirstVisibleItemIndex = (ordered.indexOfFirst { it.id == current.episode.id } - 2).coerceAtLeast(0),
-                        )
-                        LazyRow(state = episodesState, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(ordered, key = { it.id }) { episode ->
-                                Button(
-                                    onClick = { viewModel.playEpisode(episode.id) },
-                                    modifier = if (episode.id == current.episode.id) Modifier.focusRequester(panelFocus) else Modifier,
-                                ) {
-                                    Text(stringResource(R.string.episode_number, episode.ordinal?.toInt() ?: 0))
-                                }
-                            }
-                        }
                     }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.player_episodes_hint), color = Color(0xFFB4B4BC), fontSize = 16.sp)
+                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color(0xFFB4B4BC),
+                            modifier = Modifier.padding(start = 4.dp).size(22.dp))
                     }
                     current.nextCountdown?.let { Text(stringResource(R.string.next_in, it), color = Color.White) }
                 }

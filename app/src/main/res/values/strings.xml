@@ -246,4 +246,7 @@
     <string name="filter_show">Показать</string>
     <string name="settings_new_catalog">Новый каталог</string>
     <string name="settings_new_catalog_hint">Подборки и одна панель фильтров. Выключите, чтобы вернуть прежний каталог.</string>
+    <string name="player_episodes_hint">Все серии</string>
+    <string name="player_back_to_controls">Вернуться к управлению</string>
+    <string name="now_playing">Сейчас</string>
 </resources>
