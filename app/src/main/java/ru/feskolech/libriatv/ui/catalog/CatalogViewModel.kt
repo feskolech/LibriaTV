@@ -12,6 +12,12 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.async
 import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
+import ru.feskolech.libriatv.data.repo.SavedCatalogFilter
+import ru.feskolech.libriatv.data.repo.SavedFiltersStore
+import ru.feskolech.libriatv.data.repo.SettingsStore
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.CatalogReferences
 import ru.feskolech.libriatv.domain.Release
@@ -28,6 +34,8 @@ data class CatalogUiState(
     val titleSorted: Boolean = false,
     /** Pages fetched / total while building the title-sorted catalog; null when not doing that. */
     val titleProgress: Pair<Int, Int>? = null,
+    /** Filters the viewer kept as chips of their own (the new catalog). */
+    val saved: List<SavedCatalogFilter> = emptyList(),
 ) {
     val canLoadMore: Boolean get() = !loading && page < totalPages
 }
@@ -36,14 +44,54 @@ data class CatalogUiState(
 class CatalogViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val messages: ru.feskolech.libriatv.ui.components.UserMessages,
+    settings: SettingsStore,
+    private val savedFilters: SavedFiltersStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow(CatalogUiState())
     val state: StateFlow<CatalogUiState> = _state
     private var pageJob: Job? = null
 
+    /** Which catalog screen to show (Settings); null until read. */
+    val newCatalog: StateFlow<Boolean?> = settings.newCatalog.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init {
         loadReferences()
         reload()
+        viewModelScope.launch { savedFilters.filters.collect { _state.value = _state.value.copy(saved = it) } }
+    }
+
+    /**
+     * A quick pick, a saved filter or a change in the filter panel. Picks switch as the focus moves along
+     * them, so the request waits a moment: passing over a chip on the way to the next one asks nothing.
+     */
+    fun pick(filter: CatalogFilter, titleSorted: Boolean = false) {
+        val current = _state.value
+        if (filter == current.filter && titleSorted == current.titleSorted) return
+        _state.value = current.copy(filter = filter, titleSorted = titleSorted)
+        reload(debounceMs = PICK_DELAY_MS)
+    }
+
+    fun saveCurrent(name: String) = viewModelScope.launch {
+        savedFilters.add(SavedCatalogFilter(name, _state.value.filter, _state.value.titleSorted))
+    }
+
+    fun removeSaved(saved: SavedCatalogFilter) = viewModelScope.launch { savedFilters.remove(saved) }
+
+    /**
+     * "I'm feeling lucky" within what is shown: a random title of the current filter (the whole catalog
+     * when nothing is filtered). Asking for one title per page makes the page count the number of titles.
+     */
+    fun lucky(onResult: (Int) -> Unit) = viewModelScope.launch {
+        val filter = _state.value.filter
+        val id = if (filter.activeCount == 0) (repository.randomRelease() as? ApiResult.Success)?.value?.id else {
+            val total = (repository.catalog(filter, 1, limit = 1, compact = true) as? ApiResult.Success)?.value?.totalPages
+            if (total == 0) { messages.show(ru.feskolech.libriatv.R.string.catalog_empty); return@launch }
+            total?.let { n ->
+                (repository.catalog(filter, kotlin.random.Random.nextInt(1, n + 1), limit = 1, compact = true)
+                    as? ApiResult.Success)?.value?.releases?.firstOrNull()?.id
+            }
+        }
+        if (id != null) onResult(id) else messages.show(ru.feskolech.libriatv.R.string.error_network_short)
     }
 
     fun loadReferences() = viewModelScope.launch {
@@ -74,10 +122,15 @@ class CatalogViewModel @Inject constructor(
 
     fun resetFilter() = applyFilter(CatalogFilter(sorting = _state.value.filter.sorting))
 
-    fun reload() {
+    fun reload(debounceMs: Long = 0) {
         pageJob?.cancel()
-        _state.value = _state.value.copy(releases = emptyList(), page = 0, totalPages = 1, loading = false, error = null)
-        if (_state.value.titleSorted) loadAllByTitle() else loadMore()
+        _state.value = _state.value.copy(releases = emptyList(), page = 0, totalPages = 1, loading = debounceMs > 0,
+            error = null, titleProgress = null)
+        if (debounceMs > 0) pageJob = viewModelScope.launch {
+            delay(debounceMs)
+            _state.value = _state.value.copy(loading = false)
+            if (_state.value.titleSorted) loadAllByTitle() else loadMore()
+        } else if (_state.value.titleSorted) loadAllByTitle() else loadMore()
     }
 
     /** Title-sorted result per filter for this session: the API cannot sort by title itself. */
@@ -143,5 +196,6 @@ class CatalogViewModel @Inject constructor(
 
     private companion object {
         const val TITLE_PAGE = 50 // API maximum
+        const val PICK_DELAY_MS = 300L
     }
 }

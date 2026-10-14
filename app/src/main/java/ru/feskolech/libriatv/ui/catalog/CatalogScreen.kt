@@ -120,40 +120,8 @@ fun CatalogScreen(
             }
         }
 
-        when {
-            state.releases.isEmpty() && state.loading ->
-                Text(state.titleProgress?.let { (done, total) -> stringResource(R.string.catalog_title_progress, done, total) }
-                    ?: stringResource(R.string.home_loading), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
-            state.releases.isEmpty() && state.error != null -> Column(Modifier.padding(horizontal = 48.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(state.error.orEmpty(), color = Color.White)
-                Button(onClick = viewModel::reload) { Text(stringResource(R.string.retry)) }
-            }
-            state.releases.isEmpty() ->
-                Text(stringResource(R.string.catalog_empty), Modifier.padding(horizontal = 48.dp), color = Color.LightGray)
-            state.titleSorted -> AlphabetGrid(state.releases, badge = { it.year?.toString() },
-                onOpen = onOpenRelease)
-            else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(160.dp),
-                state = gridState,
-                modifier = Modifier.fillMaxSize().focusRestorer(),
-                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
-                horizontalArrangement = Arrangement.spacedBy(22.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
-            ) {
-                itemsIndexed(state.releases, key = { _, r -> r.id }) { index, release ->
-                    PosterCard(
-                        release,
-                        badge = release.year?.toString(),
-                        onFocus = {
-                            onContentFocus()
-                            if (index >= state.releases.size - PRELOAD_DISTANCE) viewModel.loadMore()
-                        },
-                        modifier = if (release.id == lastOpened) Modifier.focusRequester(openedCard) else Modifier,
-                        onClick = { lastOpened = release.id; onOpenRelease(release.id) },
-                    )
-                }
-            }
-        }
+        CatalogResults(state, gridState, lastOpened, openedCard, onContentFocus, viewModel::loadMore, viewModel::reload,
+            onOpen = { id -> lastOpened = id; onOpenRelease(id) })
     }
 
     val close = { dialog = null }
@@ -181,8 +149,6 @@ fun CatalogScreen(
         null -> Unit
     }
 }
-
-private const val PRELOAD_DISTANCE = 12
 
 @Composable
 private fun FilterButton(title: String, count: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -280,7 +246,7 @@ private fun YearsDialog(years: List<Int>, filter: CatalogFilter, onDismiss: () -
 }
 
 @Composable
-private fun YearRow(years: List<Int>, selected: Int?, modifier: Modifier = Modifier, down: FocusRequester? = null, onPick: (Int?) -> Unit) {
+internal fun YearRow(years: List<Int>, selected: Int?, modifier: Modifier = Modifier, down: FocusRequester? = null, onPick: (Int?) -> Unit) {
     // [down]: from any year the Down key goes to Apply, wherever that year sits in the row.
     val chip = if (down == null) Modifier else Modifier.focusProperties { this.down = down }
     val start = (years.indexOf(selected).takeIf { it >= 0 } ?: years.lastIndex).coerceAtLeast(0)

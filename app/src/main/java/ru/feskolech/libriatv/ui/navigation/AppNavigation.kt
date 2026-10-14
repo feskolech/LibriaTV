@@ -17,7 +17,7 @@ import ru.feskolech.libriatv.crash.CrashReportViewModel
 import ru.feskolech.libriatv.remote.PhoneRemote
 import ru.feskolech.libriatv.remote.RemoteCommand
 import ru.feskolech.libriatv.ui.auth.AuthScreen
-import ru.feskolech.libriatv.ui.catalog.CatalogScreen
+import ru.feskolech.libriatv.ui.catalog.CatalogRoute
 import ru.feskolech.libriatv.ui.components.AppDialog
 import ru.feskolech.libriatv.ui.components.DialogButton
 import ru.feskolech.libriatv.ui.favorites.FavoritesScreen
@@ -74,7 +74,7 @@ fun AppNavigation(phoneRemote: PhoneRemote, deepLink: MutableStateFlow<Uri?>,
                         onOpenRelease = openRelease,
                     )
                     Destination.Search -> SearchScreen(onOpenRelease = openRelease, onContentFocus = shell.closeMenu)
-                    Destination.Catalog -> CatalogScreen(onOpenRelease = openRelease, onContentFocus = shell.closeMenu)
+                    Destination.Catalog -> CatalogRoute(onOpenRelease = openRelease, onContentFocus = shell.closeMenu)
                     Destination.Favorites -> FavoritesScreen(
                         onOpenRelease = openRelease,
                         onLogin = { navController.navigate(Destination.Profile.route) },
