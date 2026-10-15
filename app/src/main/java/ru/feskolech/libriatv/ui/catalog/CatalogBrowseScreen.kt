@@ -173,6 +173,12 @@ fun CatalogBrowseScreen(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit
             .focusRestorer(selectedChip).focusGroup()
             .onFocusChanged { if (it.hasFocus) gridHadFocus = false },
             horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            // The filter comes first, always in reach; the screen still opens on the selected pick
+            // ("Recently updated" by default), not on this chip.
+            CatalogChip(stringResource(R.string.catalog_custom) + if (parts.isNotEmpty()) " (${parts.size})" else "",
+                selected = custom, icon = Icons.Filled.Tune,
+                modifier = down.then(if (custom) Modifier.focusRequester(selectedChip) else Modifier),
+                onClick = { if (refs != null) panelOpen = true })
             picks.forEachIndexed { index, pick ->
                 CatalogChip(pick.label, selected = index == pickIndex,
                     modifier = down.then(if (index == pickIndex) Modifier.focusRequester(selectedChip) else Modifier),
@@ -183,10 +189,6 @@ fun CatalogBrowseScreen(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit
                     modifier = down.then(if (index == savedIndex) Modifier.focusRequester(selectedChip) else Modifier),
                     onFocus = { viewModel.pick(saved.filter, saved.titleSorted) }, onClick = {})
             }
-            CatalogChip(stringResource(R.string.catalog_custom) + if (parts.isNotEmpty()) " (${parts.size})" else "",
-                selected = custom, icon = Icons.Filled.Tune,
-                modifier = down.then(if (custom) Modifier.focusRequester(selectedChip) else Modifier),
-                onClick = { if (refs != null) panelOpen = true })
             CatalogChip(stringResource(R.string.random_release), selected = false, icon = Icons.Filled.Casino, modifier = down,
                 onClick = { viewModel.lucky(onOpenRelease) })
         }
