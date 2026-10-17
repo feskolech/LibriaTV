@@ -8,6 +8,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.AuthRepository
@@ -59,7 +60,10 @@ class HomeViewModel @Inject constructor(
     val state: StateFlow<HomeUiState> = _state
     private var lastRefresh = 0L
     private var loading = false
-    private var checkedUserId: Int? = null
+    /** When favorites were last compared for new episodes, and for whom (see [checkFavorites]). */
+    private var favoritesCheckedAt = 0L
+    private var favoritesCheckedFor: Int? = null
+    private val favoritesCheck = kotlinx.coroutines.sync.Mutex()
 
     init {
         refresh(force = true)
@@ -133,6 +137,7 @@ class HomeViewModel @Inject constructor(
                 val ids = fresh.mapTo(HashSet()) { it.id }
                 current.copy(latest = fresh + current.latest.filter { it.id !in ids }, refreshingLatest = false)
             } else current.copy(refreshingLatest = false)
+            if (auth.state.value is AuthState.Authorized) checkFavorites()
         }
     }
 
@@ -150,19 +155,28 @@ class HomeViewModel @Inject constructor(
 
     private var loadingMoreLatest = false
 
-    private suspend fun checkFavorites() {
+    /**
+     * New episodes in favorites since the last check: on every visit to Home, at most once a minute (it
+     * fetches the whole favorites list). It used to run once per app start, as Home lives as long as the
+     * app does, so an episode that came out while the app stayed open was never announced. A notice not
+     * dismissed yet keeps its episodes and gains the new ones.
+     */
+    private suspend fun checkFavorites(): Unit = favoritesCheck.withLock {
+        val userId = (auth.state.value as? AuthState.Authorized)?.user?.id ?: run { favoritesCheckedFor = null; return }
+        val now = System.currentTimeMillis()
+        if (favoritesCheckedFor == userId && now - favoritesCheckedAt < FAVORITES_CHECK_INTERVAL_MS) return
         favoritesRepository.refreshIds()
-        val userId = (auth.state.value as? AuthState.Authorized)?.user?.id ?: run { checkedUserId = null; return }
-        if (checkedUserId == userId) return
         val favorites = favoritesRepository.allReleases() as? ApiResult.Success ?: return
         val newEpisodes = compareFavoriteEpisodes(episodeStore.previous(userId), favorites.value)
         episodeStore.save(userId, favorites.value)
         // The baseline just moved: everything is "seen", so the home-screen channel is emptied.
         newEpisodesChannel.publish(emptyList())
-        checkedUserId = userId
+        favoritesCheckedFor = userId
+        favoritesCheckedAt = now
         val current = _state.value as? HomeUiState.Content ?: return
-        _state.value = current.copy(favoriteIds = favoritesRepository.ids.value, newEpisodes = newEpisodes,
-            showEpisodeDialog = newEpisodes.isNotEmpty())
+        _state.value = if (newEpisodes.isEmpty()) current.copy(favoriteIds = favoritesRepository.ids.value)
+            else current.copy(favoriteIds = favoritesRepository.ids.value, showEpisodeDialog = true,
+                newEpisodes = mergeNewEpisodes(if (current.showEpisodeDialog) current.newEpisodes else emptyList(), newEpisodes))
     }
 
     /**
@@ -197,5 +211,17 @@ class HomeViewModel @Inject constructor(
 
     private companion object {
         const val LATEST_FIRST_PAGE = 50 // API maximum for releases/latest and the catalog
+        const val FAVORITES_CHECK_INTERVAL_MS = 60_000L
     }
+}
+
+/** A notice still on screen plus a later check: one line per release, from its earliest new episode to the latest. */
+internal fun mergeNewEpisodes(shown: List<NewFavoriteEpisode>, fresh: List<NewFavoriteEpisode>): List<NewFavoriteEpisode> {
+    val byRelease = LinkedHashMap<Int, NewFavoriteEpisode>()
+    (shown + fresh).forEach { item ->
+        val old = byRelease[item.release.id]
+        byRelease[item.release.id] = if (old == null) item
+            else NewFavoriteEpisode(item.release, minOf(old.from, item.from), maxOf(old.to, item.to))
+    }
+    return byRelease.values.toList()
 }

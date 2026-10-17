@@ -210,9 +210,18 @@ private fun HomeContent(
             }
         }
     }
+    // Closing the notice hands the focus to the cards. It can pop up while the viewer is still in the menu
+    // (the check finishes a moment after Home opens); returning the focus there left the menu open over Home.
+    var refocusAfterNotice by remember { mutableIntStateOf(0) }
+    LaunchedEffect(refocusAfterNotice) {
+        if (refocusAfterNotice == 0) return@LaunchedEffect
+        withFrameNanos { }
+        if (lastId < 0 || runCatching { restore.requestFocus() }.isFailure) runCatching { firstPoster.requestFocus() }
+    }
+    val closeNotice: () -> Unit = { dismissEpisodeDialog(); refocusAfterNotice++ }
     if (content.showEpisodeDialog) {
-        AppDialog(onDismiss = dismissEpisodeDialog, title = stringResource(R.string.favorite_new_episodes), width = 560.dp,
-            actions = { SingleDialogButton(stringResource(R.string.close), dismissEpisodeDialog) }) {
+        AppDialog(onDismiss = closeNotice, title = stringResource(R.string.favorite_new_episodes), width = 560.dp,
+            actions = { SingleDialogButton(stringResource(R.string.close), closeNotice) }) {
             content.newEpisodes.forEach { Text(newEpisodeText(it)) }
         }
     }
