@@ -33,7 +33,6 @@ sealed interface SettingsUiState {
         val phoneRemoteError: Boolean,
         val homeVideoPreview: Boolean,
         val appearance: AppearanceSettings,
-        val newCatalog: Boolean = true,
     ) : SettingsUiState
 }
 
@@ -51,8 +50,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = SettingsUiState.Content(playback.quality(), playback.autoSkipOpening(), playback.autoSkipEnding(),
                 playback.autoNext(), playback.frameRateMatch(), playback.nightMode(), playback.speed(), settings.mirror(),
-                crashReports.available, crashReports.automatic(), false, null, null, false, settings.homeVideoPreview(), settings.appearance.first(),
-                settings.newCatalog.first())
+                crashReports.available, crashReports.automatic(), false, null, null, false, settings.homeVideoPreview(), settings.appearance.first())
             launch {
                 settings.appearance.collect { appearance ->
                     val current = _state.value as? SettingsUiState.Content ?: return@collect
@@ -92,10 +90,6 @@ class SettingsViewModel @Inject constructor(
     fun homeVideoPreview() = change(
         { settings.setHomeVideoPreview(it.homeVideoPreview) },
         { it.copy(homeVideoPreview = !it.homeVideoPreview) },
-    )
-    fun newCatalog() = change(
-        { settings.setNewCatalog(it.newCatalog) },
-        { it.copy(newCatalog = !it.newCatalog) },
     )
     fun oled(value: Boolean) = change({ settings.setOled(value) }, { it.copy(appearance = it.appearance.copy(oled = value)) })
     fun accent(value: Int) = change({ settings.setAccent(value) }, { it.copy(appearance = it.appearance.copy(accent = value)) })

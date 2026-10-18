@@ -50,10 +50,6 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     suspend fun setAutomaticCrashReports(enabled: Boolean) {
         context.settingsDataStore.edit { it[automaticCrashReportsKey] = enabled }
     }
-    private val newCatalogKey = booleanPreferencesKey("new_catalog")
-    /** The catalog with quick picks and one filter panel; off brings back the previous catalog screen. */
-    val newCatalog = context.settingsDataStore.data.map { it[newCatalogKey] ?: true }
-    suspend fun setNewCatalog(enabled: Boolean) { context.settingsDataStore.edit { it[newCatalogKey] = enabled } }
     suspend fun phoneRemoteEnabled(): Boolean = context.settingsDataStore.data.first()[phoneRemoteKey] ?: false
     suspend fun setPhoneRemoteEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { it[phoneRemoteKey] = enabled }

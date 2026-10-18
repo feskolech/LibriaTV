@@ -439,7 +439,8 @@ class PlayerViewModel @Inject constructor(
         val countdown = nextCountdown(current.autoNext, current.sleepTimer, remaining, hasNext = next != null)
         update { it.copy(positionMs = position, durationMs = duration, skip = if (autoSkip) null else skip,
             skipOpening = active?.isOpening == true, nextCountdown = countdown) }
-        if (current.autoNext && current.sleepTimer != SleepTimer.AfterEpisode && duration > 0 && remaining <= 0 && next != null && player.mediaItemCount == 1) playEpisode(next.id)
+        if (player.mediaItemCount == 1 && next != null &&
+            shouldAutoAdvance(current.autoNext, current.sleepTimer, player.playWhenReady, duration, remaining, hasNext = true)) playEpisode(next.id)
         if (position - lastSync >= 15_000 || position < lastSync) {
             lastSync = position
             viewModelScope.launch { saveProgress() }

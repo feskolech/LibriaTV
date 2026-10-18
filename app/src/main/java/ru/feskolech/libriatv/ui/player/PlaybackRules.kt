@@ -69,6 +69,15 @@ internal fun remainingSeconds(positionMs: Long, durationMs: Long): Long =
 internal fun nextCountdown(autoNext: Boolean, sleepTimer: SleepTimer, remaining: Long, hasNext: Boolean): Int? =
     if (autoNext && sleepTimer != SleepTimer.AfterEpisode && remaining in 1..8 && hasNext) remaining.toInt() else null
 
+/**
+ * Whether the episode that just ended hands over to the next one by itself. Not while the player is paused:
+ * the "after this episode" sleep timer pauses at the end and switches itself off, and the next check used
+ * to see "timer off, episode over" and start the next episode anyway.
+ */
+internal fun shouldAutoAdvance(autoNext: Boolean, sleepTimer: SleepTimer, playWhenReady: Boolean,
+    durationMs: Long, remaining: Long, hasNext: Boolean): Boolean =
+    autoNext && sleepTimer != SleepTimer.AfterEpisode && playWhenReady && durationMs > 0 && remaining <= 0 && hasNext
+
 /** The site counts an episode as watched from 90 %. */
 internal fun isWatched(positionMs: Long, durationMs: Long): Boolean = durationMs > 0 && positionMs >= durationMs * 0.9
 

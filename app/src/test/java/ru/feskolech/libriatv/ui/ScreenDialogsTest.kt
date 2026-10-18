@@ -21,7 +21,6 @@ import org.robolectric.RobolectricTestRunner
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.domain.FilterOption
 import ru.feskolech.libriatv.ui.auth.ProfileContent
-import ru.feskolech.libriatv.ui.catalog.MultiSelectDialog
 import ru.feskolech.libriatv.ui.components.DrawerBrowsing
 
 /** Dialogs inside screens, driven with the remote's keys. */
@@ -58,27 +57,5 @@ class ScreenDialogsTest {
         inDialog(text(R.string.cancel)).press(Key.DirectionLeft)
         inDialog(text(R.string.logout_confirm)).apply { assertIsFocused(); press(Key.DirectionCenter) }
         rule.runOnIdle { assertEquals(1, signedOut) }
-    }
-
-    @Test
-    fun `filter Apply and Clear are equal and Down from the end of the list lands on Apply`() {
-        var applied: Set<String>? = null
-        val options = listOf(FilterOption("a", "Action"), FilterOption("d", "Drama"), FilterOption("c", "Comedy"))
-        rule.setContent { MaterialTheme { MultiSelectDialog("Genres", options, emptySet(), onDismiss = {}, onApply = { applied = it }) } }
-
-        inDialog("     Action").apply { assertIsFocused(); press(Key.DirectionCenter) }   // pick the first one
-        inDialog("✓  Action").press(Key.DirectionDown)
-        inDialog("     Drama").press(Key.DirectionDown)
-        inDialog("     Comedy").press(Key.DirectionDown)
-        val apply = inDialog(text(R.string.filter_apply))
-        apply.assertIsFocused()
-
-        val applyBounds = apply.fetchSemanticsNode().boundsInRoot
-        val clearBounds = inDialog(text(R.string.filter_clear)).fetchSemanticsNode().boundsInRoot
-        assertEquals(applyBounds.width, clearBounds.width, 0.5f)
-        assertEquals(applyBounds.top, clearBounds.top, 0.5f)
-
-        apply.press(Key.DirectionCenter)
-        rule.runOnIdle { assertEquals(setOf("a"), applied) }
     }
 }

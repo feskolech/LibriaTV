@@ -102,4 +102,16 @@ class PlaybackRulesTest {
         assertFalse(isWatched(89_999, 100_000))
         assertFalse(isWatched(10, 0))
     }
+
+    @Test
+    fun `an episode paused at its end by the sleep timer does not start the next one`() {
+        // Playing on to the end: the next episode starts.
+        assertTrue(shouldAutoAdvance(autoNext = true, SleepTimer.Off, playWhenReady = true, durationMs = 1_000, remaining = 0, hasNext = true))
+        // The "after this episode" timer has fired: paused, and already switched off.
+        assertFalse(shouldAutoAdvance(autoNext = true, SleepTimer.Off, playWhenReady = false, durationMs = 1_000, remaining = 0, hasNext = true))
+        // Still armed, or auto-next off, or the last episode.
+        assertFalse(shouldAutoAdvance(autoNext = true, SleepTimer.AfterEpisode, playWhenReady = true, durationMs = 1_000, remaining = 0, hasNext = true))
+        assertFalse(shouldAutoAdvance(autoNext = false, SleepTimer.Off, playWhenReady = true, durationMs = 1_000, remaining = 0, hasNext = true))
+        assertFalse(shouldAutoAdvance(autoNext = true, SleepTimer.Off, playWhenReady = true, durationMs = 1_000, remaining = 0, hasNext = false))
+    }
 }

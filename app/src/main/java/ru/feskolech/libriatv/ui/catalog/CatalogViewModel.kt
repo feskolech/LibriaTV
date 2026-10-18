@@ -14,10 +14,7 @@ import ru.feskolech.libriatv.data.repo.ApiRepository
 import ru.feskolech.libriatv.data.repo.ApiResult
 import ru.feskolech.libriatv.data.repo.SavedCatalogFilter
 import ru.feskolech.libriatv.data.repo.SavedFiltersStore
-import ru.feskolech.libriatv.data.repo.SettingsStore
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.stateIn
 import ru.feskolech.libriatv.domain.CatalogFilter
 import ru.feskolech.libriatv.domain.CatalogReferences
 import ru.feskolech.libriatv.domain.Release
@@ -44,15 +41,11 @@ data class CatalogUiState(
 class CatalogViewModel @Inject constructor(
     private val repository: ApiRepository,
     private val messages: ru.feskolech.libriatv.ui.components.UserMessages,
-    settings: SettingsStore,
     private val savedFilters: SavedFiltersStore,
 ) : ViewModel() {
     private val _state = MutableStateFlow(CatalogUiState())
     val state: StateFlow<CatalogUiState> = _state
     private var pageJob: Job? = null
-
-    /** Which catalog screen to show (Settings); null until read. */
-    val newCatalog: StateFlow<Boolean?> = settings.newCatalog.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     init {
         loadReferences()

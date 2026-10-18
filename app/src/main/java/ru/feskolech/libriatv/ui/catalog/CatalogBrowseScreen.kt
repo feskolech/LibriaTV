@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,18 +88,10 @@ private fun quickPicks(): List<QuickPick> {
 
 private fun CatalogFilter.normalized() = if (sorting == null) copy(sorting = DEFAULT_SORTING) else this
 
-/**
- * Which catalog to show: this one, or the previous screen when the viewer switched it off in Settings
- * (kept as it was, to fall back to). Both share one [CatalogViewModel].
- */
+/** The catalog screen. */
 @Composable
-fun CatalogRoute(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit, viewModel: CatalogViewModel = hiltViewModel()) {
-    when (viewModel.newCatalog.collectAsState().value) {
-        true -> CatalogBrowseScreen(onOpenRelease, onContentFocus, viewModel)
-        false -> CatalogScreen(onOpenRelease, onContentFocus, viewModel)
-        null -> Unit
-    }
-}
+fun CatalogRoute(onOpenRelease: (Int) -> Unit, onContentFocus: () -> Unit, viewModel: CatalogViewModel = hiltViewModel()) =
+    CatalogBrowseScreen(onOpenRelease, onContentFocus, viewModel)
 
 /**
  * The catalog as quick picks: chips for the common cases ("airing now", "top rated", "movies"…) that switch
@@ -327,6 +322,18 @@ private fun LazyListScope.multiSection(title: Int, options: List<FilterOption>, 
             val on = option.id in selected
             PanelChip(option.title, on) { onChange(if (on) selected - option.id else selected + option.id) }
         }
+    }
+}
+
+/** One row of years and "Any"; [down]: from any year Down goes there, wherever that year sits in the row. */
+@Composable
+private fun YearRow(years: List<Int>, selected: Int?, down: FocusRequester? = null, onPick: (Int?) -> Unit) {
+    val chip = if (down == null) Modifier else Modifier.focusProperties { this.down = down }
+    val start = (years.indexOf(selected).takeIf { it >= 0 } ?: years.lastIndex).coerceAtLeast(0)
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+        state = rememberLazyListState(initialFirstVisibleItemIndex = (start - 2).coerceAtLeast(0))) {
+        item { PanelChip(stringResource(R.string.filter_any), selected == null, chip) { onPick(null) } }
+        items(years) { year -> PanelChip("$year", year == selected, chip) { onPick(year) } }
     }
 }
 
