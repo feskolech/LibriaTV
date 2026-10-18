@@ -28,7 +28,8 @@ class SearchHistoryStore @Inject constructor(@ApplicationContext private val con
     suspend fun clear() { context.searchDataStore.edit { it.remove(key) } }
 
     companion object {
-        const val LIMIT = 10
+        /** Five: the whole history and its 'Clear' button fit on one line, nothing to scroll past. */
+        const val LIMIT = 5
 
         fun push(history: List<String>, query: String): List<String> =
             (listOf(query) + history.filterNot { it.equals(query, ignoreCase = true) }).take(LIMIT)

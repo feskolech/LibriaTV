@@ -57,13 +57,33 @@ class NewEpisodesChannel @Inject constructor(@ApplicationContext private val con
         }.onFailure { Log.w("LibriaTV", "New episodes channel update failed", it) }
     }
 
+    /**
+     * The app's one channel. The channel was published without a description, and the library's reader
+     * (PreviewChannel.fromCursor) throws on that, so every lookup by id failed and a new channel was published on
+     * each update: TVs collected dozens of identical "new episodes" rows. Channel ids are now read straight from
+     * the provider, extra copies are deleted, and a new channel is published only when the list was read and
+     * holds none (an unreadable list publishes nothing).
+     */
     private fun channelId(): Long? {
         val saved = prefs.getLong(KEY, -1L)
-        if (saved >= 0 && runCatching { helper.getPreviewChannel(saved) }.getOrNull() != null) return saved
+        val name = context.getString(R.string.channel_new_episodes)
+        // Only this app's channels are listed, and it has no other: every one of them is a copy of this row.
+        val ours = runCatching { channelIds() }
+            .onFailure { Log.w("LibriaTV", "Cannot read the app's TV channels", it) }
+            .getOrNull() ?: return saved.takeIf { it >= 0 }
+        val keep = ours.firstOrNull { it == saved } ?: ours.firstOrNull()
+        ours.filter { it != keep }.forEach { extra -> runCatching { helper.deletePreviewChannel(extra) } }
+        if (ours.size > 1) Log.i("LibriaTV", "Removed ${ours.size - 1} duplicate new-episodes channel(s)")
+        if (keep != null) {
+            if (keep != saved) prefs.edit().putLong(KEY, keep).apply()
+            return keep
+        }
         val logo = ContextCompat.getDrawable(context, R.mipmap.ic_launcher)?.toBitmap(160, 160) ?: return null
         val id = runCatching {
             helper.publishChannel(PreviewChannel.Builder()
-                .setDisplayName(context.getString(R.string.channel_new_episodes))
+                .setDisplayName(name)
+                .setDescription(name)
+                .setInternalProviderId(PROVIDER_ID)
                 .setAppLinkIntentUri(Uri.parse("libriatv://home"))
                 .setLogo(logo)
                 .build())
@@ -74,8 +94,16 @@ class NewEpisodesChannel @Inject constructor(@ApplicationContext private val con
         return id
     }
 
+    /** Ids of this app's channels (the provider lists only the caller's own), oldest first. */
+    private fun channelIds(): List<Long> =
+        context.contentResolver.query(TvContractCompat.Channels.CONTENT_URI, arrayOf(TvContractCompat.Channels._ID),
+            null, null, TvContractCompat.Channels._ID)?.use { cursor ->
+            buildList { while (cursor.moveToNext()) add(cursor.getLong(0)) }
+        } ?: error("No cursor")
+
     private companion object {
         const val KEY = "new_episodes_channel"
+        const val PROVIDER_ID = "new_episodes"
         const val MAX_PROGRAMS = 20
     }
 }

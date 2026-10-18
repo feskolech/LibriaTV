@@ -37,6 +37,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.History
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -280,9 +284,21 @@ private fun RecentQueries(recent: List<String>, onPick: (String) -> Unit, onClea
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.search_recent), Modifier.padding(horizontal = 48.dp),
             style = MaterialTheme.typography.titleLarge, color = Color.White)
+        // At most five queries (SearchHistoryStore.LIMIT), so "Clear" is always a few presses away; each query
+        // keeps to one line, cut if long, so the row stays on screen.
         LazyRow(contentPadding = PaddingValues(horizontal = 48.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(recent) { item -> Button(onClick = { onPick(item) }) { Text(item) } }
-            item { Button(onClick = onClear) { Text(stringResource(R.string.search_clear_history)) } }
+            items(recent) { item ->
+                Button(onClick = { onPick(item) }, modifier = Modifier.widthIn(max = 320.dp)) {
+                    Icon(Icons.Filled.History, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(20.dp))
+                    Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            item {
+                Button(onClick = onClear) {
+                    Icon(Icons.Filled.DeleteSweep, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(20.dp))
+                    Text(stringResource(R.string.search_clear_history))
+                }
+            }
         }
     }
 }
