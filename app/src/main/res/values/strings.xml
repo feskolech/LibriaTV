@@ -247,4 +247,5 @@
     <string name="player_episodes_hint">Все серии</string>
     <string name="player_back_to_controls">Вернуться к управлению</string>
     <string name="now_playing">Сейчас</string>
+    <string name="player_more">Ещё</string>
 </resources>

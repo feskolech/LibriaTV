@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.ui.Modifier
@@ -58,6 +57,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -205,7 +206,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
             }
             current.seekTargetMs?.let { target ->
                 Column(Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom = if (current.panel == PlayerPanel.Hidden) 110.dp else 300.dp)
+                    .padding(bottom = if (current.panel == PlayerPanel.Hidden) 110.dp else 170.dp)
                     .background(Color(0xE6101010)).padding(8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     current.seekFrame?.let { bitmap ->
@@ -265,8 +266,19 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                         onUp = { viewModel.showPanel(PlayerPanel.Controls) })
                 }
             } else if (current.panel != PlayerPanel.Hidden) {
-                // Focus never leaves the panel: at its edges (Left of the first button, Up from the
-                // progress bar…) it stays on the last element instead of vanishing behind the video.
+                // A see-through HUD (like ivi): the frame is only shaded at the top, under the title, and at
+                // the bottom, under the controls; the middle stays clear.
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(
+                    0f to Color(0x99000000), 0.2f to Color.Transparent, 0.55f to Color.Transparent, 1f to Color(0xD9000000))))
+                Column(Modifier.align(Alignment.TopStart).padding(horizontal = 48.dp, vertical = 27.dp)) {
+                    Text(current.release.title, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(listOf(stringResource(R.string.episode_number, current.episode.ordinal?.toInt() ?: 0), current.episode.name)
+                        .filter { it.isNotBlank() }.joinToString(" · "), color = Color(0xFFC9C9CF), fontSize = 17.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                // Focus never leaves the panel: at its edges (Left of the first button, Up from the buttons…)
+                // it stays on the last element instead of vanishing behind the video.
                 Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                     .focusProperties {
                         onExit = {
@@ -274,17 +286,7 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                         }
                     }
                     .focusGroup()
-                    .background(Color(0xE6101010))
-                    .padding(horizontal = 48.dp, vertical = 27.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(current.release.title + " • " + stringResource(R.string.episode_number, current.episode.ordinal?.toInt() ?: 0), color = Color.White)
-                    Text(formatTime(current.positionMs) + " / " + formatTime(current.durationMs), color = Color.White)
-                    SeekBar(
-                        positionMs = current.seekTargetMs ?: current.positionMs,
-                        durationMs = current.durationMs,
-                        // Selectable only with the controls shown; Left/Right on it rewind / fast-forward.
-                        selectable = current.panel == PlayerPanel.Controls,
-                        onSeek = { direction, repeat -> viewModel.seek(direction, repeat, keepPanel = true) },
-                    )
+                    .padding(start = 48.dp, end = 48.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     current.error?.let { error ->
                         if (error == PlayerViewModel.PLAYBACK_FAILED) {
                             Text(stringResource(R.string.player_network_error), color = Color.White)
@@ -301,32 +303,41 @@ fun PlayerScreen(onBack: () -> Unit, remoteCommands: Flow<RemoteCommand>, viewMo
                             }
                         } else Text(error, color = Color.White)
                     }
-                    // A fixed-height slot: a focused (scaled-up) icon button fits without clipping.
-                    Box(Modifier.fillMaxWidth().height(HUD_ROW_HEIGHT), contentAlignment = Alignment.CenterStart) {
-                        // Playback only; everything that is a setting lives behind the gear. Down opens the
-                        // episode strip (the hint below says so).
-                        Row(Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
-                            if (event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown) {
-                                viewModel.showPanel(PlayerPanel.Episodes); true
-                            } else false
-                        }, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, { viewModel.previousEpisode(keepPanel = true) })
-                            ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
-                            ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
-                                if (current.error == null) Modifier.focusRequester(panelFocus) else Modifier)
-                            ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1, keepPanel = true) })
-                            ControlButton(Icons.Filled.SkipNext, R.string.next_episode, { viewModel.nextEpisode(keepPanel = true) })
-                            Spacer(Modifier.weight(1f))
-                            ControlButton(Icons.Filled.Settings, R.string.player_settings, { viewModel.showPanel(PlayerPanel.Settings) })
+                    current.nextCountdown?.let { Text(stringResource(R.string.next_in, it), color = Color.White) }
+                    // Playback on the left; quality, speed, the sleep timer and the rest live behind "More".
+                    // A fixed-height slot: the larger, focused play button fits without moving the row.
+                    Row(Modifier.fillMaxWidth().height(HUD_ROW_HEIGHT), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        ControlButton(Icons.Filled.SkipPrevious, R.string.previous_episode, { viewModel.previousEpisode(keepPanel = true) })
+                        ControlButton(Icons.Filled.Replay10, R.string.seek_back, { viewModel.seek(-1, keepPanel = true) })
+                        ControlButton(if (current.playing) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                            if (current.playing) R.string.pause else R.string.play, viewModel::togglePause,
+                            if (current.error == null) Modifier.focusRequester(panelFocus) else Modifier, main = true)
+                        ControlButton(Icons.Filled.Forward10, R.string.seek_forward, { viewModel.seek(1, keepPanel = true) })
+                        ControlButton(Icons.Filled.SkipNext, R.string.next_episode, { viewModel.nextEpisode(keepPanel = true) })
+                        Spacer(Modifier.weight(1f))
+                        MoreButton { viewModel.showPanel(PlayerPanel.Settings) }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text(formatTime(current.seekTargetMs ?: current.positionMs), color = Color.White, fontSize = 16.sp)
+                        Box(Modifier.weight(1f)) {
+                            SeekBar(
+                                positionMs = current.seekTargetMs ?: current.positionMs,
+                                durationMs = current.durationMs,
+                                // Selectable only with the controls shown; Left/Right on it rewind / fast-forward,
+                                // Down opens the episode strip (the hint below says so).
+                                selectable = current.panel == PlayerPanel.Controls,
+                                onSeek = { direction, repeat -> viewModel.seek(direction, repeat, keepPanel = true) },
+                                onDown = { viewModel.showPanel(PlayerPanel.Episodes) },
+                            )
                         }
+                        Text(formatTime(current.durationMs), color = Color.White, fontSize = 16.sp)
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                        Text(stringResource(R.string.player_episodes_hint), color = Color(0xFFB4B4BC), fontSize = 16.sp)
-                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color(0xFFB4B4BC),
-                            modifier = Modifier.padding(start = 4.dp).size(22.dp))
+                        Text(stringResource(R.string.player_episodes_hint), color = Color(0xFFC9C9CF), fontSize = 15.sp)
+                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color(0xFFC9C9CF),
+                            modifier = Modifier.padding(start = 4.dp).size(20.dp))
                     }
-                    current.nextCountdown?.let { Text(stringResource(R.string.next_in, it), color = Color.White) }
                 }
             }
         } else when (val value = state) {
@@ -347,7 +358,7 @@ private fun formatTime(ms: Long): String {
 }
 
 @Composable
-private fun SeekBar(positionMs: Long, durationMs: Long, selectable: Boolean, onSeek: (Int, Int) -> Unit) {
+private fun SeekBar(positionMs: Long, durationMs: Long, selectable: Boolean, onSeek: (Int, Int) -> Unit, onDown: () -> Unit = {}) {
     var focused by remember { mutableStateOf(false) }
     val fraction = if (durationMs > 0) (positionMs.toFloat() / durationMs).coerceIn(0f, 1f) else 0f
     val accent = MaterialTheme.colorScheme.primary
@@ -359,13 +370,15 @@ private fun SeekBar(positionMs: Long, durationMs: Long, selectable: Boolean, onS
                     val direction = when (event.key) { Key.DirectionLeft -> -1; Key.DirectionRight -> 1; else -> 0 }
                     if (direction != 0 && event.type == KeyEventType.KeyDown) {
                         onSeek(direction, event.nativeKeyEvent.repeatCount); true
+                    } else if (event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown) {
+                        onDown(); true
                     } else false
                 }
                 .focusable()),
         contentAlignment = Alignment.CenterStart,
     ) {
         val track = if (focused) 10.dp else 5.dp
-        Box(Modifier.fillMaxWidth().height(track).background(Color.DarkGray, RoundedCornerShape(track / 2))) {
+        Box(Modifier.fillMaxWidth().height(track).background(Color(0x47FFFFFF), RoundedCornerShape(track / 2))) {
             Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(accent, RoundedCornerShape(track / 2)))
         }
         if (focused) {

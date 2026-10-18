@@ -13,6 +13,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -35,6 +43,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ru.feskolech.libriatv.ui.components.AccentButton as Button
 import androidx.tv.material3.Icon
+import androidx.tv.material3.Button as TvButton
+import androidx.tv.material3.ButtonDefaults as TvButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
@@ -44,9 +54,31 @@ private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 
 /** Icon-only playback button; the label goes to accessibility services. */
 @Composable
-internal fun ControlButton(icon: ImageVector, @StringRes label: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick = onClick, modifier = modifier) {
-        Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(28.dp))
+internal fun ControlButton(icon: ImageVector, @StringRes label: Int, onClick: () -> Unit, modifier: Modifier = Modifier,
+    main: Boolean = false) {
+    // Round and see-through over the video: only the focused button gets a fill. [main] (play / pause) is a
+    // size larger and always tinted, so it is found at a glance.
+    TvButton(onClick = onClick, modifier = modifier.size(if (main) 54.dp else 44.dp),
+        shape = TvButtonDefaults.shape(CircleShape), contentPadding = PaddingValues(0.dp),
+        scale = TvButtonDefaults.scale(focusedScale = 1.08f),
+        colors = TvButtonDefaults.colors(containerColor = if (main) Color(0x38FFFFFF) else Color.Transparent, contentColor = Color.White,
+            focusedContainerColor = if (main) MaterialTheme.colorScheme.primary else Color.White,
+            focusedContentColor = if (main) Color.White else Color(0xFF111111))) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(if (main) 30.dp else 24.dp))
+        }
+    }
+}
+
+/** "More": every player setting (quality, speed, sleep timer, skips, night sound) in the side menu. */
+@Composable
+internal fun MoreButton(onClick: () -> Unit) {
+    TvButton(onClick = onClick, modifier = Modifier.height(44.dp), contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
+        scale = TvButtonDefaults.scale(focusedScale = 1.05f),
+        colors = TvButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Color.White,
+            focusedContainerColor = Color.White, focusedContentColor = Color(0xFF111111))) {
+        Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(24.dp))
+        Text(stringResource(R.string.player_more), Modifier.padding(start = 6.dp), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

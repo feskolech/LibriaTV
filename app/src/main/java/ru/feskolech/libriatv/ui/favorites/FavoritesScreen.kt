@@ -20,6 +20,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.Icons
+import androidx.tv.material3.Icon
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Row
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -91,24 +99,38 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
         } else {
             // Favorites and the account lists in one place; tabs switch on focus like the schedule.
             val tabs = listOf<UserList?>(null) + UserList.entries
-            androidx.tv.material3.TabRow(selectedTabIndex = tabs.indexOf(state.tab).coerceAtLeast(0),
-                // Up from the sort button / grid returns to the selected tab, not the nearest one.
-                modifier = Modifier.padding(horizontal = 48.dp).focusRequester(first).focusRestorer(selectedTab)
-                    .onFocusChanged { if (it.hasFocus) gridHadFocus = false }) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(selected = tab == state.tab, onFocus = { viewModel.selectTab(tab) },
-                        modifier = if (tab == state.tab) Modifier.focusRequester(selectedTab) else Modifier) {
-                        Text(stringResource(tab.tabLabel()), fontSize = 20.sp,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            // The tabs and, for favorites, a round sort button on the same line: the sort used to take a line of
+            // its own, which came and went with the tab. It sits before the tabs, Left of "Favorites": at the
+            // end, reaching it would pass over (and switch to) every other tab. Sized so all six tabs fit;
+            // the button names the current sort while it has the focus.
+            Row(Modifier.padding(horizontal = 48.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (state.tab == null) {
+                    var sortFocused by remember { mutableStateOf(false) }
+                    Button(onClick = { sortingOpen = true },
+                        modifier = Modifier.widthIn(max = 280.dp).onFocusChanged {
+                            sortFocused = it.isFocused
+                            if (it.isFocused) gridHadFocus = false
+                        },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.filter_sorting),
+                            modifier = Modifier.size(22.dp))
+                        if (sortFocused) Text(sortLabel(state), Modifier.padding(start = 8.dp, end = 6.dp), fontSize = 16.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
-            }
-            if (state.tab == null) Button(onClick = { sortingOpen = true },
-                modifier = Modifier.padding(horizontal = 48.dp).onFocusChanged { if (it.isFocused) gridHadFocus = false }) {
-                Text(stringResource(R.string.filter_sorting) + ": " +
-                    (if (state.selectedSorting == "TITLE_ASC") stringResource(R.string.sort_title)
-                        else state.sorting.firstOrNull { it.id == state.selectedSorting }?.title
-                        ?: stringResource(R.string.filter_any)))
+                androidx.tv.material3.TabRow(selectedTabIndex = tabs.indexOf(state.tab).coerceAtLeast(0),
+                    // Up from the grid returns to the selected tab, not the nearest one.
+                    modifier = Modifier.weight(1f, fill = false).focusRequester(first).focusRestorer(selectedTab)
+                        .onFocusChanged { if (it.hasFocus) gridHadFocus = false }) {
+                    tabs.forEachIndexed { index, tab ->
+                        Tab(selected = tab == state.tab, onFocus = { viewModel.selectTab(tab) },
+                            modifier = if (tab == state.tab) Modifier.focusRequester(selectedTab) else Modifier) {
+                            Text(stringResource(tab.tabLabel()), fontSize = 16.sp, maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
+                        }
+                    }
+                }
             }
             when {
                 state.releases.isEmpty() && state.loading ->
@@ -122,13 +144,14 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                         ?: stringResource(R.string.favorites_empty), Modifier.padding(horizontal = 48.dp), color = Color.White)
                 state.tab == null && state.selectedSorting == "TITLE_ASC" -> AlphabetGrid(state.releases,
                     badge = { it.latestFavoriteOrdinal()?.let { n -> stringResource(R.string.episode_number, n) } },
-                    favoriteIds = state.ids, openedId = lastOpened, openedFocus = openedCard, onOpen = open)
+                    favoriteIds = if (state.tab == null) emptySet() else state.ids, openedId = lastOpened, openedFocus = openedCard, onOpen = open)
                 else -> LazyVerticalGrid(columns = GridCells.Adaptive(160.dp), modifier = Modifier.fillMaxSize().focusRestorer().onFocusChanged { if (it.hasFocus) gridHadFocus = true },
                     contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 28.dp, bottom = 27.dp),
                     horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
                     itemsIndexed(state.releases, key = { _, release -> release.id }) { index, release ->
                         PosterCard(release, release.latestFavoriteOrdinal()?.let { stringResource(R.string.episode_number, it) },
-                            isFavorite = release.id in state.ids,
+                            // In favorites everything is a favorite: the heart is only shown in the account lists.
+                            isFavorite = state.tab != null && release.id in state.ids,
                             onFocus = { onContentFocus(); if (index >= state.releases.size - 10) viewModel.loadMore() },
                             modifier = if (release.id == lastOpened) Modifier.focusRequester(openedCard) else Modifier,
                             onClick = { open(release.id) })
@@ -171,3 +194,11 @@ private fun UserList?.tabLabel(): Int = when (this) {
     UserList.POSTPONED -> R.string.list_postponed
     UserList.ABANDONED -> R.string.list_abandoned
 }
+
+/** The chosen sort, short: the API's labels repeat "in favorites", which is where the viewer already is. */
+@Composable
+private fun sortLabel(state: FavoritesUiState): String =
+    if (state.selectedSorting == "TITLE_ASC") stringResource(R.string.sort_title)
+    else state.sorting.firstOrNull { it.id == state.selectedSorting }?.title
+        ?.replace(" в избранное", "")?.replace(" to favorites", "")
+        ?: stringResource(R.string.filter_any)
