@@ -97,6 +97,7 @@ internal fun NavigationDrawerScope.SideMenu(
             NavigationDrawerItem(
                 selected = destination == selected,
                 onClick = { onItemClick(destination) },
+                colors = ru.feskolech.libriatv.ui.components.accentDrawerItemColors(),
                 leadingContent = { Icon(destination.icon, contentDescription = null, modifier = Modifier.size(24.dp)) },
                 modifier = Modifier
                     .focusRequester(itemFocus.getValue(destination))

@@ -87,7 +87,7 @@ fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String
                             runCatching { targetFocus.requestFocus() }
                         }
                     }.padding(vertical = 5.dp), contentAlignment = Alignment.Center) {
-                    Text(letter, color = Color.White)
+                    Text(letter, color = if (focused) MaterialTheme.colorScheme.onPrimary else Color.White)
                 }
             }
         }

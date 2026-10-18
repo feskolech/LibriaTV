@@ -92,7 +92,7 @@ fun PosterCard(
                 Text(badge, modifier = Modifier.align(Alignment.BottomStart)
                     .padding(7.dp).clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.primary.copy(alpha = .9f)).padding(horizontal = 7.dp, vertical = 4.dp),
-                    color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             if (isFavorite) Text("♥", modifier = Modifier.align(Alignment.TopEnd).padding(6.dp),
                 color = MaterialTheme.colorScheme.primary, fontSize = 20.sp)

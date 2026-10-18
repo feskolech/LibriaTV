@@ -174,6 +174,12 @@ class HomeViewModel @Inject constructor(
         favoritesCheckedFor = userId
         favoritesCheckedAt = now
         val current = _state.value as? HomeUiState.Content ?: return
+        // Switched off in Settings: the baseline above still moves, so turning notices back on later does
+        // not announce everything that came out meanwhile.
+        if (!settings.newEpisodeNotices()) {
+            _state.value = current.copy(favoriteIds = favoritesRepository.ids.value, newEpisodes = emptyList(), showEpisodeDialog = false)
+            return
+        }
         _state.value = if (newEpisodes.isEmpty()) current.copy(favoriteIds = favoritesRepository.ids.value)
             else current.copy(favoriteIds = favoritesRepository.ids.value, showEpisodeDialog = true,
                 newEpisodes = mergeNewEpisodes(if (current.showEpisodeDialog) current.newEpisodes else emptyList(), newEpisodes))

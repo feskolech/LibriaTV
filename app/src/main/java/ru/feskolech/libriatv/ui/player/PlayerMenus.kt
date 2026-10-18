@@ -56,14 +56,13 @@ private val SPEEDS = listOf(0.75f, 1f, 1.25f, 1.5f, 2f)
 @Composable
 internal fun ControlButton(icon: ImageVector, @StringRes label: Int, onClick: () -> Unit, modifier: Modifier = Modifier,
     main: Boolean = false) {
-    // Round and see-through over the video: only the focused button gets a fill. [main] (play / pause) is a
-    // size larger and always tinted, so it is found at a glance.
+    // Round and see-through over the video: only the focused button gets a fill, in the accent like every
+    // focus in the app. [main] (play / pause) is a size larger and always tinted, so it is found at a glance.
     TvButton(onClick = onClick, modifier = modifier.size(if (main) 54.dp else 44.dp),
         shape = TvButtonDefaults.shape(CircleShape), contentPadding = PaddingValues(0.dp),
         scale = TvButtonDefaults.scale(focusedScale = 1.08f),
         colors = TvButtonDefaults.colors(containerColor = if (main) Color(0x38FFFFFF) else Color.Transparent, contentColor = Color.White,
-            focusedContainerColor = if (main) MaterialTheme.colorScheme.primary else Color.White,
-            focusedContentColor = if (main) Color.White else Color(0xFF111111))) {
+            focusedContainerColor = MaterialTheme.colorScheme.primary, focusedContentColor = MaterialTheme.colorScheme.onPrimary)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = stringResource(label), modifier = Modifier.size(if (main) 30.dp else 24.dp))
         }
@@ -76,7 +75,7 @@ internal fun MoreButton(onClick: () -> Unit) {
     TvButton(onClick = onClick, modifier = Modifier.height(44.dp), contentPadding = PaddingValues(start = 12.dp, end = 16.dp),
         scale = TvButtonDefaults.scale(focusedScale = 1.05f),
         colors = TvButtonDefaults.colors(containerColor = Color.Transparent, contentColor = Color.White,
-            focusedContainerColor = Color.White, focusedContentColor = Color(0xFF111111))) {
+            focusedContainerColor = MaterialTheme.colorScheme.primary, focusedContentColor = MaterialTheme.colorScheme.onPrimary)) {
         Icon(Icons.Filled.MoreHoriz, contentDescription = null, modifier = Modifier.size(24.dp))
         Text(stringResource(R.string.player_more), Modifier.padding(start = 6.dp), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
     }

@@ -28,6 +28,7 @@ class NewEpisodesWorker(context: Context, params: WorkerParameters) : CoroutineW
         fun favorites(): FavoritesRepository
         fun store(): FavoriteEpisodeStore
         fun channel(): NewEpisodesChannel
+        fun settings(): SettingsStore
     }
 
     override suspend fun doWork(): Result {
@@ -35,6 +36,11 @@ class NewEpisodesWorker(context: Context, params: WorkerParameters) : CoroutineW
         // Offline: try later, keeping the channel as it is (it used to be wiped on any network error).
         val userId = try { deps.auth().currentUserIdForBackground() } catch (_: java.io.IOException) { return Result.retry() }
         if (userId == null) {
+            deps.channel().publish(emptyList())
+            return Result.success()
+        }
+        // Notices switched off in Settings: the channel stays empty.
+        if (!deps.settings().newEpisodeNotices()) {
             deps.channel().publish(emptyList())
             return Result.success()
         }

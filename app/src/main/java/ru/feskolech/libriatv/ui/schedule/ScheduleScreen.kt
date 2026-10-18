@@ -81,11 +81,13 @@ internal fun ScheduleContent(
                 var selected by rememberSaveable { mutableIntStateOf(current.today) }
                 // TV tabs switch on focus, like the system launcher.
                 // Up from the posters returns to the selected day instead of switching to the tab above.
-                TabRow(selectedTabIndex = selected, modifier = Modifier.padding(horizontal = 48.dp).focusRestorer(tabFocus)) {
+                TabRow(selectedTabIndex = selected, modifier = Modifier.padding(horizontal = 48.dp).focusRestorer(tabFocus),
+                    indicator = { positions, hasFocus -> ru.feskolech.libriatv.ui.components.AccentTabIndicator(positions, selected, hasFocus) }) {
                     days.forEachIndexed { index, day ->
                         Tab(
                             selected = index == selected,
                             onFocus = { selected = index },
+                            colors = ru.feskolech.libriatv.ui.components.accentTabColors(),
                             modifier = if (index == selected) Modifier.focusRequester(tabFocus) else Modifier,
                         ) {
                             val label = if (index == current.today) stringResource(R.string.schedule_today, day) else day

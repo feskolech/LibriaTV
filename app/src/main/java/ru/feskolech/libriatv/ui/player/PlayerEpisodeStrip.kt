@@ -132,7 +132,7 @@ private fun EpisodeCard(episode: Episode, progress: PlaybackProgress?, playing: 
     Surface(onClick = onClick, modifier = modifier.width(CARD_WIDTH),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
-        border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, Color.White))),
+        border = ClickableSurfaceDefaults.border(focusedBorder = Border(androidx.compose.foundation.BorderStroke(3.dp, MaterialTheme.colorScheme.primary))),
         colors = ClickableSurfaceDefaults.colors(containerColor = Color(0xFF1E1E22), focusedContainerColor = Color(0xFF2A2A30),
             contentColor = Color.White, focusedContentColor = Color.White)) {
         Column {
@@ -144,7 +144,7 @@ private fun EpisodeCard(episode: Episode, progress: PlaybackProgress?, playing: 
                     alpha = if (watched) 0.55f else 1f)
                 if (playing) Text(stringResource(R.string.now_playing), Modifier.align(Alignment.TopStart).padding(8.dp)
                     .clip(RoundedCornerShape(6.dp)).background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
+                    .padding(horizontal = 8.dp, vertical = 2.dp), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimary)
                 val fraction = when {
                     progress == null -> 0f
                     progress.watched -> 1f

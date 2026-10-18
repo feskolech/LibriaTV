@@ -120,11 +120,15 @@ fun FavoritesScreen(onOpenRelease: (Int) -> Unit, onLogin: () -> Unit,
                     }
                 }
                 androidx.tv.material3.TabRow(selectedTabIndex = tabs.indexOf(state.tab).coerceAtLeast(0),
+                    indicator = { positions, hasFocus ->
+                        ru.feskolech.libriatv.ui.components.AccentTabIndicator(positions, tabs.indexOf(state.tab).coerceAtLeast(0), hasFocus)
+                    },
                     // Up from the grid returns to the selected tab, not the nearest one.
                     modifier = Modifier.weight(1f, fill = false).focusRequester(first).focusRestorer(selectedTab)
                         .onFocusChanged { if (it.hasFocus) gridHadFocus = false }) {
                     tabs.forEachIndexed { index, tab ->
                         Tab(selected = tab == state.tab, onFocus = { viewModel.selectTab(tab) },
+                            colors = ru.feskolech.libriatv.ui.components.accentTabColors(),
                             modifier = if (tab == state.tab) Modifier.focusRequester(selectedTab) else Modifier) {
                             Text(stringResource(tab.tabLabel()), fontSize = 16.sp, maxLines = 1,
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))

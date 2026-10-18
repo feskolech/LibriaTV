@@ -16,6 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
+import androidx.tv.material3.Icon
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.border
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,14 +80,12 @@ fun SettingsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.settings_accent), color = Color.LightGray)
                     val names = listOf(R.string.accent_red, R.string.accent_orange, R.string.accent_yellow,
-                        R.string.accent_green, R.string.accent_blue, R.string.accent_purple)
-                    names.chunked(3).forEachIndexed { row, group ->
+                        R.string.accent_green, R.string.accent_blue, R.string.accent_purple, R.string.accent_white)
+                    names.chunked(4).forEachIndexed { row, group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             group.forEachIndexed { column, name ->
-                                val index = row * 3 + column
-                                Button(onClick = { viewModel.accent(index) }) {
-                                    Text(stringResource(name) + if (content.appearance.accent == index) " ✓" else "")
-                                }
+                                val index = row * 4 + column
+                                ChoiceButton(stringResource(name), content.appearance.accent == index) { viewModel.accent(index) }
                             }
                         }
                     }
@@ -102,6 +104,8 @@ fun SettingsScreen(
             item { SettingToggle(R.string.settings_frame_rate, content.frameRateMatch, viewModel::frameRateMatch) }
             item { SettingToggle(R.string.night_mode, content.nightMode, viewModel::nightMode, R.string.night_mode_hint) }
             item { SettingToggle(R.string.settings_home_video_preview, content.homeVideoPreview, viewModel::homeVideoPreview) }
+            item { SettingToggle(R.string.settings_new_episode_notices, content.newEpisodeNotices, viewModel::newEpisodeNotices,
+                R.string.settings_new_episode_notices_hint) }
             item { SettingChoices(R.string.settings_speed, listOf("0.75×", "1×", "1.25×", "1.5×", "2×"),
                 listOf(.75f, 1f, 1.25f, 1.5f, 2f).indexOf(content.speed), viewModel::speed,
                 listOf(.75f, 1f, 1.25f, 1.5f, 2f)) }
@@ -167,10 +171,21 @@ private fun <T> SettingChoices(title: Int, labels: List<String>, selected: Int, 
         Text(stringResource(title), color = Color.LightGray)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             labels.forEachIndexed { index, label ->
-                Button(onClick = { onSelect(values[index]) }, modifier = if (index == 0) modifier else Modifier) {
-                    Text(label + if (index == selected) " ✓" else "")
-                }
+                ChoiceButton(label, index == selected, if (index == 0) modifier else Modifier) { onSelect(values[index]) }
             }
         }
+    }
+}
+
+/**
+ * One option of a setting. The chosen one has a light outline and a check icon (not a "✓" character, whose
+ * fallback font makes the button taller); the focus is the accent fill, as everywhere.
+ */
+@Composable
+private fun ChoiceButton(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = modifier.then(if (selected) Modifier.border(2.dp,
+        ru.feskolech.libriatv.ui.components.FocusStyle.SelectedOutline, androidx.compose.foundation.shape.RoundedCornerShape(50)) else Modifier)) {
+        if (selected) Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.padding(end = 6.dp).size(18.dp))
+        Text(label)
     }
 }

@@ -13,7 +13,9 @@ import androidx.tv.material3.darkColorScheme
 import ru.feskolech.libriatv.data.repo.AppearanceSettings
 import ru.feskolech.libriatv.data.repo.SettingsStore
 
-private val accents = listOf(0xFFB32121, 0xFFE87522, 0xFFE8C547, 0xFF43A858, 0xFF3988D5, 0xFF9362C9)
+/** Accent colours by index; the last one, white, keeps the look of a white focus (dark text on it). */
+private val accents = listOf(0xFFB32121, 0xFFE87522, 0xFFE8C547, 0xFF43A858, 0xFF3988D5, 0xFF9362C9, 0xFFF2F2F4)
+private val darkTextAccents = setOf(2, 6)
 
 @Composable
 fun LibriaTvTheme(settings: SettingsStore, content: @Composable () -> Unit) {
@@ -22,7 +24,7 @@ fun LibriaTvTheme(settings: SettingsStore, content: @Composable () -> Unit) {
     val scale = appearance.scale / 100f
     val colors = darkColorScheme(
         primary = Color(accents[appearance.accent]),
-        onPrimary = if (appearance.accent == 2) Color.Black else Color.White,
+        onPrimary = if (appearance.accent in darkTextAccents) Color(0xFF111111) else Color.White,
         background = if (appearance.oled) Color.Black else Color(0xFF101010),
         onBackground = Color.White,
         surface = if (appearance.oled) Color(0xFF0A0A0A) else Color(0xFF181818),

@@ -180,7 +180,7 @@ internal fun ProfileContent(name: String, avatarUrl: String?, onOpenMenu: () -> 
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(22.dp, Alignment.CenterVertically)) {
         Box(Modifier.size(112.dp).clip(RoundedCornerShape(56.dp)).background(accent), contentAlignment = Alignment.Center) {
-            Text(name.take(1).uppercase(), fontSize = 54.sp, fontWeight = FontWeight.Bold)
+            Text(name.take(1).uppercase(), fontSize = 54.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
             if (avatarUrl != null) AsyncImage(model = avatarUrl, contentDescription = null, modifier = Modifier.fillMaxSize())
         }
         Text(name, style = MaterialTheme.typography.headlineMedium)

@@ -175,7 +175,7 @@ private fun EpisodeTile(episode: Episode, progress: PlaybackProgress?, isResume:
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (watched) WatchedTile else Color(0xFF34343B),
             contentColor = if (watched) WatchedText else Color(0xFFE4E4E8),
-            focusedContainerColor = Color.White, focusedContentColor = Color(0xFF111111)),
+            focusedContainerColor = MaterialTheme.colorScheme.primary, focusedContentColor = MaterialTheme.colorScheme.onPrimary),
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("${(episode.ordinal ?: 0.0).toInt()}", fontSize = 18.sp, fontWeight = FontWeight.Medium,

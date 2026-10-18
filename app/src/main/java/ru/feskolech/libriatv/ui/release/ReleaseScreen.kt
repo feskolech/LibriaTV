@@ -136,7 +136,7 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                                     colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.Transparent,
                                         focusedContainerColor = Color(0x1AFFFFFF), contentColor = Color.White, focusedContentColor = Color.White),
                                     border = androidx.tv.material3.ClickableSurfaceDefaults.border(focusedBorder = androidx.tv.material3.Border(
-                                        androidx.compose.foundation.BorderStroke(2.dp, Color.White)))) {
+                                        androidx.compose.foundation.BorderStroke(2.dp, androidx.tv.material3.MaterialTheme.colorScheme.primary)))) {
                                     // No line limit: the text is cut with an ellipsis at the last line that fits.
                                     Text(description, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                                         overflow = TextOverflow.Ellipsis)

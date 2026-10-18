@@ -21,11 +21,11 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     private val accentKey = intPreferencesKey("appearance_accent")
     private val scaleKey = intPreferencesKey("appearance_scale")
     val appearance = context.settingsDataStore.data.map {
-        AppearanceSettings(it[themeKey] == "oled", (it[accentKey] ?: 0).coerceIn(0, 5),
+        AppearanceSettings(it[themeKey] == "oled", (it[accentKey] ?: 0).coerceIn(0, ACCENT_COUNT - 1),
             (it[scaleKey] ?: 100).takeIf { scale -> scale in listOf(90, 100, 115, 130) } ?: 100)
     }
     suspend fun setOled(value: Boolean) { context.settingsDataStore.edit { it[themeKey] = if (value) "oled" else "dark" } }
-    suspend fun setAccent(value: Int) { require(value in 0..5); context.settingsDataStore.edit { it[accentKey] = value } }
+    suspend fun setAccent(value: Int) { require(value in 0 until ACCENT_COUNT); context.settingsDataStore.edit { it[accentKey] = value } }
     suspend fun setScale(value: Int) { require(value in listOf(90, 100, 115, 130)); context.settingsDataStore.edit { it[scaleKey] = value } }
     private val mirrorKey = stringPreferencesKey("api_mirror")
     private val automaticCrashReportsKey = booleanPreferencesKey("automatic_crash_reports")
@@ -50,10 +50,17 @@ class SettingsStore @Inject constructor(@ApplicationContext private val context:
     suspend fun setAutomaticCrashReports(enabled: Boolean) {
         context.settingsDataStore.edit { it[automaticCrashReportsKey] = enabled }
     }
+    private val newEpisodeNoticesKey = booleanPreferencesKey("new_episode_notices")
+    /** "New in favorites": the notice on Home and the Android TV home-screen channel. On by default. */
+    suspend fun newEpisodeNotices(): Boolean = context.settingsDataStore.data.first()[newEpisodeNoticesKey] ?: true
+    suspend fun setNewEpisodeNotices(enabled: Boolean) { context.settingsDataStore.edit { it[newEpisodeNoticesKey] = enabled } }
     suspend fun phoneRemoteEnabled(): Boolean = context.settingsDataStore.data.first()[phoneRemoteKey] ?: false
     suspend fun setPhoneRemoteEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { it[phoneRemoteKey] = enabled }
     }
 }
+
+/** Number of accent colours (see the theme); the last is white. */
+const val ACCENT_COUNT = 7
 
 data class AppearanceSettings(val oled: Boolean = false, val accent: Int = 0, val scale: Int = 100)
