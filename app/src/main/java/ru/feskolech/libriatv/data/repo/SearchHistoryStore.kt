@@ -34,7 +34,8 @@ class SearchHistoryStore @Inject constructor(@ApplicationContext private val con
         fun push(history: List<String>, query: String): List<String> =
             (listOf(query) + history.filterNot { it.equals(query, ignoreCase = true) }).take(LIMIT)
 
-        private fun decode(raw: String?): List<String> = raw?.split('\n')?.filter(String::isNotBlank).orEmpty()
+        // take: a history saved when the limit was ten shows five right away, not only after the next search.
+        private fun decode(raw: String?): List<String> = raw?.split('\n')?.filter(String::isNotBlank).orEmpty().take(LIMIT)
         private fun encode(list: List<String>): String = list.joinToString("\n")
     }
 }
