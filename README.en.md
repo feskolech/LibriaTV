@@ -25,13 +25,16 @@ The whole UI is made for a remote control: arrows and OK. Content is in Russian.
 - **New episodes of your favorites** on launch and as an Android TV home-screen channel;
   unfinished episodes in the system's Watch Next row.
 - **Favorites and lists**: Watching, Planned, Watched, On hold, Dropped; rate titles.
-- **Release page**: all seasons of a franchise, similar titles, episode list with thumbnails.
-- **Catalog** with filters (genres, type, season, years, status), sorting and "I'm feeling lucky".
+- **Release page**: all seasons of a franchise, similar titles, an episode grid with thumbnails;
+  long series in ranges of 50.
+- **Catalog**: quick picks (Airing now, Top rated, Movies…), every filter in one panel (genres,
+  type, season, years, status, sorting), your own saved picks and "I'm feeling lucky" within the
+  current pick.
 - **Search**, including voice search.
 - **Weekly schedule.**
-- **Player**: 480/720/1080p, skip opening and ending (manual or automatic), speed, sleep timer,
-  night sound mode, seek previews, auto-play next episode, frame-rate matching. Watch progress
-  syncs with your account.
+- **Player**: see-through controls, an episode strip with frames on Down, 480/720/1080p, skip
+  opening and ending (manual or automatic), speed, sleep timer, night sound mode, seek previews,
+  auto-play next episode, frame-rate matching. Watch progress syncs with your account.
 - **Torrents via [TorrServe](https://github.com/YouROK/TorrServer)**: with TorrServe installed you
   pick the episode inside a torrent and it gets marked as watched. Without it, the magnet opens in
   any torrent app or goes to your phone as a QR code.
@@ -45,6 +48,7 @@ The whole UI is made for a remote control: arrows and OK. Content is in Russian.
 |---|---|
 | ![Release page](docs/screenshots/release.jpg) | ![Catalog](docs/screenshots/catalog.jpg) |
 | ![Favorites and lists](docs/screenshots/favorites.jpg) | ![Schedule](docs/screenshots/schedule.jpg) |
+| ![Player](docs/screenshots/player.jpg) | ![Episodes in the player](docs/screenshots/episodes.jpg) |
 
 ## Install
 
