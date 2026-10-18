@@ -6,7 +6,7 @@ An unofficial [AniLiberty](https://aniliberty.top) (formerly AniLibria) client f
 TV boxes. It is built on the current v1 API, so signing in works (unlike the old AniLibria TV app).
 The whole UI is made for a remote control: arrows and OK. Content is in Russian.
 
-![Home](docs/screenshots/home.jpg)
+![Home](docs/screenshots/home-0917.jpg)
 
 > **AniLibria → AniLiberty.** In May 2025 the project split: the fandub team, the site
 > (anilibria.top / aniliberty.top) and the whole dub archive since 2012 are now **AniLiberty**, while
@@ -46,9 +46,9 @@ The whole UI is made for a remote control: arrows and OK. Content is in Russian.
 
 | | |
 |---|---|
-| ![Release page](docs/screenshots/release.jpg) | ![Catalog](docs/screenshots/catalog.jpg) |
-| ![Favorites and lists](docs/screenshots/favorites.jpg) | ![Schedule](docs/screenshots/schedule.jpg) |
-| ![Player](docs/screenshots/player.jpg) | ![Episodes in the player](docs/screenshots/episodes.jpg) |
+| ![Release page](docs/screenshots/release-0917.jpg) | ![Catalog](docs/screenshots/catalog-0917.jpg) |
+| ![Favorites and lists](docs/screenshots/favorites-0917.jpg) | ![Schedule](docs/screenshots/schedule-0917.jpg) |
+| ![Player](docs/screenshots/player-0917.jpg) | ![Episodes in the player](docs/screenshots/episodes-0917.jpg) |
 
 ## Install
 

@@ -6,7 +6,7 @@
 и ТВ-приставок. Работает на актуальном API v1, поэтому вход в аккаунт работает (в отличие от старого
 TV-приложения AniLibria). Интерфейс сделан под пульт: всё управляется стрелками и OK.
 
-![Главная](docs/screenshots/home.jpg)
+![Главная](docs/screenshots/home-0917.jpg)
 
 > **AniLibria → AniLiberty.** В мае 2025 года проект разделился: фандаб-команда, сайт
 > (anilibria.top / aniliberty.top) и весь архив озвучек с 2012 года теперь называются **AniLiberty**,
@@ -48,9 +48,9 @@ TV-приложения AniLibria). Интерфейс сделан под пу�
 
 | | |
 |---|---|
-| ![Карточка релиза](docs/screenshots/release.jpg) | ![Каталог](docs/screenshots/catalog.jpg) |
-| ![Избранное и списки](docs/screenshots/favorites.jpg) | ![Расписание](docs/screenshots/schedule.jpg) |
-| ![Плеер](docs/screenshots/player.jpg) | ![Серии в плеере](docs/screenshots/episodes.jpg) |
+| ![Карточка релиза](docs/screenshots/release-0917.jpg) | ![Каталог](docs/screenshots/catalog-0917.jpg) |
+| ![Избранное и списки](docs/screenshots/favorites-0917.jpg) | ![Расписание](docs/screenshots/schedule-0917.jpg) |
+| ![Плеер](docs/screenshots/player-0917.jpg) | ![Серии в плеере](docs/screenshots/episodes-0917.jpg) |
 
 ## Установка
 
