@@ -56,7 +56,7 @@ fun AlphabetGrid(releases: List<Release>, badge: @Composable (Release) -> String
         BoxWithConstraints(Modifier.weight(1f)) {
         val columns = ((maxWidth - 62.dp) / 164.dp).toInt().coerceAtLeast(1)
         LazyVerticalGrid(columns = GridCells.Fixed(columns), state = state, modifier = Modifier.fillMaxSize().focusRestorer(),
-            contentPadding = PaddingValues(start = 48.dp, end = 14.dp, top = 8.dp, bottom = 27.dp),
+            contentPadding = PaddingValues(start = 48.dp, end = 14.dp, top = 28.dp, bottom = 27.dp),
             horizontalArrangement = Arrangement.spacedBy(22.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
             itemsIndexed(releases, key = { _, r -> r.id }) { index, release ->
                 PosterCard(release, badge(release), isFavorite = release.id in favoriteIds,
