@@ -77,8 +77,10 @@ internal fun compareVersions(left: String, right: String): Int {
 internal fun parseUpdateRelease(json: String): UpdateRelease? = runCatching {
     val root = Json.parseToJsonElement(json).jsonObject
     val tag = root["tag_name"]?.jsonPrimitive?.content ?: return null
+    // A release carries the self-updating APK and the store one ("LibriaTV-store-…apk"); only the first is installed.
     val asset = root["assets"]?.jsonArray?.firstOrNull { item ->
-        item.jsonObject["name"]?.jsonPrimitive?.content?.endsWith(".apk", ignoreCase = true) == true
+        val name = item.jsonObject["name"]?.jsonPrimitive?.content.orEmpty()
+        name.endsWith(".apk", ignoreCase = true) && !name.contains("store", ignoreCase = true)
     }?.jsonObject ?: return null
     val url = asset["browser_download_url"]?.jsonPrimitive?.content ?: return null
     if (!allowedApkUrl(url)) return null

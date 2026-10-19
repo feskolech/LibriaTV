@@ -29,6 +29,8 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import ru.feskolech.libriatv.R
 import ru.feskolech.libriatv.data.repo.verifyDownloadedApk
+import ru.feskolech.libriatv.data.repo.StoreLink
+import ru.feskolech.libriatv.BuildConfig
 
 @Composable
 fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit) {
@@ -61,8 +63,17 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
     }
     val later = stringResource(R.string.update_later)
     val close = stringResource(R.string.close)
+    // The store build never downloads: it opens the app's page in the store it was installed from.
+    var storeUnavailable by remember(state) { mutableStateOf(false) }
+    val openStore = {
+        if (StoreLink.open(context, "https://github.com/${BuildConfig.UPDATE_REPO}/releases/latest")) dismiss()
+        else storeUnavailable = true
+    }
     val actions: (@Composable RowScope.() -> Unit)? = when (state) {
-        is UpdateUiState.Available -> ({
+        is UpdateUiState.Available -> if (!BuildConfig.SELF_UPDATE) ({
+            DialogButton(stringResource(R.string.update_open_store), openStore, initialFocus = true)
+            DialogButton(later, dismiss)
+        }) else ({
             DialogButton(stringResource(R.string.update_now), download, initialFocus = true)
             DialogButton(later, dismiss)
         })
@@ -75,7 +86,12 @@ fun UpdateDialog(state: UpdateUiState, download: () -> Unit, dismiss: () -> Unit
     }
     AppDialog(onDismiss = dismiss, title = title, actions = actions) {
         when (state) {
-            is UpdateUiState.Available -> if (state.release.notes.isNotBlank()) Text(state.release.notes, maxLines = 8)
+            is UpdateUiState.Available -> androidx.compose.foundation.layout.Column(
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+                if (state.release.notes.isNotBlank()) Text(state.release.notes, maxLines = 8)
+                if (!BuildConfig.SELF_UPDATE) Text(stringResource(R.string.update_store_hint), color = Color(0xFFB4B4BC))
+                if (storeUnavailable) Text(stringResource(R.string.update_store_unavailable))
+            }
             is UpdateUiState.Downloading ->
                 Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0x33FFFFFF))) {
                     Box(Modifier.fillMaxWidth(state.percent / 100f).height(8.dp).clip(RoundedCornerShape(4.dp))

@@ -251,4 +251,7 @@
     <string name="accent_white">Белый</string>
     <string name="settings_new_episode_notices">Оповещения о новых сериях в избранном</string>
     <string name="settings_new_episode_notices_hint">Окно «Вышло в избранном» на главной и канал на главном экране Android TV.</string>
+    <string name="update_open_store">Открыть в магазине</string>
+    <string name="update_store_hint">Обновление появится в магазине приложений, когда он его проверит — обычно в течение пары дней.</string>
+    <string name="update_store_unavailable">Не удалось открыть магазин. Обновите приложение в нём вручную.</string>
 </resources>

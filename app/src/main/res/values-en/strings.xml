@@ -249,4 +249,7 @@
     <string name="accent_white">White</string>
     <string name="settings_new_episode_notices">New episode notices for favorites</string>
     <string name="settings_new_episode_notices_hint">The "New in favorites" notice on Home and the Android TV home-screen channel.</string>
+    <string name="update_open_store">Open in the store</string>
+    <string name="update_store_hint">The update reaches your app store once the store has reviewed it, usually within a couple of days.</string>
+    <string name="update_store_unavailable">Could not open the store. Update the app there by hand.</string>
 </resources>

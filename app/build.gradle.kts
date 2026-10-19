@@ -50,6 +50,22 @@ android {
         buildConfigField("String", "CRASH_REPORT_PASSWORD", "\"${escapedProperty("crashReportPassword")}\"")
     }
 
+    // Two distributions from one code base: "github" updates itself from GitHub Releases (downloads and
+    // installs the APK); "store" is for app stores, which forbid self-updating: it only checks GitHub for a
+    // newer version and sends the viewer to the store it was installed from. The install permission and the
+    // FileProvider are in src/github's manifest only.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") {
+            dimension = "distribution"
+            buildConfigField("boolean", "SELF_UPDATE", "true")
+        }
+        create("store") {
+            dimension = "distribution"
+            buildConfigField("boolean", "SELF_UPDATE", "false")
+        }
+    }
+
     signingConfigs {
         if (releaseSigning != null) create("release") {
             storeFile = file(releaseSigning.getValue("storeFile"))

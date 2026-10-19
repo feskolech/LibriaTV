@@ -38,9 +38,16 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          bash ./gradlew :app:testDebugUnitTest :app:assembleRelease
+          bash ./gradlew :app:testGithubDebugUnitTest :app:assembleGithubRelease :app:assembleStoreRelease
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/LibriaTV-${GITHUB_REF_NAME#v}.apk"
+          version="${GITHUB_REF_NAME#v}"
+          # The self-updating APK keeps its old name and goes first: earlier versions update from the first APK
+          # of a release. The store APK (no self-update) is named so that it also sorts after it.
+          cp app/build/outputs/apk/github/release/app-github-release.apk "dist/LibriaTV-$version.apk"
+          cp app/build/outputs/apk/store/release/app-store-release.apk "dist/LibriaTV-store-$version.apk"
+
+      - name: Version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
 
       - name: Pick release notes
         run: |
@@ -50,6 +57,8 @@ jobs:
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           name: LibriaTV ${{ github.ref_name }}
-          files: dist/*.apk
+          files: |
+            dist/LibriaTV-${{ env.VERSION }}.apk
+            dist/LibriaTV-store-${{ env.VERSION }}.apk
           body_path: ${{ env.NOTES }}
           generate_release_notes: ${{ env.NOTES == '' }}

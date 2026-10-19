@@ -32,6 +32,23 @@ class UpdateCheckerTest {
         assertEquals("Исправлено воспроизведение и навигация.", release.notes)
     }
 
+    @Test fun theStoreApkIsNeverTheOneInstalled() {
+        // The store APK listed first must not be picked: the GitHub build installs only its own kind.
+        val json = """{"tag_name":"v2.0.0","body":"","assets":[
+            {"name":"LibriaTV-store-2.0.0.apk","browser_download_url":"https://github.com/o/r/LibriaTV-store-2.0.0.apk"},
+            {"name":"LibriaTV-2.0.0.apk","browser_download_url":"https://github.com/o/r/LibriaTV-2.0.0.apk"}]}"""
+        assertEquals("https://github.com/o/r/LibriaTV-2.0.0.apk", parseUpdateRelease(json)!!.apkUrl)
+    }
+
+    @Test fun storeLinkLeadsToTheStoreTheAppCameFrom() {
+        val github = "https://github.com/o/r/releases/latest"
+        assertEquals("rustore://apps.rustore.ru/app/p", StoreLink.candidates("ru.vk.store", "p", github).first())
+        assertEquals("appmarket://details?id=p", StoreLink.candidates("com.huawei.appmarket", "p", github).first())
+        // Unknown store, or installed by hand: the generic store link, then GitHub.
+        assertEquals(listOf("market://details?id=p", github), StoreLink.candidates(null, "p", github))
+        assertEquals(github, StoreLink.candidates("ru.vk.store", "p", github).last())
+    }
+
     @Test fun ignoresReleasesWithoutApk() {
         assertNull(parseUpdateRelease("""{"tag_name":"v2.0.0","assets":[]}"""))
     }
