@@ -74,7 +74,7 @@ import ru.feskolech.libriatv.ui.components.PosterCard
 @Composable
 fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: () -> Unit,
     onOpenRelease: (Int) -> Unit, viewModel: ReleaseViewModel = hiltViewModel()) {
-    // The page stays in the back stack while an episode plays; refresh its progress on return.
+    // The page stays in the back stack while an episode plays; refresh its episodes and progress on return.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         // On the first resume the page is still loading, so this is a no-op then.

@@ -64,16 +64,32 @@ class HomeViewModel @Inject constructor(
     private var favoritesCheckedAt = 0L
     private var favoritesCheckedFor: Int? = null
     private val favoritesCheck = kotlinx.coroutines.sync.Mutex()
+    /** New episodes found before Home had anything on screen; shown as soon as it has. */
+    private var pendingNotice: List<NewFavoriteEpisode> = emptyList()
 
     init {
         refresh(force = true)
         viewModelScope.launch {
             auth.state.collect { authState ->
+                // Signed in (on launch the account is often confirmed a moment after Home has loaded): compare
+                // favorites now. This used to wait for the next Home visit, so the notice often missed the launch.
+                if (authState is AuthState.Authorized) launch { checkFavorites() }
                 val current = _state.value
                 if (current is HomeUiState.Content &&
                     (authState is AuthState.Authorized) != current.isAuthorized) refresh(force = true)
             }
         }
+    }
+
+    /**
+     * The viewer left Home: the notice has been seen and is not shown again (neither the dialog nor the
+     * line at the top); the next one comes with the next new episode.
+     */
+    fun noticeSeen() {
+        pendingNotice = emptyList()
+        val current = _state.value as? HomeUiState.Content ?: return
+        if (current.newEpisodes.isNotEmpty() || current.showEpisodeDialog)
+            _state.value = current.copy(newEpisodes = emptyList(), showEpisodeDialog = false)
     }
 
     fun refresh(force: Boolean = false) {
@@ -101,10 +117,11 @@ class HomeViewModel @Inject constructor(
                     recommended = recommended.await(),
                     videoPreviewEnabled = videoPreviewEnabled.await(),
                     continueItems = previous?.continueItems.orEmpty(),
-                    newEpisodes = previous?.newEpisodes.orEmpty(),
-                    showEpisodeDialog = previous?.showEpisodeDialog ?: false,
+                    newEpisodes = mergeNewEpisodes(previous?.newEpisodes.orEmpty(), pendingNotice),
+                    showEpisodeDialog = (previous?.showEpisodeDialog ?: false) || pendingNotice.isNotEmpty(),
                     latestNextPage = if (latestResult.value.size < LATEST_FIRST_PAGE) null else 2,
                 )
+                pendingNotice = emptyList()
                 android.util.Log.i("LibriaNet", "home shown after ${System.currentTimeMillis() - started} ms")
                 // "Continue watching" may need many lookups: it fills in after the screen is shown.
                 refreshContinue()
@@ -173,7 +190,11 @@ class HomeViewModel @Inject constructor(
         newEpisodesChannel.publish(emptyList())
         favoritesCheckedFor = userId
         favoritesCheckedAt = now
-        val current = _state.value as? HomeUiState.Content ?: return
+        // Home has nothing on screen yet: keep the notice for it instead of losing it (the baseline has moved).
+        val current = _state.value as? HomeUiState.Content ?: run {
+            if (newEpisodes.isNotEmpty() && settings.newEpisodeNotices()) pendingNotice = mergeNewEpisodes(pendingNotice, newEpisodes)
+            return
+        }
         // Switched off in Settings: the baseline above still moves, so turning notices back on later does
         // not announce everything that came out meanwhile.
         if (!settings.newEpisodeNotices()) {

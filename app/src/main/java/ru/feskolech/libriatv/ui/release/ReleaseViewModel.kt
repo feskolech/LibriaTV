@@ -76,12 +76,18 @@ class ReleaseViewModel @Inject constructor(
         }
     }
 
-    /** Back from the player: the watched marks and "Continue episode N" button must reflect it. */
+    /**
+     * Back from the player: the episode list is asked again (a new episode may have come out meanwhile) and so
+     * are the watched marks behind "Continue episode N". Quietly: the page stays as it is until the answer
+     * arrives, and keeps the old list if the request fails.
+     */
     fun refreshProgress() = viewModelScope.launch {
         val content = _state.value as? ReleaseUiState.Content ?: return@launch
-        val progress = progressRepository.releaseProgress(content.release)
+        val release = (repository.release(id) as? ApiResult.Success)?.value
+            ?.takeIf { it.id == content.release.id } ?: content.release
+        val progress = progressRepository.releaseProgress(release)
         val current = _state.value as? ReleaseUiState.Content ?: return@launch
-        if (current.release.id == content.release.id) _state.value = current.copy(progress = progress)
+        if (current.release.id == release.id) _state.value = current.copy(release = release, progress = progress)
     }
 
     fun toggleFavorite(onLogin: () -> Unit) {

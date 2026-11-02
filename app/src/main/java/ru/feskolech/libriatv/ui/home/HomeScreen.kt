@@ -89,6 +89,8 @@ fun HomeScreen(
     // Back on Home: the full refresh within the 5-minute throttle only, but "New episodes" and
     // "Continue watching" every time.
     LaunchedEffect(Unit) { viewModel.refresh(); viewModel.refreshLatest(); viewModel.refreshContinue() }
+    // The "new in favorites" notice is shown once: leaving Home (for a section or a release page) marks it seen.
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { viewModel.noticeSeen() } }
     when (val content = state) {
         HomeUiState.Loading -> Row(Modifier.fillMaxSize().padding(48.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             LoadingSpinner(Modifier.padding(top = 2.dp), size = 26.dp)
