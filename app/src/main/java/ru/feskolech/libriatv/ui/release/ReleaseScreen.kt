@@ -28,6 +28,12 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.lazy.itemsIndexed
+import ru.feskolech.libriatv.ui.components.rowFocusItem
+import ru.feskolech.libriatv.ui.components.rowFocusMemory
+import ru.feskolech.libriatv.ui.components.RowFocusMemory
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -81,7 +87,13 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
     val state by viewModel.state.collectAsState()
     val focus = remember { FocusRequester() }
     when (val current = state) {
-        ReleaseUiState.Loading -> Text(stringResource(R.string.home_loading), Modifier.fillMaxSize().padding(48.dp))
+        // A spinner in the middle while the release loads: a bare "Loading…" line in the corner looked frozen.
+        ReleaseUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                ru.feskolech.libriatv.ui.components.LoadingSpinner()
+                Text(stringResource(R.string.home_loading), color = Color(0xFFB4B4BC))
+            }
+        }
         is ReleaseUiState.Error -> Column(Modifier.fillMaxSize().padding(48.dp)) {
             Text(current.message)
             Button(onClick = viewModel::refresh) { Text(stringResource(R.string.retry)) }
@@ -93,6 +105,12 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
             val first = resume ?: ordered.firstOrNull()
             val listState = rememberLazyListState()
             val firstSimilar = remember { FocusRequester() }
+            // Which card each poster row had: Up/Down back into the row returns to it. Kept here, outside the
+            // page's lazy column, so it survives the row scrolling out of view (focusRestorer lost it there, and
+            // coming back up the focus jumped to another season or similar title).
+            val currentSeason = current.seasons.indexOfFirst { it.id == release.id }.coerceAtLeast(0)
+            val seasonsMemory = remember(release.id) { RowFocusMemory().also { it.last = currentSeason } }
+            val similarMemory = remember(release.id) { RowFocusMemory() }
             val headerScope = rememberCoroutineScope()
             var showDescription by remember { mutableStateOf(false) }
             var showLists by remember { mutableStateOf(false) }
@@ -192,11 +210,14 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                             CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec) {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                                    modifier = Modifier.focusRestorer()) {
-                                    items(current.seasons, key = { it.id }) { season ->
+                                    state = androidx.compose.foundation.lazy.rememberLazyListState(
+                                        initialFirstVisibleItemIndex = (currentSeason - 1).coerceAtLeast(0)),
+                                    modifier = Modifier.rowFocusMemory(seasonsMemory)) {
+                                    itemsIndexed(current.seasons, key = { _, it -> it.id }) { index, season ->
                                         val here = season.id == release.id
                                         PosterCard(season,
                                             badge = if (here) stringResource(R.string.season_current) else listOfNotNull(season.year?.toString(), season.type).joinToString(" "),
+                                            modifier = Modifier.rowFocusItem(seasonsMemory, index),
                                             onFocus = {}, onClick = { if (!here) onOpenRelease(season.id) })
                                     }
                                 }
@@ -213,17 +234,18 @@ fun ReleaseScreen(onPlay: (String) -> Unit, onTorrents: (Int) -> Unit, onLogin: 
                     if (current.similar.isNotEmpty()) {
                         item { Text(stringResource(R.string.similar), style = androidx.tv.material3.MaterialTheme.typography.headlineMedium, color = Color.White) }
                         item {
-                            // Room for the focused card's scale on the left; focusRestorer brings Up/Down back to the
+                            // Room for the focused card's scale on the left; the row's memory brings Up/Down back to the
                             // card that was selected instead of whichever one is geometrically closest.
                             CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec) {
                                 LazyRow(horizontalArrangement = Arrangement.spacedBy(22.dp),
                                     contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                                     // First visit (coming down from the episodes) starts at the first card;
                                     // later visits return to the card that was selected.
-                                    modifier = Modifier.focusRestorer(firstSimilar)) {
-                                    items(current.similar, key = { it.id }) { similar ->
+                                    modifier = Modifier.rowFocusMemory(similarMemory)) {
+                                    itemsIndexed(current.similar, key = { _, it -> it.id }) { index, similar ->
                                         PosterCard(similar, badge = null, onFocus = {}, onClick = { onOpenRelease(similar.id) },
-                                            modifier = if (similar.id == current.similar.first().id) Modifier.focusRequester(firstSimilar) else Modifier)
+                                            modifier = Modifier.rowFocusItem(similarMemory, index)
+                                                .then(if (index == 0) Modifier.focusRequester(firstSimilar) else Modifier))
                                     }
                                 }
                             }

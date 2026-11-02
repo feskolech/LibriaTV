@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.collectAsState
@@ -149,8 +150,15 @@ private fun HomeContent(
     }
     // clipToBounds: the blur render effect otherwise bleeds left under the drawer as a light strip.
     Box(Modifier.fillMaxSize().clipToBounds().background(MaterialTheme.colorScheme.background).onFocusChanged { if (it.hasFocus) onContentFocus() }
-        // Coming back from the drawer: return to the card that had focus, not the nearest one.
-        .focusRestorer()) {
+        // Coming back from the drawer: return to the card that had focus, not the nearest one. focusRestorer
+        // lost it in the lower rows (the column scrolls them), and the geometric search from the menu item
+        // then picked the row above; the remembered card is asked for directly instead.
+        .focusProperties {
+            onEnter = {
+                if (lastId >= 0 && runCatching { restore.requestFocus() }.isFailure) runCatching { firstPoster.requestFocus() }
+            }
+        }
+        .focusGroup()) {
         HomeBackdrop(backgroundRelease, content.videoPreviewEnabled && active)
         Column(Modifier.fillMaxSize()) {
             if (content.newEpisodes.isNotEmpty()) {

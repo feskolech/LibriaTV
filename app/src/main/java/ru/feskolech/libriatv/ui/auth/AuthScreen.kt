@@ -1,5 +1,15 @@
 package ru.feskolech.libriatv.ui.auth
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.foundation.shape.CircleShape
+import androidx.tv.material3.Icon
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxSize
+
 import ru.feskolech.libriatv.ui.components.DialogButton
 import ru.feskolech.libriatv.ui.components.AppDialog
 import androidx.compose.runtime.withFrameNanos
@@ -137,7 +147,22 @@ private fun PasswordContent(state: AuthUiState, submit: (String, String) -> Unit
         ) {
             Text(stringResource(R.string.auth_password_heading), style = MaterialTheme.typography.headlineSmall)
             AuthField(login, { login = it }, stringResource(R.string.auth_login_label), Modifier.focusRequester(focus))
-            AuthField(password, { password = it }, stringResource(R.string.auth_password_label), password = true)
+            // The eye beside the field shows the password, so a typo on the TV keyboard can be seen.
+            var showPassword by remember { mutableStateOf(false) }
+            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.weight(1f)) {
+                    AuthField(password, { password = it }, stringResource(R.string.auth_password_label), password = !showPassword)
+                }
+                Button(onClick = { showPassword = !showPassword }, modifier = Modifier.size(56.dp),
+                    shape = androidx.tv.material3.ButtonDefaults.shape(CircleShape),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(if (showPassword) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = stringResource(if (showPassword) R.string.auth_hide_password else R.string.auth_show_password),
+                            modifier = Modifier.size(26.dp))
+                    }
+                }
+            }
             if (state.error != null) Text(state.error, color = Color(0xFFFFA1A1))
             Button(onClick = { submit(login, password) }, enabled = login.isNotBlank() && password.isNotBlank() && !state.submitting) {
                 Text(stringResource(if (state.submitting) R.string.auth_signing_in else R.string.auth_sign_in))

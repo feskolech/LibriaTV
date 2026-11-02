@@ -252,4 +252,6 @@
     <string name="update_open_store">Open in the store</string>
     <string name="update_store_hint">The update reaches your app store once the store has reviewed it, usually within a couple of days.</string>
     <string name="update_store_unavailable">Could not open the store. Update the app there by hand.</string>
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
 </resources>

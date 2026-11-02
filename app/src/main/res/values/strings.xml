@@ -254,4 +254,6 @@
     <string name="update_open_store">Открыть в магазине</string>
     <string name="update_store_hint">Обновление появится в магазине приложений, когда он его проверит — обычно в течение пары дней.</string>
     <string name="update_store_unavailable">Не удалось открыть магазин. Обновите приложение в нём вручную.</string>
+    <string name="auth_show_password">Показать пароль</string>
+    <string name="auth_hide_password">Скрыть пароль</string>
 </resources>
